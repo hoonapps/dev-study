@@ -714,5 +714,293 @@
       "blameless",
       "action-items"
     ]
+  },
+  {
+    "id": "devops-036",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Docker 이미지가 1.2GB인데, 80MB로 줄이는 구체적인 단계를 설명하라. 각 단계에서 얼마나 줄어드는가?",
+    "answer": "1) node:20 → node:20-alpine (900MB→150MB). 2) 멀티스테이지 빌드로 빌드 도구 제거 (150MB→100MB). 3) .dockerignore로 불필요한 파일 제외 + npm ci --omit=dev (100MB→80MB)",
+    "explanation": "node:20 이미지는 Debian 기반으로 빌드 도구, man 페이지 등을 포함해 900MB다. alpine은 musl libc 기반 경량 리눅스로 5MB. 멀티스테이지 빌드는 빌드 단계의 레이어를 최종 이미지에 포함시키지 않는다.",
+    "deepDive": "니콘내콘의 179개 서비스에 이 최적화를 적용하면 어떻게 될까? 각 서비스 이미지가 1.2GB → 80MB이면, ECR 저장량이 179 × 1.2GB = 214GB → 179 × 80MB = 14GB. 버전 10개 유지하면 2.1TB → 140GB. ECR 요금이 GB당 $0.10/월이므로 월 $200→$14 절감. → 하지만 alpine의 함정은? 1) musl libc와 glibc 차이로 일부 native addon(bcrypt, sharp)이 컴파일 에러 발생. 해결: npm rebuild 또는 prebuilt binary 확인. 2) DNS 해석이 다르다: alpine의 musl은 DNS search를 동시에 보내지 않아 K8s 내부 서비스 디스커버리가 느릴 수 있다. ndots:5 설정 확인. 3) 디버깅 도구가 없다: curl, wget, bash도 없어 Pod에 exec해서 디버깅하기 어렵다. distroless 이미지는 shell 자체가 없다. → .dockerignore 실수: .git 폴더(수백MB)가 빌드 컨텍스트에 포함되면 빌드가 느려지고 이미지에 소스 히스토리가 노출된다.",
+    "seniorTip": "Docker 이미지 분석 도구: dive로 레이어별 크기를 시각화하고 낭비를 식별. docker image history로 각 레이어 크기 확인. 이미지 크기는 배포 속도(ECR pull 시간)와 스케일링 속도에 직접 영향을 주므로 CI에서 이미지 크기 제한을 설정하라.",
+    "tags": [
+      "docker",
+      "alpine",
+      "multi-stage",
+      "image-optimization",
+      "ecr"
+    ]
+  },
+  {
+    "id": "devops-037",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "ECR lifecycle policy가 없으면 어떤 비용 문제가 발생하는가?",
+    "options": [
+      "ECR 요금은 무료이므로 문제 없다",
+      "태그되지 않은 이미지와 오래된 버전이 무한히 쌓여 저장 비용이 매월 수백 달러씩 증가한다",
+      "이미지가 자동으로 삭제되어 배포가 실패한다",
+      "ECR에는 lifecycle policy 기능이 없다"
+    ],
+    "answer": 1,
+    "explanation": "매 커밋마다 Docker 이미지를 빌드하면 하루 수십 개의 이미지가 쌓인다. 140개 리포지토리 × 30일 × 하루 5개 빌드 = 21,000개 이미지. 각 100MB면 2.1TB. ECR은 GB당 $0.10/월이므로 $210/월. lifecycle policy 없으면 이 비용이 매월 증가한다.",
+    "seniorTip": "ECR lifecycle policy 필수 규칙: 1) untagged 이미지는 1일 후 삭제 (빌드 실패로 태그 안 된 이미지). 2) 태그된 이미지는 최근 10개만 유지 (롤백 가능성). 3) Terraform으로 모든 ECR 리포지토리에 일괄 적용. 설정 한번으로 매월 수백 달러 절감.",
+    "tags": [
+      "ecr",
+      "lifecycle-policy",
+      "cost-optimization",
+      "aws",
+      "docker-registry"
+    ],
+    "deepDive": "이 비용이 어떻게 숨겨지는 걸까? AWS 청구서에서 ECR은 'EC2 Container Registry'로 표시되는데, EC2 비용에 묻혀 잘 안 보인다. 어느 날 FinOps 팀이 '왜 ECR에 매달 $500이 나가지?'라고 물으면 그때서야 발견한다. → lifecycle policy를 설정하면 되는데 왜 안 하나? 1) '혹시 롤백할 때 필요하면 어쩌지'라는 불안. 현실: 2주 전 이미지로 롤백하는 경우는 거의 없다. 있어도 Git에서 다시 빌드하면 된다. 2) Terraform으로 ECR을 관리하지 않고 콘솔에서 수동 생성했을 때 → 140개에 하나씩 policy 설정하기가 귀찮아서 방치. → untagged 이미지는 왜 생기나? Docker 빌드 실패 시, 또는 같은 태그로 덮어쓸 때 이전 이미지가 untagged가 된다. latest 태그를 사용하면 매 빌드마다 이전 latest가 untagged로 변한다. → ECR 외에도: S3 버킷의 오래된 로그, 사용하지 않는 EBS 스냅샷, 분리된 EIP — 이런 '좀비 리소스'가 AWS 비용의 20-30%를 차지한다."
+  },
+  {
+    "id": "devops-038",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "GitHub Actions에서 동일 브랜치에 여러 PR이 머지될 때, concurrency 설정 없이 병렬로 배포하면 어떤 문제가 발생하는가?",
+    "answer": "이전 커밋의 배포가 최신 커밋 배포보다 늦게 완료되면 구버전이 프로덕션에 배포된다(race condition). concurrency group으로 같은 브랜치의 배포를 직렬화하거나, cancel-in-progress로 이전 배포를 취소해야 한다.",
+    "explanation": "GitHub Actions 워크플로우는 기본적으로 병렬 실행된다. PR-1 머지 → 배포 시작 → PR-2 머지 → 배포 시작 → PR-2 배포 완료(최신) → PR-1 배포 완료(구버전으로 덮어쓰기).",
+    "seniorTip": "concurrency 설정 예시: concurrency: { group: 'deploy-${{ github.ref }}', cancel-in-progress: true }. 이렇게 하면 같은 브랜치에 새 배포가 시작되면 이전 배포를 취소한다. ArgoCD GitOps 패턴에서는 manifest 업데이트만 하므로 이 문제가 덜하지만, Helm chart 빌드나 이미지 빌드에서는 여전히 주의해야 한다.",
+    "tags": [
+      "github-actions",
+      "concurrency",
+      "ci-cd",
+      "race-condition",
+      "deployment"
+    ],
+    "deepDive": "니콘내콘에서 실제로 이런 일이 벌어졌다고 상상해보자. 금요일 오후 5시, 두 개의 PR이 거의 동시에 main에 머지된다. PR-1: 결제 버그 수정(중요). PR-2: UI 텍스트 변경(사소). → PR-2의 이미지 빌드가 더 빨라서 먼저 배포 완료. PR-1의 빌드가 느려서(테스트가 많아서) 나중에 완료. 결과: PR-1의 이미지가 최종 배포됨. 맞다, PR-1이 최신이니까 괜찮을 수도 있다. → 하지만 ArgoCD에서 image tag를 Git SHA로 관리한다면? PR-2의 SHA가 더 최신인데 PR-1의 SHA로 manifest가 업데이트되면 ArgoCD가 구버전을 배포한다. → 해결: 1) GitHub Actions concurrency group. 2) 이미지 태그를 SHA가 아닌 commit timestamp 기반으로 → 항상 최신이 이김. 3) ArgoCD Image Updater를 사용하여 ECR의 최신 태그를 자동 감지. → cancel-in-progress의 위험: 이미지 빌드 중 취소되면 ECR에 half-pushed 이미지가 남을 수 있다. 멀티스테이지 빌드에서 push는 마지막 단계에서만."
+  },
+  {
+    "id": "devops-039",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ArgoCD에서 누군가 kubectl edit으로 프로덕션 Deployment를 직접 수정했다. drift detection은 이를 어떻게 감지하고, 어떻게 대응해야 하는가?",
+    "answer": "ArgoCD는 Git 상태(desired)와 클러스터 상태(live)를 주기적으로 비교한다. 차이가 있으면 OutOfSync 상태로 표시한다. auto-sync가 활성화되어 있으면 자동으로 Git 상태로 되돌린다(self-healing).",
+    "explanation": "GitOps의 핵심 원칙: Git이 Single Source of Truth. 클러스터를 직접 수정하면 Git과 drift가 발생한다. ArgoCD의 self-healing은 이 drift를 자동으로 해소한다.",
+    "seniorTip": "ArgoCD drift 관련 설정: 1) syncPolicy.automated.selfHeal: true → drift 자동 교정. 2) syncPolicy.automated.prune: true → Git에서 삭제된 리소스를 클러스터에서도 삭제. 3) RBAC으로 kubectl edit/patch 권한을 제한. 4) OPA Gatekeeper로 수동 변경을 차단하는 admission webhook. 사후 감지보다 사전 차단이 낫다.",
+    "tags": [
+      "argocd",
+      "gitops",
+      "drift-detection",
+      "self-healing",
+      "kubernetes"
+    ],
+    "deepDive": "실제 장애 시나리오: 새벽 3시에 프로덕션 장애 발생. 온콜 엔지니어가 급하게 kubectl edit deployment/payment-service로 환경 변수를 수정하여 장애를 해결했다. 다음 날 아침, ArgoCD self-healing이 이 변경을 Git 상태로 되돌렸다. 장애가 재발한다. → 왜 이런 일이? 긴급 수정이 Git에 반영되지 않았기 때문이다. → 올바른 프로세스: 1) 긴급 시에도 Git에 커밋 → ArgoCD 수동 sync → 배포. 시간이 더 걸리지만 변경 이력이 남는다. 2) 정말 급하면 kubectl로 수정하되, 반드시 직후에 같은 변경을 Git에 커밋. 3) ArgoCD의 sync window를 설정하여 업무 시간에만 auto-sync. 야간에는 drift를 허용하되 알림만. → self-healing을 끄면? drift가 쌓이면서 Git과 클러스터 상태가 점점 벌어진다. 어느 순간 sync하면 의도치 않은 대규모 변경이 한꺼번에 적용되어 장애가 발생한다."
+  },
+  {
+    "id": "devops-040",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Helm upgrade 시 --atomic 플래그와 --wait 플래그의 차이는?",
+    "options": [
+      "둘 다 동일한 동작을 한다",
+      "--wait는 모든 리소스가 Ready될 때까지 대기하고, --atomic은 --wait를 포함하면서 실패 시 자동으로 이전 릴리즈로 롤백한다",
+      "--atomic이 더 빠르다",
+      "--wait는 deprecated되었다"
+    ],
+    "answer": 1,
+    "explanation": "--wait는 Pod가 Ready 상태가 될 때까지 기다리지만, 실패해도 깨진 릴리즈가 남는다. --atomic은 --wait의 동작에 더해 타임아웃 내에 Ready가 되지 않으면 helm rollback을 자동 실행한다.",
+    "seniorTip": "CI/CD에서 helm upgrade는 반드시 --atomic --timeout 5m0s를 사용하라. 이유: 1) --atomic 없이 배포 실패하면 깨진 릴리즈가 남아 다음 helm upgrade도 실패할 수 있다. 2) --timeout 기본값은 5분. 이미지 풀 시간, init container, readinessProbe 초기 대기를 고려하여 적절히 조정. 3) ArgoCD를 사용하면 Helm의 이 문제를 ArgoCD가 대신 관리해준다.",
+    "tags": [
+      "helm",
+      "atomic",
+      "rollback",
+      "deployment",
+      "kubernetes"
+    ],
+    "deepDive": "--atomic 없이 배포가 실패하면 어떻게 되나? helm upgrade --install my-app ./chart를 실행했는데 새 Pod가 CrashLoopBackOff에 빠졌다. --wait가 없으면 helm은 성공으로 리턴한다(리소스 생성만 확인). --wait가 있으면 타임아웃까지 기다리다가 에러를 리턴하지만, 깨진 릴리즈(revision 5)가 남는다. → 다음 helm upgrade를 하면? revision 5가 FAILED 상태여서 'another operation in progress' 에러가 날 수 있다. helm rollback my-app 4로 수동 복구해야 한다. → --atomic이면? 자동으로 rollback이 실행되어 revision 5가 SUPERSEDED 상태가 되고 revision 4가 DEPLOYED로 복원된다. 깨끗한 상태가 유지된다. → 그런데 rollback도 실패하면? 드물지만 PVC 바인딩 실패 등으로 rollback이 안 될 수 있다. 이때는 helm uninstall → helm install로 완전 재설치. 이것이 Helm의 한계이자 ArgoCD가 필요한 이유다."
+  },
+  {
+    "id": "devops-041",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Datadog custom metrics의 카디널리티 폭발(cardinality explosion)이란 무엇이고, 왜 청구서 폭탄으로 이어지는가?",
+    "answer": "custom metric에 user_id, order_id 같은 고유한 값을 태그로 추가하면 태그 조합이 기하급수적으로 증가한다. Datadog은 고유 태그 조합 하나하나를 별도 시계열로 저장하므로 custom metrics 과금이 폭증한다.",
+    "explanation": "예: api.request.duration에 {endpoint, method, status_code} 태그면 100×5×10=5,000 시계열. 여기에 user_id(210만)를 추가하면 5,000×2,100,000=105억 시계열. Datadog custom metrics 단가가 시계열당 $0.05/월이므로 파산한다.",
+    "seniorTip": "Datadog 카디널리티 관리: 1) 고유 ID(user_id, order_id)는 절대 메트릭 태그에 넣지 않는다. 로그나 트레이스의 attribute로. 2) Datadog의 Metrics Summary에서 tag cardinality를 주기적으로 확인. 3) 메트릭 정의 시 예상 카디널리티를 계산하는 습관. 4) Datadog의 Metrics without Limits로 쿼리 시 사용할 태그만 인덱싱하여 비용 절감.",
+    "tags": [
+      "datadog",
+      "cardinality",
+      "custom-metrics",
+      "cost",
+      "observability"
+    ],
+    "deepDive": "실제로 이런 실수가 어떻게 발생할까? 주니어 개발자가 결제 성공률을 모니터링하고 싶어서 이런 코드를 작성한다: statsd.increment('payment.success', { tags: ['userId:' + userId] }). 의도는 좋다 — 어떤 사용자가 결제 실패를 많이 겪는지 보고 싶은 것이다. → 하지만 210만 사용자 × 결제 관련 메트릭 10개 = 2,100만 시계열이 생성된다. Datadog의 기본 custom metrics 할당량은 플랜마다 다르지만 보통 수백~수천 개. 초과분은 시계열당 과금. → 한 달 후 Datadog 청구서에 custom metrics 항목이 $50,000. → 해결: user_id는 메트릭이 아닌 트레이스 또는 로그의 속성으로 기록. '결제 실패율이 높은 사용자'를 찾으려면 로그 분석으로. 메트릭에는 집계 가능한 태그만: {payment_method, publisher, status}. 이것만으로도 의미있는 대시보드를 만들 수 있다."
+  },
+  {
+    "id": "devops-042",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "모든 로그를 수집하는 것이 왜 '아무것도 수집하지 않는 것'보다 나쁠 수 있는가? 효과적인 로그 샘플링 전략을 설명하라.",
+    "answer": "모든 로그를 수집하면: 1) 저장 비용이 기하급수적으로 증가. 2) 로그 검색이 느려져 장애 대응 시간 증가. 3) 중요한 에러 로그가 대량의 INFO/DEBUG 로그에 묻힌다. 샘플링으로 중요도에 따라 수집 비율을 차등 적용해야 한다.",
+    "explanation": "300K MAU 서비스에서 모든 HTTP 요청 로그를 수집하면 하루 수백 GB. Datadog Logs는 GB당 $0.10 인덱싱 + $1.70 인제스트. 월 수천 달러가 로그에만 나간다.",
+    "seniorTip": "로그 샘플링 전략: 1) ERROR/WARN: 100% 수집 (에러는 하나도 놓치면 안 됨). 2) INFO (성공 응답): 10% 샘플링 (통계적으로 충분). 3) DEBUG: 프로덕션에서 비활성화. 장애 시에만 특정 서비스의 로그 레벨을 동적으로 DEBUG로 변경. 4) 헬스체크 로그: 완전 제외 (K8s liveness/readiness가 초당 수십 건 생성). 5) Datadog의 Exclusion Filter로 패턴 기반 제외.",
+    "tags": [
+      "logging",
+      "sampling",
+      "cost-optimization",
+      "datadog",
+      "observability"
+    ],
+    "deepDive": "니콘내콘에서 로그 비용을 분석해보자. 179개 서비스, 각 서비스당 평균 Pod 3개 = 537 Pod. 각 Pod가 초당 10줄 로그. 하루: 537 × 10 × 86400 = 약 4.6억 줄. 줄당 평균 500바이트면 하루 230GB. Datadog 인제스트 비용만 하루 $391, 월 $11,730. → 헬스체크 로그를 제외하면? K8s는 10초마다 liveness/readiness 체크. 537 × 2 × 6 × 86400 = 하루 5.5억 줄. 이걸 로그로 찍고 있었다면 로그의 절반이 헬스체크. 제외만으로 비용 50% 절감. → 더 근본적으로: 로그에 뭘 남겨야 하는가? '나중에 필요할 수도 있으니 다 남기자'는 최악의 전략이다. 로그의 가치 = 장애 시 원인 파악에 기여하는 정도. 정상 요청의 응답 로그는 메트릭으로 대체 가능하다. → 동적 로그 레벨: 장애 시 kubectl exec로 들어가 로그 레벨을 바꾸는 대신, NestJS 설정 서버(ConfigMap + reload)로 런타임에 로그 레벨을 변경."
+  },
+  {
+    "id": "devops-043",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Prometheus에서 label에 user_id를 넣으면 카디널리티 폭탄이 터진다. 이것이 Prometheus 서버를 어떻게 죽이는가?",
+    "answer": "Prometheus는 고유 label 조합마다 별도의 시계열(time series)을 생성하고 메모리에 저장한다. 210만 user_id × 메트릭 수 = 수천만 시계열이 생성되어 Prometheus의 메모리가 OOM으로 죽고, TSDB 압축(compaction)이 시간 내에 완료되지 못해 데이터가 손상된다.",
+    "explanation": "Prometheus의 TSDB는 시계열을 메모리의 head block에 저장한 뒤 주기적으로 디스크에 flush한다. 시계열이 수천만 개이면 head block이 수십 GB의 메모리를 사용한다.",
+    "seniorTip": "Prometheus 카디널리티 관리: 1) 메트릭 정의 시 label 값이 bounded(제한됨)인지 확인. status_code(10개), method(5개) → OK. user_id(무한) → 절대 안 됨. 2) /api/v1/status/tsdb에서 cardinality 확인. 3) relabel_configs로 고카디널리티 label을 인제스트 전에 제거. 4) Thanos나 Victoria Metrics로 장기 저장 시 다운샘플링.",
+    "tags": [
+      "prometheus",
+      "cardinality",
+      "tsdb",
+      "monitoring",
+      "oom"
+    ],
+    "deepDive": "이 문제가 프로덕션에서 어떻게 나타나는지 시뮬레이션해보자. 개발자가 HTTP 미들웨어에서 http_request_duration_seconds 히스토그램에 user_id label을 추가한다. → 히스토그램은 bucket당 1개의 시계열을 생성한다. 기본 11개 bucket + _sum + _count = 13개 시계열/조합. 210만 user_id × 100 endpoint × 13 = 27.3억 시계열. → Prometheus 서버가 즉시 OOM kill. → 더 교묘한 경우: IP 주소를 label에 넣는 것. 봇 트래픽이 수만 개의 고유 IP로 들어오면 시계열이 갑자기 폭증한다. 평소에는 문제 없다가 DDoS 시에 Prometheus가 죽는다. 모니터링이 가장 필요한 순간에 모니터링이 죽는 아이러니. → 방어: rate()에서 비정상적인 시계열 증가를 감지하는 알림 설정. increase(prometheus_tsdb_head_series_created_total[5m]) > 10000이면 알림."
+  },
+  {
+    "id": "devops-044",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "알림(alerting)에서 '증상(symptom) 기반' 알림과 '원인(cause) 기반' 알림의 차이는?",
+    "options": [
+      "증상 기반이 더 비싸다",
+      "증상 기반은 사용자가 경험하는 문제(높은 레이턴시, 에러율)에 알림을 걸고, 원인 기반은 시스템 내부(CPU, DB 커넥션)에 알림을 건다. 증상 기반이 더 효과적이다",
+      "원인 기반이 항상 더 정확하다",
+      "둘 다 같은 것이다"
+    ],
+    "answer": 1,
+    "explanation": "원인 기반: 'DB CPU 90% 초과' → 그래서 사용자에게 영향이 있는가? 없을 수도 있다. 불필요한 알림(noise). 증상 기반: 'API 응답 시간 P99 > 3초' → 사용자가 느리다고 느끼는 것은 확실. 원인은 알림 후에 조사한다.",
+    "seniorTip": "Google SRE 알림 원칙: 1) 사용자에게 영향을 주는 증상에만 알림(page). 2) 원인 지표는 대시보드에서 모니터링하되 알림은 걸지 않는다. 3) 알림을 받으면 반드시 행동(action)이 필요한 것만. '확인만 하고 닫는' 알림은 삭제하라. 4) 알림 피로(alert fatigue)는 모든 알림을 무시하게 만드는 치명적 문제.",
+    "tags": [
+      "alerting",
+      "symptom-based",
+      "sre",
+      "monitoring",
+      "on-call"
+    ],
+    "deepDive": "니콘내콘에서 이런 알림을 받는다고 상상해보자. 새벽 3시, 'RDS CPU 85% 초과' 알림. 온콜 엔지니어가 일어나서 확인한다. DB CPU가 높지만 API 응답 시간은 정상이고 에러도 없다. 야간 배치 작업 때문이었고 5분 후 정상으로 돌아온다. → 이런 알림이 주 3회 반복되면? 온콜 엔지니어가 알림을 무시하기 시작한다. 그러다 진짜 DB가 뻗어서 서비스가 다운되는데도 '또 그거겠지' 하고 넘긴다. 이것이 alert fatigue다. → 올바른 설정: 증상 알림: 'API P99 latency > 3s for 5min' 또는 'Error rate > 1% for 5min' → 즉시 대응. 원인 대시보드: DB CPU, 커넥션 수, 큐 깊이 → 증상 알림 후 원인 파악에 사용. → 알림의 품질 메트릭: 알림 대비 실제 행동 비율(actionability rate). 이 비율이 50% 미만이면 알림 규칙을 재검토해야 한다."
+  },
+  {
+    "id": "devops-045",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Google의 SLO 기반 burn rate 알림(multi-window approach)을 설명하라. 기존 임계값 알림보다 왜 효과적인가?",
+    "answer": "SLO burn rate는 '현재 속도로 에러가 계속 발생하면 SLO error budget이 언제 소진되는가'를 계산한다. 빠른 소진(1시간 윈도우)과 느린 소진(6시간 윈도우)에 다른 알림을 걸어 심각도를 구분한다. 일시적 스파이크로 인한 false positive가 적다.",
+    "explanation": "SLO 99.9% = 월간 에러 예산 43.2분. burn rate 10x면 4.32분 만에 1시간치 예산을 소진하는 속도. Multi-window: 짧은 윈도우(최근 상황 반영)와 긴 윈도우(추세 확인)를 모두 만족해야 알림을 발생시킨다.",
+    "seniorTip": "Multi-window burn rate 알림 설정 예시: 1) Page(즉시 대응): 1시간 burn rate > 14.4x AND 5분 burn rate > 14.4x. 2) Ticket(다음 업무일 대응): 6시간 burn rate > 6x AND 30분 burn rate > 6x. 3) Low(관찰): 3일 burn rate > 1x AND 6시간 burn rate > 1x. 이 3단계로 심각도별 대응 채널을 분리한다.",
+    "tags": [
+      "slo",
+      "burn-rate",
+      "alerting",
+      "sre",
+      "error-budget"
+    ],
+    "deepDive": "기존 임계값 알림의 문제를 구체적으로 비교해보자. 기존: 'Error rate > 1%이면 알림.' → 문제 1) 1초간 에러 스파이크(네트워크 순간 끊김)에도 알림. 확인하면 이미 복구됨. 새벽 3시에 깨워놓고 아무 일도 없다. → 문제 2) 에러율이 0.5%로 낮지만 하루 종일 지속. 임계값 미만이라 알림 안 됨. 하지만 월간 SLO를 위반하는 속도. → burn rate 알림: 1초 스파이크는 긴 윈도우(6시간)에서 평균에 묻혀 알림이 안 나온다. 0.5% 지속은 burn rate가 1x 이상이므로 Ticket 알림이 발생한다. → 니콘내콘에 적용: SLO 99.9%(월 43.2분 에러 허용). 현재 에러율 0.2%면 burn rate = 0.2/0.1 = 2x. 이 속도면 43.2/(2×24) = 약 21.6시간 후 월 예산 소진. Ticket 레벨로 다음 업무일에 대응."
+  },
+  {
+    "id": "devops-046",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "프로덕션 DB에서 컬럼 이름을 변경(rename)해야 한다. 무중단으로 하려면 왜 단순 ALTER TABLE ... RENAME COLUMN이 위험하고, 어떤 절차를 따라야 하는가?",
+    "answer": "RENAME COLUMN은 즉시 반영되지만, 이전 컬럼명을 사용하는 애플리케이션 코드가 아직 배포 중이면 에러가 발생한다. 안전한 절차: 1) 새 컬럼 추가 → 2) 양쪽 컬럼에 쓰기(dual write) → 3) 데이터 마이그레이션 → 4) 새 컬럼 읽기로 전환 → 5) 구 컬럼 삭제",
+    "explanation": "DB 스키마 변경과 애플리케이션 배포는 동시에 일어나지 않는다. Rolling Update 중에는 구버전과 신버전 Pod가 공존한다. 구버전은 old_column, 신버전은 new_column을 사용하므로 둘 다 존재해야 한다.",
+    "seniorTip": "Zero-downtime schema migration 원칙: 모든 변경은 backward compatible해야 한다. 1) 컬럼 추가: 안전 (기존 코드는 새 컬럼을 무시). 2) 컬럼 삭제: 위험 (기존 코드가 참조). 3) 컬럼 rename: 위험 (사실상 삭제+추가). 4) 타입 변경: 위험 (암시적 변환 실패). 모든 위험한 변경은 expand-and-contract 패턴으로.",
+    "tags": [
+      "schema-migration",
+      "zero-downtime",
+      "database",
+      "rename",
+      "backward-compatible"
+    ],
+    "deepDive": "3단계 배포 과정을 구체적으로 보자. 기존: orders 테이블의 buyer_name 컬럼을 purchaser_name으로 변경. → Phase 1 (배포 1): 새 컬럼 추가 + dual write. ALTER TABLE orders ADD COLUMN purchaser_name VARCHAR(100). 코드: 쓰기 시 buyer_name과 purchaser_name 양쪽에 저장. 읽기는 buyer_name에서. → Phase 2 (배치): 기존 데이터 마이그레이션. UPDATE orders SET purchaser_name = buyer_name WHERE purchaser_name IS NULL. 대용량이면 배치로 1000건씩. → Phase 3 (배포 2): 읽기를 purchaser_name으로 전환. 쓰기는 여전히 양쪽. → Phase 4 (배포 3): buyer_name 쓰기 중단. dual write 코드 제거. → Phase 5: ALTER TABLE orders DROP COLUMN buyer_name. → 왜 5단계나 필요한가? 각 단계 사이에 배포가 완전히 안착(모든 Pod가 새 버전)되어야 다음 단계가 안전하다. 하루에 한 단계씩이면 5일 소요. 이것이 '무중단'의 대가다."
+  },
+  {
+    "id": "devops-047",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "블루-그린 배포에서 DB 스키마 변경이 필요한 경우, 왜 '불가능한 문제'라고 불리며 어떻게 해결하는가?",
+    "answer": "블루(구버전)와 그린(신버전)이 같은 DB를 공유하므로, 그린용 스키마가 블루와 호환되지 않으면 블루가 깨진다. 해결: 스키마 변경을 블루/그린 양쪽과 호환되게 설계하거나(expand-and-contract), DB 자체를 분리하고 데이터를 동기화한다.",
+    "explanation": "블루-그린의 핵심은 '즉시 롤백'. 하지만 DB 스키마를 변경한 후 롤백하면 새 스키마가 구 코드와 호환되지 않는다. 특히 컬럼 삭제, 타입 변경, NOT NULL 추가는 롤백 불가능하게 만든다.",
+    "seniorTip": "실무 해결 패턴: 1) 대부분의 경우: expand-and-contract로 스키마 변경을 여러 배포에 걸쳐 수행. 블루/그린 전환 시점에는 양쪽 호환 스키마. 2) 극단적 경우(완전히 다른 스키마): DB를 복제하여 그린 전용 DB 생성 + 데이터 동기화(CDC). 전환 후 동기화 중단. 복잡하고 비용이 크므로 최후의 수단.",
+    "tags": [
+      "blue-green",
+      "database",
+      "schema-migration",
+      "deploy-strategy",
+      "backward-compatible"
+    ],
+    "deepDive": "니콘내콘에서 이 문제가 발생하는 시나리오를 보자. 결제 시스템을 리팩토링하면서 payments 테이블 구조를 완전히 변경해야 한다. → 블루(현재 프로덕션): payments_v1 스키마 사용. 그린(새 버전): payments_v2 스키마 필요. → 방법 1) 양쪽 호환 스키마: payments_v2 컬럼을 추가하되 payments_v1 컬럼도 유지. 블루는 v1 컬럼, 그린은 v2 컬럼 사용. 전환 후 v1 컬럼 삭제. → 방법 2) DB 분리: payments_v2 테이블을 생성하고 CDC로 v1 → v2 실시간 동기화. 그린은 v2 읽기/쓰기. 전환 후 v1 동기화 중단. 문제: 동기화 지연(lag) 동안 데이터 불일치. → 방법 3) Feature flag: 스키마 변경 없이 코드 레벨에서 v1/v2 로직을 분기. 트래픽의 1%만 v2 로직으로. 안정화 후 100%. 이후 v1 코드와 컬럼 제거. → 결론: 스키마 변경이 필요한 배포는 블루-그린보다 카나리 + expand-and-contract가 더 적합하다."
+  },
+  {
+    "id": "devops-048",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "카나리 배포에서 자동 롤백을 구현하려면 어떤 메트릭을 측정해야 하고, 어떤 기준으로 판단하는가?",
+    "answer": "핵심 메트릭: 1) Error rate (5xx 비율). 2) P99 latency. 3) 비즈니스 메트릭 (주문 전환율, 결제 성공률). 기준: 카나리의 메트릭이 베이스라인(기존 버전) 대비 통계적으로 유의미하게 나쁘면(예: 에러율 2배 이상) 자동 롤백.",
+    "explanation": "카나리 배포의 가치는 '문제를 일부 트래픽에서만 발견하고 전체 확산 전에 롤백하는 것'이다. 모니터링 없는 카나리는 의미가 없다. Argo Rollouts + Prometheus 메트릭으로 자동화할 수 있다.",
+    "seniorTip": "Argo Rollouts AnalysisTemplate 설정: 1) prometheus 메트릭 쿼리로 카나리 vs stable 비교. 2) 성공 기준: error rate < 1% AND p99 < 500ms. 3) failureLimit: 2 (연속 2번 실패 시 롤백). 4) 분석 간격: 60초. 5) 비즈니스 메트릭은 A/B 테스트 프레임워크와 연동하여 전환율 비교.",
+    "tags": [
+      "canary",
+      "auto-rollback",
+      "metrics",
+      "argo-rollouts",
+      "deployment"
+    ],
+    "deepDive": "자동 롤백의 함정을 알아보자. 1) 메트릭 수집 지연: 카나리에 트래픽 5%만 보내면 데이터가 적어 통계적으로 유의미한 판단이 어렵다. 100 RPS의 5% = 5 RPS. 1분에 300건. 에러 3건이면 에러율 1%인데, 이것이 유의미한 차이인가 노이즈인가? → 해결: 트래픽이 적으면 분석 시간을 길게 (5분→15분). 또는 카나리 비율을 높여(20%) 충분한 데이터 확보. 2) 비즈니스 메트릭의 지연: 결제 전환율은 사용자가 결제를 완료해야 측정된다. 카나리 배포 후 5분 만에 전환율을 판단하기는 불가능. → 비즈니스 메트릭은 카나리의 후반(20% 단계)에서 측정. 초반(5%)에서는 기술 메트릭(에러율, 레이턴시)만으로 판단. 3) False rollback: 정상 변경인데 일시적인 cold cache로 레이턴시가 올라가 롤백. → 카나리 초기에는 캐시 워밍 시간을 고려하여 첫 5분은 분석에서 제외."
+  },
+  {
+    "id": "devops-049",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 인프라를 관리하는데, state와 실제 인프라가 다른 drift가 발생했다. 원인과 해결 방법은?",
+    "answer": "원인: 콘솔에서 수동 변경, 다른 도구(CloudFormation/CDK)로 변경, AWS 자동 업데이트(RDS 패치 등). 해결: terraform plan으로 drift 감지 → terraform import로 신규 리소스 반영 또는 terraform apply로 원하는 상태로 복원. 정기적 drift detection 자동화.",
+    "explanation": "Terraform state는 '마지막으로 Terraform이 알고 있는 인프라 상태'다. 외부에서 인프라를 변경하면 state와 실제가 다르다. terraform plan이 '변경 없음'이라도 실제는 다를 수 있다.",
+    "seniorTip": "Drift 방지 전략: 1) 콘솔 접근 제한 (IAM으로 ReadOnly). 2) 모든 인프라 변경은 Terraform PR → plan → review → apply. 3) AWS Config Rules로 수동 변경 감지. 4) terraform plan을 CI에서 주기적으로 실행하여 drift 알림. 5) state 파일은 S3 + DynamoDB Lock으로 원격 관리.",
+    "tags": [
+      "terraform",
+      "drift",
+      "infrastructure-as-code",
+      "state-management",
+      "aws"
+    ],
+    "deepDive": "실제로 drift가 얼마나 무서운지 보자. 시나리오: 엔지니어 A가 콘솔에서 보안 그룹에 임시로 SSH 포트를 열었다(디버깅 목적). 까먹고 안 닫음. 1주 후 엔지니어 B가 terraform apply를 실행한다. Terraform은 보안 그룹을 state에 기록된 상태(SSH 닫힘)로 되돌린다. → 만약 엔지니어 A가 아직 SSH 세션을 사용 중이면? 세션이 끊긴다. → 더 나쁜 시나리오: 누군가 콘솔에서 RDS 인스턴스 타입을 db.r5.xlarge → db.r5.2xlarge로 변경했다(성능 이슈 대응). Terraform state에는 xlarge. terraform apply가 2xlarge → xlarge로 다운그레이드한다. 프로덕션 DB가 리부팅되면서 서비스 다운. → 더더 나쁜: state에 없는 리소스. 콘솔에서 생성한 S3 버킷에 중요 데이터가 있는데, terraform destroy가 이걸 인식하지 못한다. 나중에 VPC를 정리하면서 관련 리소스가 삭제될 수 있다. → terraform plan -refresh-only로 state만 업데이트하고 인프라는 건드리지 않는 옵션이 있다. drift 발견 시 먼저 이걸로 state를 동기화한 후 판단."
+  },
+  {
+    "id": "devops-050",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "DORA 메트릭(배포 빈도, 리드타임, MTTR, 변경 실패율)으로 팀의 개발 성숙도를 측정하는 방법과, 니콘내콘에서 이 메트릭을 어떻게 수집하는가?",
+    "answer": "배포 빈도: ArgoCD sync 이벤트/GitHub merge 카운트. 리드타임: 첫 커밋 → 프로덕션 배포까지 시간. MTTR: 장애 감지 → 복구까지 시간(PagerDuty/Datadog). 변경 실패율: 배포 후 롤백 횟수 / 전체 배포 횟수. Elite 기준: 배포 빈도 하루 여러 번, 리드타임 1시간 미만, MTTR 1시간 미만, 변경 실패율 15% 미만.",
+    "explanation": "DORA 메트릭은 Google이 6년간 연구한 '소프트웨어 딜리버리 성과 지표'다. 이 4개 메트릭이 비즈니스 성과와 직접적으로 상관관계가 있음이 입증되었다.",
+    "seniorTip": "DORA 메트릭 자동 수집 도구: 1) GitHub의 DORA Metrics 기능 (Actions 기반). 2) LinearB, Sleuth, Faros AI 같은 전용 도구. 3) 직접 구축: GitHub webhook으로 PR merge 시각, ArgoCD webhook으로 배포 시각, Datadog/PagerDuty API로 MTTR을 수집하여 Grafana 대시보드로 시각화. 이 데이터로 '우리 팀은 High Performer인가 Elite인가'를 정량적으로 판단하고 개선점을 도출한다.",
+    "tags": [
+      "dora-metrics",
+      "developer-experience",
+      "deployment-frequency",
+      "lead-time",
+      "mttr"
+    ],
+    "deepDive": "니콘내콘의 DORA 메트릭을 추정해보자. ArgoCD + GitOps로 main 머지 → 자동 배포. 1) 배포 빈도: 179개 서비스이므로 하루에 수십 번 배포. Elite 수준. 하지만 모노레포에서 한 커밋이 여러 서비스를 배포하면 '의미 있는' 배포 횟수와 다를 수 있다. → 서비스별로 측정해야 진짜 빈도를 알 수 있다. 2) 리드타임: PR 생성 → 리뷰 → 머지 → 빌드 → 배포. 코드 리뷰가 병목이면 리드타임이 하루 이상. → 리드타임을 줄이려면? 자동 테스트로 리뷰어 부담 감소 + 작은 PR 문화 + pair programming. 3) MTTR: 장애 감지(Datadog 알림)부터 복구(ArgoCD 롤백)까지. ArgoCD 롤백은 1분이면 되지만, 장애 감지까지 10분 걸리면 MTTR은 11분. → 감지 속도가 핵심. SLO burn rate 알림이 도움. 4) 변경 실패율: 배포 후 1시간 이내 롤백 또는 핫픽스 횟수. 이걸 자동으로 측정하려면 ArgoCD의 sync 이력과 rollback 이력을 비교."
   }
 ]

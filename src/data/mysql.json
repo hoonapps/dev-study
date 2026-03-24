@@ -729,5 +729,300 @@
       "distributed-lock",
       "ncnc"
     ]
+  },
+  {
+    "id": "mysql-036",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AUTO_INCREMENT에 갭(gap)이 생기는 이유를 설명하라. 갭이 있으면 데이터 무결성에 문제가 있는가?",
+    "answer": "갭은 트랜잭션 롤백, INSERT 실패, INSERT ... ON DUPLICATE KEY UPDATE, 벌크 INSERT의 사전 할당 등으로 발생한다. 갭은 정상이며 데이터 무결성과 무관하다. AUTO_INCREMENT는 유일성만 보장하고 연속성은 보장하지 않는다.",
+    "explanation": "InnoDB는 성능을 위해 AUTO_INCREMENT 값을 사전 할당(pre-allocate)한다. 벌크 INSERT 시 필요한 것보다 많은 값을 예약하고, 사용하지 않은 값은 버린다. 트랜잭션이 롤백되어도 이미 증가된 카운터는 되돌리지 않는다.",
+    "deepDive": "왜 카운터를 되돌리지 않는 걸까? 성능 때문이다. AUTO_INCREMENT 카운터는 모든 INSERT가 접근하는 글로벌 뮤텍스다. 트랜잭션 롤백 시 카운터를 되돌리려면 동시에 진행 중인 다른 트랜잭션의 INSERT와 충돌 검사를 해야 한다. 300K MAU 서비스에서 이런 추가 잠금은 초당 수천 건의 INSERT를 직렬화시킨다. → 그럼 갭 없는 연속 번호가 필요하면? 세금 계산서 번호, 주문 번호 등. 이때는 AUTO_INCREMENT를 사용하지 말고 별도의 시퀀스 테이블 + 비관적 잠금으로 직접 관리해야 한다. SELECT current_value FROM sequences WHERE name = 'invoice' FOR UPDATE → UPDATE → 번호 반환. 성능이 병목이면 번호 범위를 미리 할당하는 Hi-Lo 알고리즘을 사용. → MySQL 8.0 변경: 이전에는 서버 재시작 시 AUTO_INCREMENT가 MAX(id)+1로 리셋되어 재사용되는 경우가 있었다. 8.0부터 redo log에 카운터를 기록하여 재시작 후에도 유지된다.",
+    "seniorTip": "AUTO_INCREMENT 갭에 대한 QA팀의 질문 '왜 ID가 1, 2, 5, 8로 건너뛰나요?'에 자신 있게 대답하라: 정상이며 의도된 동작이다. ID는 레코드 식별용이지 순서 표현용이 아니다. 순서가 필요하면 created_at으로.",
+    "tags": [
+      "auto-increment",
+      "gap",
+      "innodb",
+      "sequence",
+      "primary-key"
+    ]
+  },
+  {
+    "id": "mysql-037",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "InnoDB redo log 크기가 기본 48MB인데, 쓰기 부하가 높은 워크로드에서 왜 checkpoint stall이 발생하고 어떻게 튜닝하는가?",
+    "answer": "redo log가 가득 차면 InnoDB는 dirty page를 디스크에 flush하여 log 공간을 확보해야 한다(checkpoint). 이 동안 모든 쓰기가 중단된다(stall). innodb_log_file_size를 1-2GB로 늘려 checkpoint 빈도를 줄이면 쓰기 처리량이 안정화된다.",
+    "explanation": "InnoDB의 WAL(Write-Ahead Log) = redo log. 모든 변경은 먼저 redo log에 기록된 후 버퍼 풀의 dirty page에 반영된다. redo log가 작으면 금방 가득 차서 빈번한 checkpoint가 발생한다.",
+    "deepDive": "이 문제가 프로덕션에서 어떻게 나타나는지 보자. 니콘내콘 정산 배치가 새벽에 수십만 건의 UPDATE를 실행한다. → 갑자기 INSERT/UPDATE 처리량이 0으로 떨어지고 수 초 후 복구된다. 이 패턴이 반복된다. Datadog에서 보면 쓰기 처리량 그래프가 톱니바퀴 모양. → SHOW ENGINE INNODB STATUS의 'Log sequence number'와 'Log flushed up to'의 차이가 redo log 크기에 가깝다면 stall 발생 중. → MySQL 8.0.30+: innodb_redo_log_capacity로 통합 설정(이전에는 innodb_log_file_size × innodb_log_files_in_group). → 너무 크게 설정하면? 크래시 복구 시간이 길어진다. redo log를 다 replay해야 하므로. 1-2GB가 일반적인 sweet spot. → RDS에서는? RDS 파라미터 그룹에서 변경. 재부팅 필요. 새벽 유지보수 윈도우에 적용. → 모니터링: innodb_os_log_written과 innodb_log_waits 메트릭 추적. log_waits가 0이 아니면 redo log가 부족하다는 신호.",
+    "seniorTip": "redo log 튜닝 공식: 1시간 분량의 쓰기를 담을 수 있는 크기가 이상적. SHOW GLOBAL STATUS LIKE 'innodb_os_log_written'을 1시간 간격으로 두 번 측정하여 차이를 계산. 그 값이 innodb_redo_log_capacity보다 작아야 한다.",
+    "tags": [
+      "innodb",
+      "redo-log",
+      "checkpoint",
+      "write-performance",
+      "tuning"
+    ]
+  },
+  {
+    "id": "mysql-038",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL 8.0의 invisible index는 어떤 상황에서 유용한가?",
+    "options": [
+      "인덱스를 삭제하지 않고 비활성화하여 삭제 시 성능 영향을 안전하게 테스트할 수 있다",
+      "보안을 위해 인덱스를 숨기는 기능이다",
+      "인덱스 생성을 지연시키는 기능이다",
+      "파티션 테이블에서만 사용 가능하다"
+    ],
+    "answer": 0,
+    "explanation": "ALTER TABLE t ALTER INDEX idx_name INVISIBLE로 인덱스를 옵티마이저에게 보이지 않게 할 수 있다. 인덱스를 사용하지 않아도 INSERT/UPDATE 시 유지 비용은 그대로 발생하지만, 삭제 전에 성능 영향을 확인할 수 있다.",
+    "deepDive": "왜 이게 필요한 걸까? 프로덕션에서 '이 인덱스 안 쓰는 것 같은데 삭제해도 되나?' 상황이 자주 온다. sys.schema_unused_indexes로 미사용 인덱스를 찾았지만, 월 1회 실행되는 정산 쿼리가 이 인덱스를 사용할 수도 있다. → 기존 방법: 인덱스를 삭제하고 문제가 생기면 다시 생성. 하지만 대용량 테이블의 인덱스 생성은 수십 분~수 시간 소요. 그 동안 관련 쿼리가 풀스캔으로 전환되어 서비스 장애. → invisible index: 인덱스를 invisible로 변경 → 며칠간 모니터링 → 문제 없으면 DROP INDEX. 문제가 생기면 ALTER INDEX idx_name VISIBLE로 즉시 복구(ms 단위). → 주의: invisible 인덱스도 INSERT/UPDATE/DELETE 시 유지 비용이 발생한다. 쓰기 성능 개선을 위해 인덱스를 제거하고 싶은 경우에는 실제로 DROP해야 한다. → optimizer_switch='use_invisible_indexes=on'으로 세션 단위로 invisible 인덱스를 강제 사용할 수도 있다. 이걸로 특정 쿼리에서의 성능 차이를 A/B 테스트할 수 있다.",
+    "seniorTip": "인덱스 정리 워크플로우: 1) sys.schema_unused_indexes로 후보 식별. 2) ALTER INDEX INVISIBLE. 3) 1-2주 모니터링 (정산, 월말 배치 주기 고려). 4) slow query log에 변화 없으면 DROP INDEX. 5) 문제 발생 시 즉시 VISIBLE로 복구.",
+    "tags": [
+      "invisible-index",
+      "mysql-8",
+      "index-management",
+      "optimization",
+      "safe-removal"
+    ]
+  },
+  {
+    "id": "mysql-039",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "WITH RECURSIVE CTE로 계층형 데이터(카테고리 트리)를 조회하는 방법을 설명하라. 기존 방식(자기 참조 JOIN, 반복 쿼리)보다 어떤 점이 좋은가?",
+    "answer": "WITH RECURSIVE cte AS (SELECT * FROM categories WHERE parent_id IS NULL UNION ALL SELECT c.* FROM categories c JOIN cte ON c.parent_id = cte.id) SELECT * FROM cte. 단일 쿼리로 전체 트리를 조회한다. 기존 방식은 depth만큼 JOIN이 필요하거나 애플리케이션에서 반복 쿼리를 실행해야 했다.",
+    "explanation": "자기 참조 테이블(id, name, parent_id)에서 전체 트리를 가져오려면: 기존 1) LEFT JOIN을 depth만큼 중첩 → depth가 가변이면 불가. 2) 애플리케이션에서 반복 SELECT → N+1 문제. WITH RECURSIVE는 MySQL 8.0+에서 단일 쿼리로 해결한다.",
+    "deepDive": "니콘내콘의 카테고리 트리를 예로 들자. 전체상품 → 카페 → 스타벅스, 투썸 / 편의점 → CU, GS25 / 치킨 → BBQ, 교촌. → WITH RECURSIVE를 사용하여 '카페' 하위의 모든 카테고리를 depth와 함께 가져오려면: WITH RECURSIVE sub_tree AS (SELECT id, name, parent_id, 0 AS depth FROM categories WHERE id = 2 UNION ALL SELECT c.id, c.name, c.parent_id, st.depth + 1 FROM categories c JOIN sub_tree st ON c.parent_id = st.id) SELECT * FROM sub_tree. → 성능 주의: 순환 참조(A→B→C→A)가 있으면 무한 루프. MySQL 8.0에는 CYCLE 감지가 없으므로 LIMIT이나 depth 제한을 반드시 추가. cte_max_recursion_depth(기본 1000)이 안전장치. → 성능: 인덱스 (parent_id)가 있으면 각 재귀 단계에서 인덱스 룩업. depth가 깊지 않으면(10단계 이하) 성능 문제 없음. → 대안: Nested Set 모델, Closure Table 패턴은 읽기 성능이 더 좋지만 쓰기(노드 이동, 추가)가 복잡하다. 변경이 적은 카테고리 트리에는 적합.",
+    "seniorTip": "CTE 성능 팁: MySQL 8.0의 CTE는 materialize(임시 테이블 생성)된다. 같은 CTE를 여러 번 참조하면 한 번만 실행. 하지만 CTE 결과가 크면 임시 테이블이 디스크에 생성되어 느려질 수 있다. EXPLAIN FORMAT=TREE로 CTE 실행 계획을 반드시 확인.",
+    "tags": [
+      "cte",
+      "recursive",
+      "hierarchical-data",
+      "category-tree",
+      "mysql-8"
+    ]
+  },
+  {
+    "id": "mysql-040",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Generated Column을 사용하여 JSON 필드 내부에 인덱스를 생성하는 방법과 주의사항을 설명하라.",
+    "answer": "ALTER TABLE t ADD COLUMN email VARCHAR(255) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.email'))) VIRTUAL, ADD INDEX idx_email (email). JSON 필드의 특정 경로 값을 가상 컬럼으로 추출하고 인덱스를 생성한다.",
+    "explanation": "JSON 필드에 직접 인덱스를 생성할 수 없다. Generated Column은 다른 컬럼의 값을 기반으로 자동 계산되는 컬럼이다. VIRTUAL은 저장하지 않고 조회 시 계산, STORED는 디스크에 저장한다.",
+    "deepDive": "니콘내콘에서 기프티콘 메타데이터를 JSON으로 저장한다고 하자. { \"barcode\": \"1234-5678\", \"expiry\": \"2025-12-31\", \"publisher\": { \"name\": \"KT\" } }. 바코드로 검색해야 하는데 WHERE JSON_EXTRACT(metadata, '$.barcode') = '1234-5678'은 풀스캔이다. → Generated Column 추가: ALTER TABLE coupons ADD COLUMN barcode VARCHAR(20) GENERATED ALWAYS AS (JSON_UNQUOTE(metadata->>'$.barcode')) STORED, ADD INDEX idx_barcode (barcode). → VIRTUAL vs STORED: VIRTUAL은 디스크 공간 없음, 조회 시 계산. 인덱스를 걸면 인덱스에는 저장됨. STORED는 디스크에도 저장. 차이: VIRTUAL은 INSERT/UPDATE 시 인덱스만 갱신, STORED는 컬럼도 갱신. 성능 차이는 미미하지만 VIRTUAL이 쓰기에 유리. → 주의: Generated Column의 표현식이 변경되면 기존 인덱스가 무효화된다. JSON 스키마가 변경되면($.barcode → $.barcodeNumber) Generated Column도 수정해야 한다. → MySQL 8.0.17+: Multi-Valued Index로 JSON 배열에 인덱스 가능. CAST(metadata->'$.tags' AS UNSIGNED ARRAY). WHERE 5 IN (tags) 같은 쿼리에서 사용.",
+    "seniorTip": "JSON 인덱싱이 자주 필요하면 설계를 재검토하라. 핵심 검색 필드는 정규 컬럼으로, 부가 정보만 JSON으로. Generated Column은 레거시 JSON 구조를 건드리지 않고 검색 성능을 개선하는 '타협안'이다.",
+    "tags": [
+      "generated-column",
+      "json",
+      "virtual-column",
+      "index",
+      "mysql-8"
+    ]
+  },
+  {
+    "id": "mysql-041",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL 히스토그램(histogram)은 옵티마이저가 잘못된 실행 계획을 선택할 때 어떻게 도움이 되는가?",
+    "answer": "히스토그램은 컬럼의 데이터 분포를 통계적으로 저장한다. 인덱스가 없는 컬럼에서 WHERE 조건의 선택도(selectivity)를 정확히 추정하여 옵티마이저가 풀스캔 vs 인덱스 스캔을 올바르게 선택하도록 돕는다.",
+    "explanation": "옵티마이저는 인덱스 통계(cardinality)로 실행 계획을 결정한다. 하지만 인덱스가 없는 컬럼이나 데이터 분포가 극도로 편향된 경우 잘못된 추정을 한다. ANALYZE TABLE t UPDATE HISTOGRAM ON column WITH 256 BUCKETS로 히스토그램을 생성한다.",
+    "deepDive": "실제 문제 상황을 보자. 니콘내콘 orders 테이블에 status 컬럼이 있다. 값: PENDING(0.1%), PROCESSING(0.5%), COMPLETED(98%), CANCELLED(1.4%). → SELECT * FROM orders WHERE status = 'PENDING'은 0.1%만 반환하므로 인덱스 사용이 유리. WHERE status = 'COMPLETED'는 98%이므로 풀스캔이 유리. → 히스토그램이 없으면? 옵티마이저는 각 값이 균등하게 분포한다고 가정. 4개 값이면 각 25%. 'PENDING' 검색에서도 25%로 추정하여 풀스캔을 선택할 수 있다. → 히스토그램이 있으면? 'PENDING'이 0.1%임을 알고 인덱스 스캔 선택. → 주의: 히스토그램은 ANALYZE TABLE을 다시 실행해야 갱신된다. 데이터 분포가 변하면(초기에 PENDING이 많다가 시간이 지나면 COMPLETED가 대부분) 오래된 히스토그램이 역효과. → 인덱스가 있는 컬럼에는 히스토그램 불필요. 인덱스 dive가 더 정확한 통계를 제공한다.",
+    "seniorTip": "히스토그램이 필요한 상황: 1) 인덱스가 없는 컬럼의 WHERE 조건. 2) 데이터 분포가 극도로 편향된 컬럼(status, type 등). 3) JOIN 순서가 잘못 선택되어 느린 쿼리. EXPLAIN에서 rows 추정값과 실제 rows가 10배 이상 차이나면 히스토그램을 고려하라.",
+    "tags": [
+      "histogram",
+      "optimizer",
+      "statistics",
+      "selectivity",
+      "mysql-8"
+    ]
+  },
+  {
+    "id": "mysql-042",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "EXPLAIN FORMAT=TREE가 FORMAT=TRADITIONAL보다 우수한 점은?",
+    "options": [
+      "실행 속도가 더 빠르다",
+      "실제 실행 순서(iterator 기반)를 보여주고, 각 단계의 비용(cost)과 예상 행 수를 트리 구조로 표시하여 병목 지점을 직관적으로 파악할 수 있다",
+      "JSON 형태로 출력되어 파싱이 쉽다",
+      "인덱스 추천 기능이 포함되어 있다"
+    ],
+    "answer": 1,
+    "explanation": "TRADITIONAL은 테이블 접근 순서만 표 형태로 보여준다. TREE는 MySQL 8.0의 iterator executor 기반으로 실제 실행 순서를 계층적으로 표시하고, 각 노드에서 예상 비용과 행 수를 보여준다.",
+    "deepDive": "실제 차이를 보자. EXPLAIN FORMAT=TRADITIONAL: id 1, type ref, table orders, key idx_user, rows 100. 한 줄로 간단하지만 서브쿼리, 파생 테이블이 얽히면 실행 순서를 파악하기 어렵다. → EXPLAIN FORMAT=TREE: -> Nested loop inner join (cost=45.2 rows=100) -> Index lookup on orders using idx_user (user_id=5) (cost=10.1 rows=100) -> Single-row index lookup on users using PRIMARY (id=orders.user_id) (cost=0.25 rows=1). 들여쓰기로 어떤 연산이 먼저 실행되고, 각 단계의 비용이 얼마인지 한눈에 보인다. → EXPLAIN ANALYZE: FORMAT=TREE + 실제 실행 결과. 예상 rows vs 실제 rows를 비교하여 옵티마이저 추정이 얼마나 정확한지 확인. actual time=0.15..0.23 rows=95 loops=1. → 핵심: 예상과 실제가 10배 이상 차이나면 통계가 부정확한 것. ANALYZE TABLE로 통계를 갱신하거나 히스토그램을 추가하라.",
+    "seniorTip": "EXPLAIN ANALYZE는 쿼리를 실제로 실행한다. 프로덕션에서 위험한 쿼리(풀스캔, 대용량 조인)에는 먼저 FORMAT=TREE로 실행 계획만 확인하고, READ replica에서만 EXPLAIN ANALYZE를 실행하라.",
+    "tags": [
+      "explain",
+      "format-tree",
+      "query-analysis",
+      "optimizer",
+      "mysql-8"
+    ]
+  },
+  {
+    "id": "mysql-043",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Multi-Source Replication(다중 소스 복제)이란 무엇이고, 니콘내콘처럼 여러 DB를 운영하는 환경에서 어떻게 활용할 수 있는가?",
+    "answer": "하나의 MySQL 인스턴스가 여러 Master로부터 복제받는 것이다. ncnc_pro, payment, published_coupon 등 별도 DB의 데이터를 하나의 레플리카에 모아 크로스 DB 조인이나 통합 분석 쿼리를 실행할 수 있다.",
+    "explanation": "MySQL 5.7+에서 CHANGE REPLICATION SOURCE TO ... FOR CHANNEL 'channel_name'으로 채널별 복제를 설정한다. 각 채널이 독립적으로 binlog를 받아 apply한다.",
+    "deepDive": "니콘내콘에서의 활용 시나리오를 보자. ncnc_pro(주문), payment(결제), published_coupon(쿠폰)이 각각 별도 RDS에 있다. 통합 대시보드에서 '특정 기간 매출 + 쿠폰 사용률 + 결제 성공률'을 한 화면에 보여줘야 한다. → 각 DB에 개별 쿼리를 보내고 애플리케이션에서 조합? 느리고 복잡하다. → Multi-Source Replica 하나를 만들어 3개 DB의 데이터를 모두 복제받는다. 이 레플리카에서 크로스 DB JOIN으로 통합 쿼리 실행. → 주의: 1) 테이블명 충돌. 각 소스 DB에 같은 이름의 테이블(users 등)이 있으면? replicate_rewrite_db로 각 채널의 DB명을 변경하여 격리. 2) 복제 지연이 채널별로 다를 수 있다. 한 채널이 밀리면 데이터 정합성이 깨진다. 3) 쓰기는 절대 불가. 읽기 전용으로만 사용. → 대안: AWS DMS(Database Migration Service)로 각 RDS → Redshift/Athena로 ETL하여 분석. 실시간성이 필요 없으면 이것이 더 적합.",
+    "seniorTip": "Multi-Source Replication은 '읽기 통합'에 유용하지만, 관리 복잡도가 높다. RDS에서는 Multi-Source Replication을 직접 지원하지 않으므로 EC2 기반 MySQL이 필요하다. RDS 환경에서는 AWS DMS + S3 + Athena 조합이 현실적이다.",
+    "tags": [
+      "multi-source-replication",
+      "cross-database",
+      "analytics",
+      "replication",
+      "data-integration"
+    ]
+  },
+  {
+    "id": "mysql-044",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Group Replication과 Traditional Replication의 핵심 차이는?",
+    "options": [
+      "Group Replication이 더 빠르다",
+      "Group Replication은 Paxos 기반 합의로 다중 Master 쓰기를 지원하고 자동 failover가 가능하다. Traditional은 단일 Master + 비동기/반동기 복제로 수동 failover가 필요하다",
+      "Traditional Replication은 deprecated되었다",
+      "둘 다 동일하지만 이름만 다르다"
+    ],
+    "answer": 1,
+    "explanation": "Traditional Replication: Master → Slave 단방향 복제. Master 장애 시 수동으로 Slave를 승격. Group Replication: 3+ 노드가 그룹을 형성하여 Paxos 프로토콜로 트랜잭션을 합의(certify). 멤버 이탈 시 자동 재구성.",
+    "deepDive": "왜 니콘내콘에서는 Group Replication 대신 RDS Multi-AZ를 사용할까? 1) RDS가 Traditional Replication + 자동 failover를 이미 관리형으로 제공. Group Replication은 RDS에서 지원하지 않음. 2) Group Replication의 제약: 모든 테이블에 PK 필수. 트랜잭션 크기 제한(group_replication_transaction_size_limit). 외래 키의 CASCADE가 비결정적. 3) Group Replication이 빛나는 경우: 멀티 리전 쓰기가 필요할 때. 서울과 도쿄에서 동시에 쓰기를 받아야 하면 Traditional Replication으로는 불가능(단일 Master). 4) InnoDB Cluster = Group Replication + MySQL Router + MySQL Shell. Router가 자동으로 쓰기를 Primary에, 읽기를 Secondary에 라우팅. → 하지만 현실: 대부분의 서비스는 RDS Multi-AZ + Read Replica면 충분하다. Group Replication은 RDS를 벗어나야 하므로 운영 부담이 크다.",
+    "seniorTip": "Group Replication을 고려해야 하는 신호: 1) RDS failover 30-60초가 허용 불가. 2) 다중 리전 쓰기 필요. 3) 3+ 노드 중 2개까지 장애 허용 필요(quorum). 이런 요구사항이 아니면 RDS Multi-AZ가 정답이다.",
+    "tags": [
+      "group-replication",
+      "paxos",
+      "multi-master",
+      "high-availability",
+      "innodb-cluster"
+    ]
+  },
+  {
+    "id": "mysql-045",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "pt-online-schema-change와 gh-ost 중 RDS 환경에서 어떤 것을 선택해야 하고, 각각의 동작 방식의 차이는?",
+    "answer": "RDS에서는 gh-ost를 권장한다. pt-osc는 트리거 기반이라 RDS의 트리거 제한에 걸릴 수 있고, gh-ost는 binlog 기반이라 트리거가 불필요하다. gh-ost는 트래픽 조절(throttle)이 가능하여 프로덕션 영향을 최소화한다.",
+    "explanation": "pt-online-schema-change: 새 테이블 생성 → 원본에 INSERT/UPDATE/DELETE 트리거 설치 → 기존 데이터를 새 테이블로 복사 → 테이블 교체(rename). gh-ost: 새 테이블 생성 → binlog를 실시간으로 읽어 변경사항 반영 → 기존 데이터를 새 테이블로 복사 → 테이블 교체.",
+    "deepDive": "RDS에서 pt-osc가 문제되는 이유를 파보자. 1) 트리거 제한: MySQL 5.7까지 하나의 이벤트(INSERT/UPDATE/DELETE)에 대해 하나의 트리거만 가능. 이미 비즈니스 트리거가 있으면 pt-osc가 트리거를 추가할 수 없다. MySQL 8.0에서는 다중 트리거 가능하지만 실행 순서 문제. 2) 트리거 부하: 모든 DML에 트리거가 실행되므로 쓰기 부하가 2배. 트래픽이 많은 시간에 ALTER하면 서비스 영향. 3) gh-ost 장점: binlog를 별도 스트림으로 읽어 적용하므로 원본 테이블에 부하를 주지 않는다. --max-load='Threads_running=50'으로 DB 부하 임계치를 설정하면 초과 시 자동으로 복사를 중단. → RDS에서 gh-ost 사용 시 주의: binlog_format=ROW 필수(RDS 기본). 복제 사용자에 REPLICATION CLIENT/SLAVE 권한 필요. --assume-rbr 플래그. → 얼마나 걸리나? 100GB 테이블에 컬럼 추가: pt-osc 약 8시간, gh-ost 약 10시간 (throttle 때문에 느리지만 안전).",
+    "seniorTip": "대용량 테이블 DDL 체크리스트: 1) staging에서 동일 크기 테이블로 리허설. 2) 야간 트래픽 저점에 실행. 3) gh-ost --cut-over=default --exact-rowcount로 진행률 확인. 4) 디스크 공간 확보 (원본 테이블 크기의 2배 필요). 5) 롤백 계획: gh-ost의 --panic-flag-file로 즉시 중단.",
+    "tags": [
+      "pt-online-schema-change",
+      "gh-ost",
+      "online-ddl",
+      "rds",
+      "schema-migration"
+    ]
+  },
+  {
+    "id": "mysql-046",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL Event Scheduler와 K8s CronJob 중 주기적 작업에 더 적합한 것은?",
+    "options": [
+      "MySQL Event Scheduler가 항상 더 낫다",
+      "DB 내부 데이터 정리/집계는 Event Scheduler가 적합하고, 애플리케이션 로직이 필요한 작업은 K8s CronJob이 적합하다. 하지만 RDS에서는 Event Scheduler의 모니터링과 에러 처리가 제한적이다",
+      "K8s CronJob은 DB 작업에 사용할 수 없다",
+      "둘 다 사용하면 안 된다"
+    ],
+    "answer": 1,
+    "explanation": "Event Scheduler: DB 내부에서 SQL을 주기적으로 실행. 간단한 파티션 관리, 오래된 로그 삭제에 적합. CronJob: K8s Pod에서 실행. 외부 API 호출, 복잡한 비즈니스 로직, 에러 알림이 필요한 작업에 적합.",
+    "deepDive": "니콘내콘에서의 실제 선택을 보자. 1) Event Scheduler 적합: 만료된 세션 삭제(DELETE FROM sessions WHERE expires_at < NOW()), 파티션 추가(ALTER TABLE logs ADD PARTITION). SQL만으로 완결되고 실패해도 비즈니스 영향이 적다. 2) K8s CronJob 적합: 일일 정산 배치(주문 조회 → 금액 계산 → PG사 API 호출 → 결과 저장). 애플리케이션 로직이 필요하고 실패 시 알림/재처리가 필수. → Event Scheduler의 한계: 1) 에러가 error log에만 남음. Slack 알림 불가. 2) 실행 이력/소요 시간 추적이 어려움. 3) RDS에서 event_scheduler=ON으로 파라미터 그룹 설정 필요. failover 후에도 유지되는지 확인. 4) 실행 중 DB 재시작되면 이벤트가 소실될 수 있음. → K8s CronJob 장점: Pod 로그로 실행 이력. 실패 시 Kubernetes Events. Datadog 연동으로 실행 시간, 성공/실패 모니터링. backoffLimit으로 재시도.",
+    "seniorTip": "원칙: DB가 할 수 있는 일은 DB에서, 하지만 모니터링과 에러 처리가 중요하면 애플리케이션에서. Event Scheduler는 'fire and forget' 작업에만 사용하고, 비즈니스 크리티컬 작업은 K8s CronJob + 모니터링으로.",
+    "tags": [
+      "event-scheduler",
+      "cronjob",
+      "periodic-task",
+      "kubernetes",
+      "rds"
+    ]
+  },
+  {
+    "id": "mysql-047",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Binlog 기반 CDC(Change Data Capture)로 이벤트 드리븐 아키텍처를 구현하는 방법과 주의사항을 설명하라.",
+    "answer": "Debezium(Kafka Connect 기반)이 MySQL binlog를 읽어 변경 이벤트를 Kafka 토픽으로 발행한다. INSERT/UPDATE/DELETE가 이벤트가 되어 다른 서비스가 소비한다. 주의: binlog가 ROW 포맷이어야 하고, binlog 보관 기간과 Debezium 커넥터 장애 복구를 관리해야 한다.",
+    "explanation": "애플리케이션 코드에서 이벤트를 발행하면 '트랜잭션 커밋은 되었는데 이벤트 발행이 실패하는' dual write 문제가 생긴다. CDC는 DB의 binlog를 소스로 사용하므로 커밋된 변경만 이벤트가 되어 정합성이 보장된다.",
+    "deepDive": "니콘내콘에서 CDC를 적용하는 시나리오를 보자. 기프티콘이 판매되면(orders 테이블 INSERT) → 알림 서비스가 푸시 발송 + 검색 서비스가 재고 업데이트 + 통계 서비스가 매출 집계. → 기존 방식: OrderService에서 이벤트 발행. 문제: DB 커밋 후 SQS 발행이 실패하면? 이벤트가 유실된다. SQS 발행 후 DB 커밋이 실패하면? 유령 이벤트가 발행된다. → CDC 방식: Debezium이 binlog의 INSERT를 감지하여 Kafka 토픽 db.ncnc_pro.orders에 발행. 알림/검색/통계 서비스가 이 토픽을 구독. → 장점: 애플리케이션 코드 변경 없이 이벤트 발행. dual write 문제 해결. → 주의: 1) binlog 크기가 커질 수 있다. expire_logs_days(RDS: binlog retention hours) 설정. 2) Debezium 커넥터가 재시작되면 마지막 읽은 binlog 위치(offset)부터 재개. offset이 유실되면 전체 스냅샷부터 다시. 3) 스키마 변경 시 CDC 이벤트 포맷도 변경됨. 하위 호환성 주의. 4) CDC로 인한 binlog 읽기가 replication과 경쟁할 수 있다.",
+    "seniorTip": "CDC는 강력하지만 인프라 복잡도가 높다(Kafka + Debezium + ZooKeeper/KRaft). 소규모 서비스에서는 Transactional Outbox 패턴(이벤트를 DB 테이블에 함께 저장 → 별도 폴러가 발행)이 더 현실적이다.",
+    "tags": [
+      "cdc",
+      "debezium",
+      "binlog",
+      "event-driven",
+      "kafka",
+      "dual-write"
+    ]
+  },
+  {
+    "id": "mysql-048",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL 8.0에서 Query Cache가 완전히 제거되었다. 왜 제거했고, 대안은 무엇인가?",
+    "answer": "Query Cache는 테이블에 쓰기가 발생하면 해당 테이블의 모든 캐시가 무효화되어 쓰기 빈번한 워크로드에서 오히려 성능이 저하되었다. 또한 글로벌 뮤텍스 경합이 심하여 동시성이 제한되었다. 대안: ProxySQL의 쿼리 캐싱 또는 애플리케이션 레벨 Redis 캐싱.",
+    "explanation": "Query Cache는 SELECT 문의 결과를 MySQL 서버 내부에 캐싱한다. 하지만 해당 테이블에 INSERT/UPDATE/DELETE가 하나라도 발생하면 그 테이블과 관련된 모든 캐시를 통째로 삭제한다. C2C 거래처럼 쓰기가 빈번한 서비스에서는 캐시 히트율이 극히 낮다.",
+    "deepDive": "Query Cache가 왜 그렇게 나쁜 아이디어였는지 구체적으로 보자. 1) 무효화 단위: 테이블 단위. products 테이블에서 SELECT가 100개 캐시되어 있는데, 하나의 상품 가격이 바뀌면 100개 모두 삭제. 연관성 없는 쿼리도 전부. 2) 뮤텍스 경합: 캐시 확인/추가/삭제가 모두 글로벌 뮤텍스를 잡는다. CPU 코어가 많아도 캐시 접근은 직렬화. 32코어 서버에서 캐시 때문에 오히려 느려지는 역설. 3) 메모리 낭비: 캐시 결과가 크면(BLOB 포함 쿼리) 메모리를 잡아먹고 빈번히 eviction. → ProxySQL 대안: MySQL 앞단에 ProxySQL 프록시를 두고 쿼리 규칙(query rules)으로 특정 SELECT를 캐싱. TTL 기반 만료로 테이블 단위 무효화 문제 해결. 하지만 ProxySQL 자체 관리 부담. → 실무 최선: 애플리케이션에서 Redis로 결과 캐싱. 무효화를 비즈니스 로직에 맞게 세밀하게 제어. TTL + 이벤트 기반 무효화 조합.",
+    "seniorTip": "MySQL 5.7에서 8.0으로 업그레이드할 때 query_cache_type, query_cache_size 설정이 에러를 일으킬 수 있다. 파라미터 그룹에서 반드시 제거. 또한 Query Cache에 의존하던 쿼리가 갑자기 느려질 수 있으므로 업그레이드 전에 쿼리 성능 베이스라인을 측정하라.",
+    "tags": [
+      "query-cache",
+      "mysql-8",
+      "proxysql",
+      "caching",
+      "migration"
+    ]
+  },
+  {
+    "id": "mysql-049",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "InnoDB의 Adaptive Hash Index(AHI)는 항상 성능을 개선하므로 비활성화할 이유가 없다.",
+    "answer": "X",
+    "explanation": "AHI는 자주 접근하는 인덱스 페이지에 대해 해시 인덱스를 메모리에 자동 생성한다. 하지만 워크로드에 따라 AHI 유지 비용(래치 경합)이 이점보다 클 수 있고, AHI 관련 세마포어 경합이 성능 병목이 되기도 한다.",
+    "deepDive": "AHI가 문제를 일으키는 구체적 상황을 보자. 1) 랜덤 접근이 많은 워크로드: 수백만 개의 서로 다른 PK로 SELECT하면 AHI가 계속 해시 테이블을 재구성한다. 이 재구성 과정에서 btr_search_latch 경합이 발생. SHOW ENGINE INNODB STATUS에서 'RW-latch ... created in ... btr/btr0sea.cc'가 보이면 AHI 경합 의심. 2) 많은 파티션이 있는 테이블: 각 파티션마다 AHI 구조가 생겨 메모리 사용량 증가. 3) 대용량 DELETE/UPDATE: AHI 무효화가 빈번하여 오버헤드. → 비활성화 방법: SET GLOBAL innodb_adaptive_hash_index = OFF. 동적으로 변경 가능하므로 재시작 불필요. 비활성화 후 throughput을 비교. → 니콘내콘에서: 2.1M 사용자의 기프티콘 조회가 다양한 PK로 랜덤 접근한다면 AHI가 도움이 안 될 수 있다. 반면, 특정 인기 상품에 조회가 집중되면 AHI가 큰 도움. → MySQL 8.0에서는 AHI 파티셔닝(innodb_adaptive_hash_index_parts, 기본 8)으로 경합이 완화되었지만 완전히 해결되지는 않았다.",
+    "seniorTip": "AHI 튜닝 판단 기준: SHOW ENGINE INNODB STATUS의 SEMAPHORES 섹션에서 btr0sea.cc 관련 대기가 많으면 AHI를 비활성화하고 before/after 벤치마크. Adaptive Hash Index hit rate(Innodb_adaptive_hash_hash_searches / (hash_searches + non_hash_searches))가 50% 미만이면 비활성화를 고려하라.",
+    "tags": [
+      "adaptive-hash-index",
+      "innodb",
+      "performance",
+      "latch-contention",
+      "tuning"
+    ]
+  },
+  {
+    "id": "mysql-050",
+    "category": "mysql",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "MySQL 커넥션 속성(connection attributes)이란 무엇이고, 디버깅에 어떻게 활용하는가?",
+    "answer": "클라이언트가 연결 시 key-value 형태의 메타데이터를 서버에 전달하는 것이다. program_name, _client_version, _os, _pid 등이 자동 설정되며, 커스텀 속성도 추가할 수 있다. performance_schema.session_connect_attrs 테이블에서 조회하여 문제가 되는 커넥션의 출처를 파악할 수 있다.",
+    "explanation": "SHOW PROCESSLIST에서 'Sleep' 상태의 커넥션이 수백 개 보이는데 어디서 온 건지 모를 때, connection attributes로 어떤 서비스, 어떤 버전, 어떤 호스트에서 연결한 것인지 식별할 수 있다.",
+    "deepDive": "니콘내콘의 179개 서비스가 같은 RDS에 연결한다. 어느 날 max_connections에 도달하여 새 연결이 거부된다. SHOW PROCESSLIST로 보면 Sleep 커넥션이 500개. 누가 커넥션을 고갈시키는가? → connection attributes가 설정되어 있다면: SELECT * FROM performance_schema.session_connect_attrs WHERE ATTR_NAME = 'program_name'. 결과: 'ncnc-sqs-consumer'가 200개, 'ncnc-backend'가 150개. SQS 소비자의 커넥션 풀이 너무 크게 설정된 것. → TypeORM에서 설정: createConnection({ extra: { connectionAttributes: { program_name: 'ncnc-backend-v1', service_version: '2.3.1' } } }). → 더 고급: 커스텀 속성으로 K8s Pod 이름을 전달하면 특정 Pod가 비정상적으로 커넥션을 유지하는 것을 식별할 수 있다. → RDS Performance Insights와 연동하면 서비스별 DB 부하를 시각화할 수 있다.",
+    "seniorTip": "마이크로서비스 환경에서 connection attributes는 필수다. 모든 서비스의 DB 클라이언트에 program_name을 설정하라. DB 문제 발생 시 '어떤 서비스가 문제인가'를 즉시 파악할 수 있는 기반이 된다.",
+    "tags": [
+      "connection-attributes",
+      "debugging",
+      "performance-schema",
+      "monitoring",
+      "microservices"
+    ]
   }
 ]
