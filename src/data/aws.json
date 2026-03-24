@@ -518,5 +518,311 @@
       "resilience"
     ],
     "deepDive": "Aurora Global Database의 Primary 리전 장애 시 Secondary 리전으로 failover하는 절차와 소요 시간은? → Terraform 상태 파일(S3 backend)이 장애 리전에 있을 때 DR 리전에서 인프라를 재생성하려면 어떻게 해야 하는가? → 카오스 엔지니어링(AWS Fault Injection Simulator)으로 DR 절차를 정기 검증하는 방법과 니콘내콘 같은 서비스에서 허용 가능한 테스트 범위는?"
+  },
+  {
+    "id": "aws-026",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "EKS Control Plane 비용($0.10/hr, 월 $72)과 Self-Managed K8s 대비 실제 총소유비용(TCO)을 비교 분석하라.",
+    "answer": "EKS Control Plane 월 $72는 저렴해 보이지만 진짜 비용은 Worker Node, NAT GW, ALB, 데이터 전송 등에 있다. Self-Managed는 etcd 운영, 업그레이드, 보안 패치의 인건비가 Control Plane 비용의 수십 배",
+    "explanation": "Self-Managed K8s에서 etcd 클러스터 3대 운영, kube-apiserver HA 구성, 인증서 관리, 버전 업그레이드(년 3회) 등을 DevOps 엔지니어가 담당하면 인건비만 월 수백만 원. EKS $72/월은 이 모든 것을 AWS가 대신하는 비용. 실제 EKS 비용 구조: Control Plane(10%) + EC2/Fargate(60%) + NAT/LB/Storage(30%).",
+    "seniorTip": "니콘내콘 비용 최적화: 1) Karpenter로 Spot Instance 활용(On-Demand 대비 60-90% 절감). 2) Savings Plans/Reserved Instances for 안정적 워크로드. 3) 비프로덕션 환경은 야간/주말 노드 축소. 4) VPC Endpoint로 NAT 비용 절감. 5) Container Insights 대신 Prometheus + Grafana로 모니터링 비용 절감. EKS 대안으로 ECS Fargate는 Control Plane 비용이 없지만, K8s 에코시스템(Helm, ArgoCD, KEDA)을 포기해야 한다.",
+    "tags": [
+      "eks",
+      "cost-analysis",
+      "tco",
+      "karpenter",
+      "spot-instance"
+    ],
+    "deepDive": "EKS vs ECS Fargate의 총비용을 같은 워크로드 기준으로 비교하면 어떤 규모에서 EKS가 유리해지는가? → Karpenter의 Consolidation 기능이 비용 절감에 기여하는 방식과, Spot Interruption 처리 전략은? → 179개 서비스의 리소스 right-sizing을 자동화하는 도구(Goldilocks, VPA)의 활용 방법은?"
+  },
+  {
+    "id": "aws-027",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "RDS Multi-AZ Failover가 발생할 때 실제로 일어나는 일과 소요 시간으로 올바른 것은?",
+    "options": [
+      "자동으로 즉시(0초) 전환되어 애플리케이션에 영향이 없다",
+      "Standby 인스턴스가 Primary로 승격되고, DNS 엔드포인트가 새 Primary를 가리키도록 변경된다. 일반적으로 60-120초 소요되며 이 동안 DB 연결이 끊긴다",
+      "새로운 EC2 인스턴스를 생성하여 백업에서 복원한다",
+      "수동으로 AWS 콘솔에서 전환해야 한다"
+    ],
+    "answer": 1,
+    "explanation": "Multi-AZ는 동기식 복제(synchronous replication)로 Standby에 데이터를 실시간 복제한다. Failover 시: 1) Primary 장애 감지. 2) Standby를 Primary로 승격. 3) DNS CNAME을 새 Primary IP로 변경. 4) 애플리케이션이 DNS 갱신을 감지하고 재연결. 총 60-120초 소요.",
+    "seniorTip": "실무에서 놓치는 것: 1) DNS 캐시 — Java의 JVM DNS 캐시가 기본 무한이면 failover 후에도 옛 IP로 접속 시도. NestJS(Node.js)는 DNS를 캐시하지 않으므로 이 문제 없음. 2) 커넥션 풀 — failover 시 기존 커넥션이 모두 끊기므로 TypeORM의 retryAttempts, retryDelay 설정으로 자동 재연결. 3) 계획된 failover(DB 유지보수)에도 같은 과정이 발생하므로 사전 공지 필요. 4) Aurora는 failover가 30초 이내로 더 빠르며, Reader Endpoint를 통한 읽기 분산도 가능.",
+    "tags": [
+      "rds",
+      "multi-az",
+      "failover",
+      "high-availability",
+      "aurora"
+    ],
+    "deepDive": "Aurora의 failover가 기존 RDS보다 빠른 이유(스토리지 계층 분리, Quorum 기반 복제)는? → Failover 후 커넥션 풀이 재연결되는 동안의 요청 실패를 NestJS에서 어떻게 처리하는가(retry + circuit breaker)? → RDS Proxy가 failover 시간을 더 단축시키는 원리(커넥션 핀닝, 멀티플렉싱)는?"
+  },
+  {
+    "id": "aws-028",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ElastiCache for Redis와 K8s에 Self-Managed Redis를 배포하는 것의 트레이드오프를 비교하라.",
+    "answer": "ElastiCache: 패치/백업/복제/failover를 AWS가 관리, Multi-AZ 자동 장애 조치. Self-Managed: 비용 저렴하나 운영 부담(영속성 설정, 클러스터 관리, 모니터링)이 개발팀에 전가",
+    "explanation": "ElastiCache 장점: 자동 백업, 패치, Multi-AZ failover, CloudWatch 메트릭 통합. 비용: cache.r6g.large 약 $200/월. Self-Managed(K8s StatefulSet): Pod 장애 시 데이터 유실 위험(RDB/AOF 설정 필요), PV 관리, 클러스터 모드 직접 구성. 비용은 EC2 노드 비용에 포함되어 추가 비용 없어 보이지만 운영 시간이 숨은 비용.",
+    "seniorTip": "선택 기준: 1) 캐시 용도(유실 OK): Self-Managed도 가능. 세션, 임시 데이터. 2) 결제 상태, 분산 락 등 유실 불가 데이터: ElastiCache Multi-AZ 필수. 3) 니콘내콘처럼 결제 멱등성 키를 Redis에 저장한다면 ElastiCache가 안전. 비용 최적화: ElastiCache Reserved Node로 30-40% 절감. Self-Managed를 선택한다면 Bitnami Redis Helm chart + PV(gp3) + Sentinel로 HA 구성.",
+    "tags": [
+      "elasticache",
+      "redis",
+      "self-managed",
+      "kubernetes",
+      "trade-off"
+    ],
+    "deepDive": "ElastiCache Redis의 Cluster Mode Enabled와 Disabled의 차이, 그리고 슬롯 재분배(resharding) 시 다운타임은? → Self-Managed Redis에서 maxmemory-policy를 allkeys-lru로 설정하지 않으면 메모리 초과 시 어떤 일이 벌어지는가? → Redis 7의 Function과 Module을 ElastiCache에서 사용할 수 있는가, 그리고 Self-Managed에서만 가능한 고급 기능은?"
+  },
+  {
+    "id": "aws-029",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "SQS FIFO 큐의 Exactly-Once Processing에서 Deduplication이 실제로 동작하는 방식은?",
+    "options": [
+      "SQS가 메시지 내용을 영구적으로 저장하여 중복을 제거한다",
+      "MessageDeduplicationId를 기반으로 5분 윈도우 내 동일 ID의 메시지를 거부하며, Content-Based Deduplication은 메시지 본문의 SHA-256 해시를 ID로 사용한다",
+      "소비자가 중복을 제거한다",
+      "메시지에 타임스탬프를 추가하여 중복을 판단한다"
+    ],
+    "answer": 1,
+    "explanation": "SQS FIFO Deduplication: 1) 명시적 — 생산자가 MessageDeduplicationId를 직접 설정. 같은 ID의 메시지가 5분 내 재전송되면 수락은 하지만 큐에 추가하지 않음(200 OK 반환). 2) Content-Based — ContentBasedDeduplication 활성화 시 메시지 본문의 SHA-256 해시가 자동으로 dedup ID가 됨. 5분 윈도우가 핵심 제약.",
+    "seniorTip": "니콘내콘 결제 시스템에서: 결제 완료 이벤트를 SQS FIFO로 전송할 때 paymentId를 MessageDeduplicationId로 사용하면 같은 결제가 5분 내 중복 전송되어도 한 번만 처리. 함정: 1) 5분 이후 같은 ID로 재전송하면 중복 전달됨 → 소비자 측 멱등성도 필수. 2) MessageGroupId가 같은 메시지는 순서대로 처리되지만, 하나가 느리면 뒤의 모든 메시지가 대기(HOL blocking). 3) FIFO 큐는 초당 300 TPS(배치 시 3,000)로 Standard 큐 대비 처리량이 제한적.",
+    "tags": [
+      "sqs-fifo",
+      "deduplication",
+      "exactly-once",
+      "message-group",
+      "payment"
+    ],
+    "deepDive": "SQS FIFO의 MessageGroupId를 userId로 설정하면 사용자별 순서 보장이 되는데, 특정 사용자의 메시지 처리가 지연되면 다른 사용자에게 영향이 있는가? → Content-Based Deduplication에서 메시지 본문은 같지만 MessageAttributes가 다른 경우 중복으로 처리되는가? → FIFO 큐의 300 TPS 제한을 우회하기 위해 High Throughput 모드를 사용할 때의 순서 보장 범위 변화는?"
+  },
+  {
+    "id": "aws-030",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "CloudFront Origin Failover를 활용한 고가용성 구성 방법을 설명하라.",
+    "answer": "Origin Group에 Primary와 Secondary Origin을 설정하면, Primary에서 5xx 에러나 연결 실패 시 자동으로 Secondary Origin으로 요청을 전환하여 가용성을 향상",
+    "explanation": "CloudFront Origin Failover: Origin Group을 생성하고 Primary Origin(주 ALB)과 Secondary Origin(백업 ALB 또는 S3)을 설정. failover 조건: 500, 502, 503, 504 에러 또는 연결 타임아웃. 사용자에게는 투명하게 Secondary에서 응답.",
+    "seniorTip": "니콘내콘 활용: 1) API 서버: Primary = 서울 리전 ALB, Secondary = 도쿄 리전 ALB. Primary 리전 장애 시 자동 전환. 2) 정적 파일: Primary = S3, Secondary = 다른 리전 S3. 3) 유지보수 페이지: Primary = ALB, Secondary = S3 정적 유지보수 페이지. 주의: Origin Failover는 요청 단위로 동작하므로 일부 요청은 Primary, 일부는 Secondary로 갈 수 있다. 상태를 공유하지 않는 API(stateless)에 적합.",
+    "tags": [
+      "cloudfront",
+      "origin-failover",
+      "high-availability",
+      "cdn",
+      "disaster-recovery"
+    ],
+    "deepDive": "CloudFront Origin Failover가 발동된 후 Primary가 복구되면 자동으로 Primary로 돌아가는가? → Custom Origin의 health check와 Origin Failover의 관계, 그리고 health check 없이 failover가 동작하는 원리는? → Lambda@Edge로 Origin Failover보다 정교한 라우팅 로직(특정 경로만 failover, 에러 코드별 다른 처리)을 구현하는 방법은?"
+  },
+  {
+    "id": "aws-031",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "S3는 2020년 12월부터 강한 일관성(Strong Consistency)을 제공하므로, PUT 직후 GET으로 항상 최신 데이터를 읽을 수 있다.",
+    "answer": "O",
+    "explanation": "2020년 12월 이전 S3는 새 객체 PUT 후 GET에서 eventual consistency였다(PUT 직후 GET에서 404 가능). 이제는 모든 S3 작업(PUT, DELETE, LIST)에 read-after-write consistency를 보장한다. 추가 비용이나 성능 저하 없이 기본 제공.",
+    "seniorTip": "이전의 workaround가 이제 불필요: 1) DynamoDB에 메타데이터를 먼저 기록하고 S3 확인하는 이중 체크. 2) 약간의 delay를 추가하여 일관성 대기. 하지만 LIST 작업의 일관성은 주의: 대량 PUT 직후 LIST가 모든 객체를 반환하는 것은 보장되지만, S3의 최종 일관성 모델 이해는 여전히 분산 시스템 면접에서 단골 주제. 니콘내콘에서 선물권 이미지 업로드 후 즉시 조회하는 시나리오에서 더 이상 지연 걱정 불필요.",
+    "tags": [
+      "s3",
+      "strong-consistency",
+      "eventual-consistency",
+      "read-after-write"
+    ],
+    "deepDive": "S3의 강한 일관성이 내부적으로 어떤 아키텍처 변경으로 가능해졌는가(Witness 기반 합의 프로토콜)? → 강한 일관성이 보장되어도 S3 Cross-Region Replication에서는 여전히 eventual consistency인 이유는? → S3 Select와 Glacier Instant Retrieval 등 S3의 다양한 스토리지 클래스를 비용 최적화에 활용하는 전략은?"
+  },
+  {
+    "id": "aws-032",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Secrets Manager에서 DB 비밀번호 자동 로테이션(Rotation)을 Lambda로 구현하는 패턴과 주의점을 설명하라.",
+    "answer": "Secrets Manager가 일정 주기로 Lambda 함수를 호출하여 DB 비밀번호를 자동 변경. Lambda는 createSecret → setSecret → testSecret → finishSecret 4단계를 수행. 주의: 로테이션 중 애플리케이션이 이전 비밀번호를 사용하면 인증 실패",
+    "explanation": "로테이션 4단계: 1) createSecret — 새 비밀번호 생성, AWSPENDING 레이블로 저장. 2) setSecret — DB에 새 비밀번호 적용(ALTER USER). 3) testSecret — 새 비밀번호로 DB 연결 테스트. 4) finishSecret — AWSCURRENT 레이블을 새 비밀번호로 이동. 실패 시 자동 롤백.",
+    "seniorTip": "실무 주의점: 1) 이중 사용자 전략(dual-user): user_main과 user_clone 두 DB 사용자를 교대로 로테이션하면 다운타임 없이 비밀번호 변경 가능. 2) 애플리케이션에서 Secrets Manager SDK로 시크릿 조회 시 캐시 TTL 설정 — 로테이션 주기보다 짧아야 새 비밀번호 반영. 3) NestJS에서는 서비스 시작 시 Secrets Manager에서 DB 접속 정보를 가져오고, 캐시 TTL(예: 1시간)마다 갱신하는 패턴. 4) RDS는 Secrets Manager와의 통합 로테이션 Lambda를 기본 제공.",
+    "tags": [
+      "secrets-manager",
+      "rotation",
+      "lambda",
+      "database-security",
+      "automation"
+    ],
+    "deepDive": "이중 사용자 로테이션 전략(alternating users)에서 두 사용자의 권한 관리와, 하나의 사용자가 로테이션 실패로 잠기면 어떻게 복구하는가? → External Secrets Operator가 Secrets Manager 로테이션 이벤트를 감지하여 K8s Secret을 업데이트하는 타이밍과 Pod 재시작 없이 반영하는 방법은? → Secrets Manager 호출 비용($0.05/10,000 API 호출)이 179개 서비스에서 누적되는 비용과 캐시 전략은?"
+  },
+  {
+    "id": "aws-033",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "IAM 정책 평가 로직에서 올바른 우선순위는?",
+    "options": [
+      "명시적 Allow가 항상 최우선이다",
+      "명시적 Deny > 명시적 Allow > 묵시적 Deny(기본 거부). SCP, Permission Boundary, Resource Policy 등 여러 정책이 교차 평가된다",
+      "가장 최근에 생성된 정책이 우선한다",
+      "Resource Policy가 IAM Policy보다 항상 우선한다"
+    ],
+    "answer": 1,
+    "explanation": "IAM 평가 순서: 1) 명시적 Deny가 있으면 무조건 거부(다른 정책에서 Allow해도 무시). 2) 명시적 Allow가 있으면 허용. 3) 아무 정책에도 없으면 묵시적 Deny(기본 거부). 추가로 SCP(Organization 레벨), Permission Boundary(IAM User/Role 레벨), Session Policy가 있으면 이들의 교집합으로 최종 권한 결정.",
+    "seniorTip": "실수 사례: IAM Role에 S3FullAccess를 부여했지만, Permission Boundary에서 s3:DeleteBucket을 Deny한 경우 → 삭제 불가. 디버깅 도구: 1) IAM Policy Simulator — 특정 액션이 허용/거부되는지 시뮬레이션. 2) CloudTrail의 errorCode: AccessDenied 이벤트 확인. 3) AWS Access Analyzer로 외부 접근 가능한 리소스 발견. 니콘내콘에서 IRSA로 Pod별 최소 권한을 부여할 때, Permission Boundary로 '어떤 상황에서도 IAM 정책 수정 불가' 같은 가드레일을 설정하는 것이 베스트 프랙티스.",
+    "tags": [
+      "iam",
+      "policy-evaluation",
+      "permission-boundary",
+      "scp",
+      "least-privilege"
+    ],
+    "deepDive": "같은 계정 내 S3 버킷 정책과 IAM 정책이 동시에 적용될 때의 평가 로직과, 크로스 계정 접근 시 양쪽 모두에 Allow가 필요한 이유는? → SCP로 특정 리전(서울)에서만 리소스 생성을 허용하는 정책과, 실수로 글로벌 서비스(IAM, CloudFront)까지 차단하는 흔한 실수는? → IAM Access Analyzer의 unused access finding으로 최소 권한 원칙을 자동화하는 방법은?"
+  },
+  {
+    "id": "aws-034",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "EKS Managed Node Group 업그레이드에서 Surge(서지) 방식과 In-Place 방식의 차이와 선택 기준을 설명하라.",
+    "answer": "Surge: 새 노드를 먼저 생성하고 기존 노드의 Pod를 drain → 기존 노드 삭제. 추가 용량이 일시적으로 필요하지만 다운타임 없음. In-Place: 기존 노드에서 drain → AMI 교체 → 재시작. 추가 비용 없지만 용량 감소 기간 발생",
+    "explanation": "Managed Node Group 업그레이드 시 updateConfig의 maxUnavailable 또는 maxSurge 설정으로 전략 선택. maxSurge=1: 한 번에 1개의 새 노드를 추가하고 기존 노드를 교체. maxUnavailable=1: 한 번에 1개 노드를 사용 불가로 만들어 업그레이드. 프로덕션에서는 Surge가 안전.",
+    "seniorTip": "니콘내콘 179개 서비스 업그레이드 전략: 1) PDB(PodDisruptionBudget) 설정 필수 — minAvailable: 1로 최소 1개 Pod가 항상 동작하도록 보장. 2) maxSurge=25%(전체 노드의 25%를 추가로 생성)로 빠른 업그레이드. 3) 업그레이드 순서: dev → staging → production, 각 단계에서 Datadog으로 에러율 모니터링. 4) EKS 버전 업그레이드(1.28→1.29)와 노드 AMI 업그레이드를 분리하여 문제 발생 시 원인 격리. 5) Karpenter는 Drift 감지로 자동 노드 교체.",
+    "tags": [
+      "eks",
+      "node-group",
+      "upgrade",
+      "surge",
+      "pdb"
+    ],
+    "deepDive": "PDB의 minAvailable과 maxUnavailable 중 어느 것을 사용하는 것이 노드 업그레이드에서 더 안전하고, Deployment replica가 1인 서비스에서 PDB를 어떻게 설정해야 하는가? → Karpenter의 Drift 기능이 Managed Node Group 업그레이드를 대체할 수 있는 시나리오는? → EKS 버전 스큐 정책(Control Plane과 Node의 최대 버전 차이)을 위반하면 어떤 문제가 발생하는가?"
+  },
+  {
+    "id": "aws-035",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "VPC Flow Logs를 보안 포렌식에 활용하는 방법과 핵심 필드를 설명하라.",
+    "answer": "VPC Flow Logs는 VPC 내 네트워크 인터페이스의 IP 트래픽 정보를 캡처. 보안 분석에서 비정상 트래픽 패턴(포트 스캔, 대량 데이터 유출, 내부 횡이동)을 탐지하는 데 활용",
+    "explanation": "핵심 필드: srcaddr, dstaddr(출발/도착 IP), srcport, dstport(포트), protocol(6=TCP, 17=UDP), action(ACCEPT/REJECT), bytes, packets. 예: 한 Pod에서 내부 10.x.x.x 대역의 여러 IP 25번 포트(SMTP)로 연결 시도 → 감염된 Pod가 스팸 발송 시도 의심.",
+    "seniorTip": "실무 활용: 1) CloudWatch Logs Insights로 쿼리: filter action = 'REJECT' | stats count(*) by srcaddr — 가장 많이 차단된 IP 식별. 2) S3에 저장 후 Athena로 대규모 분석. 3) GuardDuty가 Flow Logs를 자동 분석하여 의심스러운 패턴(암호화폐 채굴, C&C 통신) 알림. 4) 비용 주의: 대량 트래픽 시 Flow Logs 저장 비용이 상당. 필요한 ENI/서브넷만 선택적으로 활성화하고, max-aggregation-interval을 10분으로 설정하여 비용 절감.",
+    "tags": [
+      "vpc-flow-logs",
+      "security",
+      "forensics",
+      "guardduty",
+      "network-monitoring"
+    ],
+    "deepDive": "VPC Flow Logs v5 형식에서 추가된 pkt-srcaddr, pkt-dstaddr 필드가 NAT/LB 환경에서 원본 IP 추적에 어떻게 도움이 되는가? → Athena에서 Flow Logs를 Parquet 형식으로 저장하면 쿼리 비용이 얼마나 절감되는가? → Flow Logs만으로는 탐지할 수 없는 공격(암호화된 트래픽의 내용, DNS 터널링 세부 내용)은 어떤 추가 도구로 보완하는가?"
+  },
+  {
+    "id": "aws-036",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "AWS Config Rules를 활용한 컴플라이언스 자동화의 핵심 가치는?",
+    "options": [
+      "AWS 리소스를 자동으로 생성한다",
+      "AWS 리소스의 구성이 정의된 규칙을 준수하는지 지속적으로 평가하고, 미준수 리소스를 자동 알림/수정하여 보안 컴플라이언스를 유지한다",
+      "비용을 자동으로 최적화한다",
+      "성능 모니터링을 대체한다"
+    ],
+    "answer": 1,
+    "explanation": "AWS Config는 리소스 구성 변경 이력을 기록하고, Config Rules로 규칙 준수 여부를 지속 평가한다. 예: 1) S3 버킷이 퍼블릭이면 NON_COMPLIANT. 2) Security Group에 0.0.0.0/0 인바운드가 있으면 NON_COMPLIANT. 3) RDS가 암호화되지 않았으면 NON_COMPLIANT. 자동 수정(Remediation)으로 SSM Automation을 실행하여 자동으로 규칙을 강제할 수 있다.",
+    "seniorTip": "니콘내콘 필수 Config Rules: 1) s3-bucket-public-read-prohibited. 2) restricted-ssh (Security Group에서 22번 포트 전체 개방 금지). 3) rds-storage-encrypted. 4) iam-root-access-key-check (루트 계정 Access Key 금지). 5) eks-endpoint-no-public-access. 자동 수정 예: 퍼블릭 S3 버킷 발견 시 SSM Automation으로 Block Public Access 자동 활성화. 비용: Config 규칙 평가당 소액 과금이지만, 보안 사고 비용 대비 미미.",
+    "tags": [
+      "aws-config",
+      "compliance",
+      "security-automation",
+      "remediation",
+      "governance"
+    ],
+    "deepDive": "AWS Config의 Conformance Pack으로 PCI-DSS, CIS Benchmark 등 업계 표준 규칙 세트를 일괄 적용하는 방법은? → Config Rules의 평가 빈도(Configuration Change vs Periodic)에 따른 비용 차이와 최적 설정은? → AWS Config vs Open Policy Agent(OPA)/Gatekeeper의 역할 차이, 그리고 K8s 리소스에 대한 정책은 어느 도구가 적합한가?"
+  },
+  {
+    "id": "aws-037",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "AWS Cost Anomaly Detection으로 비용 이상을 조기에 감지하는 방법과 실제 사례를 설명하라.",
+    "answer": "AWS Cost Anomaly Detection은 ML 기반으로 과거 비용 패턴을 학습하여 비정상적인 비용 증가를 자동 감지하고 SNS/이메일로 알림. 서비스별, 계정별, 태그별 모니터를 설정 가능",
+    "explanation": "작동 방식: 과거 비용 데이터를 ML 모델이 학습하여 정상 범위를 판단. 비용이 정상 범위를 벗어나면 anomaly로 탐지. 예: 평소 일 $100인 EC2 비용이 갑자기 $500으로 증가 → 알림. root cause 분석도 제공(어떤 서비스/리전/사용 유형이 증가했는지).",
+    "seniorTip": "니콘내콘 실제 사례 시나리오: 1) 개발자가 부하 테스트용 인스턴스를 삭제하지 않아 월 $1,000 발생 → 태그 기반 모니터로 조기 감지. 2) NAT Gateway 트래픽 폭증(외부 API 무한 루프) → 네트워크 비용 모니터로 감지. 3) S3 잘못된 수명 주기 정책으로 Glacier Retrieval 비용 폭증. 설정 권장: 1) 전체 비용 모니터 + 서비스별 모니터(EC2, RDS, NAT). 2) 임계치: $100 이상 이상 감지 시 Slack 알림. 3) 주간 비용 리포트를 팀 채널에 공유.",
+    "tags": [
+      "cost-anomaly",
+      "cost-optimization",
+      "ml",
+      "billing",
+      "monitoring"
+    ],
+    "deepDive": "Cost Anomaly Detection과 AWS Budgets의 차이, 그리고 둘을 함께 사용하는 것이 권장되는 이유는? → ML 기반 이상 탐지의 False Positive를 줄이기 위해 비용 패턴이 불규칙한 서비스(배치 작업, 이벤트성 트래픽)를 어떻게 처리하는가? → FinOps 프레임워크에서 Cost Anomaly Detection이 Inform 단계에 해당하는 이유와, Optimize/Operate 단계와의 연계는?"
+  },
+  {
+    "id": "aws-038",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Cross-Account ECR 접근 시 올바른 설정 방법은?",
+    "options": [
+      "ECR 레포지토리를 퍼블릭으로 변경한다",
+      "ECR Repository Policy에 대상 계정의 ARN을 Principal로 추가하고, 대상 계정의 IAM Role/IRSA에 ecr:GetDownloadUrlForLayer, ecr:BatchGetImage 권한을 부여한다",
+      "이미지를 S3에 복사하여 공유한다",
+      "Cross-Account ECR 접근은 불가능하다"
+    ],
+    "answer": 1,
+    "explanation": "멀티 계정 환경에서 공통 컨테이너 이미지를 하나의 ECR 레포에서 관리하려면: 1) ECR 레포의 Repository Policy에 다른 계정의 root 또는 특정 Role ARN을 Principal로 추가. 2) 해당 계정에서 ecr:GetAuthorizationToken + ecr:BatchGetImage + ecr:GetDownloadUrlForLayer 권한 부여.",
+    "seniorTip": "니콘내콘 멀티 계정 전략: 1) Shared Services 계정에 ECR 중앙화 — 모든 환경(dev, staging, prod)에서 같은 이미지 사용. 2) ECR Replication으로 다른 리전에 자동 복제(DR용). 3) 이미지 태그 불변성(tag immutability) 활성화 — 같은 태그로 다른 이미지를 덮어쓰는 것을 방지. 4) ECR Lifecycle Policy로 오래된 이미지 자동 삭제(비용 절감). 5) Terraform으로 Repository Policy를 코드로 관리하여 권한 변경 추적.",
+    "tags": [
+      "ecr",
+      "cross-account",
+      "multi-account",
+      "container-registry",
+      "iam"
+    ],
+    "deepDive": "ECR Pull Through Cache로 Docker Hub/GitHub Container Registry의 이미지를 캐시하여 rate limit 문제를 해결하는 방법은? → ECR 이미지 스캔(Basic vs Enhanced)으로 취약점을 탐지하고 CI/CD에서 심각도별 배포를 차단하는 파이프라인은? → ECR Replication과 Cross-Region 이미지 복사의 차이, 그리고 멀티 리전 EKS 클러스터에서 이미지 풀 지연을 최소화하는 방법은?"
+  },
+  {
+    "id": "aws-039",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Service Quotas 중 스케일링 시 자주 걸리는 한계와 사전 대응 방법을 설명하라.",
+    "answer": "주요 Service Quotas: EC2 On-Demand vCPU 한도(리전별), EIP 수, NAT Gateway 대역폭, ALB 대상 그룹 수, Lambda 동시 실행 수 등. 사전에 Service Quotas 콘솔에서 증가 요청하고, CloudWatch 알림으로 사용량 모니터링",
+    "explanation": "기본 한도 예시: EC2 On-Demand vCPU = 리전당 64개(일반 인스턴스), EIP = 리전당 5개, VPC = 리전당 5개, Security Group 규칙 = 그룹당 60개. 이 한도에 걸리면 새 리소스 생성이 실패하여 오토스케일링이 작동하지 않는다.",
+    "seniorTip": "니콘내콘에서 실제로 걸릴 수 있는 한도: 1) EKS 클러스터의 노드가 스케일아웃될 때 EC2 vCPU 한도 초과 → Karpenter가 노드를 생성하지 못함. 2) 179개 서비스의 ALB Target Group 한도(계정당 기본 500개). 3) SQS 큐 수 한도(리전당 기본 120,000개, 충분하지만 FIFO는 20,000개). 4) Secrets Manager 시크릿 수. 사전 대응: 1) Service Quotas API로 현재 사용량 대비 한도 비율 모니터링. 2) 80% 도달 시 Slack 알림. 3) Terraform으로 quota 증가 요청 자동화(aws_servicequotas_service_quota 리소스).",
+    "tags": [
+      "service-quotas",
+      "scaling",
+      "limits",
+      "eks",
+      "capacity-planning"
+    ],
+    "deepDive": "EKS에서 ENI 기반 Pod 수 제한(인스턴스 타입별)과 Service Quotas의 관계, 그리고 Prefix Delegation으로 Pod 수를 늘리는 방법은? → Spot Instance의 Service Quota가 On-Demand와 별도로 관리되는가, 그리고 Spot 용량 부족(InsufficientInstanceCapacity) 에러와의 차이는? → AWS Support Plan 등급(Business, Enterprise)에 따라 Service Quota 증가 요청의 처리 속도 차이는?"
+  },
+  {
+    "id": "aws-040",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "EBS gp3와 gp2의 차이, 그리고 K8s에서 gp3 StorageClass를 명시적으로 생성해야 하는 이유는?",
+    "options": [
+      "gp3가 gp2보다 항상 느리므로 gp2를 써야 한다",
+      "gp3는 기본 3,000 IOPS/125 MiB/s가 볼륨 크기와 무관하게 제공되고 gp2보다 20% 저렴하지만, EKS의 기본 StorageClass가 gp2이므로 gp3를 명시적으로 설정해야 한다",
+      "gp3는 SSD가 아니다",
+      "gp3는 Multi-AZ를 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "gp2: IOPS가 볼륨 크기에 비례(3 IOPS/GB, 최소 100). 100GB 볼륨 = 300 IOPS. 3,000 IOPS를 얻으려면 최소 1TB 필요. gp3: 크기와 무관하게 기본 3,000 IOPS + 125 MiB/s. 가격도 gp2 대비 GB당 20% 저렴. EKS 기본 StorageClass가 gp2이므로 PVC 생성 시 자동으로 gp2 볼륨이 생성된다.",
+    "seniorTip": "니콘내콘 K8s 설정: 1) gp3 StorageClass를 생성하고 default로 설정. apiVersion: storage.k8s.io/v1, kind: StorageClass, provisioner: ebs.csi.aws.com, parameters: { type: gp3 }, annotations: { storageclass.kubernetes.io/is-default-class: 'true' }. 2) 기존 gp2 PV를 gp3로 마이그레이션: EBS 볼륨 타입 변경은 온라인으로 가능하지만, K8s PV의 spec은 immutable이므로 데이터를 새 PVC로 복사해야 한다. 3) DB처럼 높은 IOPS가 필요하면 gp3에서 IOPS를 16,000까지, 처리량을 1,000 MiB/s까지 별도 구매 가능(io2보다 저렴).",
+    "tags": [
+      "ebs",
+      "gp3",
+      "gp2",
+      "storage-class",
+      "kubernetes",
+      "cost-optimization"
+    ],
+    "deepDive": "gp3에서 Provisioned IOPS를 추가로 구매하는 것과 io2 Block Express를 사용하는 것의 비용/성능 비교는? → EBS CSI Driver의 volume snapshot과 restore 기능으로 PV 백업/복구를 자동화하는 방법은? → EKS에서 EBS 볼륨이 특정 AZ에 바인딩되어 Pod가 다른 AZ로 이동할 수 없는 문제와, EFS(NFS)를 대안으로 사용할 때의 성능 트레이드오프는?"
   }
 ]
