@@ -79,11 +79,16 @@ export default function FlashcardsPage() {
         className="card min-h-[280px] cursor-pointer flex flex-col justify-center"
         onClick={() => setFlipped(!flipped)}
       >
-        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+        <div className="flex items-center gap-1.5 mb-2 flex-wrap">
           <span className="category-badge" style={{ background: CATEGORY_COLORS[card.category] + "20", color: CATEGORY_COLORS[card.category] }}>
             {CATEGORY_LABELS[card.category]}
           </span>
           <span className="text-[10px] text-[var(--muted)]">{card.difficulty}</span>
+          {card.tags.slice(0, 3).map((tag) => (
+            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
+              #{tag}
+            </span>
+          ))}
         </div>
 
         {!flipped ? (
