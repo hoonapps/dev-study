@@ -46,73 +46,70 @@ export default function FlashcardsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Flashcards</h1>
+        <h1 className="text-xl font-bold">Flashcards</h1>
         <span className="text-sm text-[var(--muted)]">{current + 1}/{cards.length}</span>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setCategory(undefined)}
-          className={`px-3 py-1 rounded-lg text-xs font-medium ${!category ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
-        >
-          All
-        </button>
-        {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
+      {/* Category Filter - horizontal scroll */}
+      <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
+        <div className="flex gap-1.5 w-max">
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-3 py-1 rounded-lg text-xs font-medium ${category === cat ? "text-white" : "border border-[var(--card-border)]"}`}
-            style={category === cat ? { background: CATEGORY_COLORS[cat] } : { color: CATEGORY_COLORS[cat] }}
+            onClick={() => setCategory(undefined)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 ${!category ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
           >
-            {CATEGORY_LABELS[cat]}
+            All
           </button>
-        ))}
+          {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 ${category === cat ? "text-white" : "border border-[var(--card-border)]"}`}
+              style={category === cat ? { background: CATEGORY_COLORS[cat] } : { color: CATEGORY_COLORS[cat] }}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Card */}
       <div
-        className="card min-h-[300px] cursor-pointer flex flex-col justify-center"
+        className="card min-h-[280px] cursor-pointer flex flex-col justify-center"
         onClick={() => setFlipped(!flipped)}
       >
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
           <span className="category-badge" style={{ background: CATEGORY_COLORS[card.category] + "20", color: CATEGORY_COLORS[card.category] }}>
             {CATEGORY_LABELS[card.category]}
           </span>
-          <span className="text-xs text-[var(--muted)]">{card.difficulty}</span>
-          {card.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-xs px-2 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
-              {tag}
-            </span>
-          ))}
+          <span className="text-[10px] text-[var(--muted)]">{card.difficulty}</span>
         </div>
 
         {!flipped ? (
           <div>
-            <p className="text-xl font-medium leading-relaxed">{card.question}</p>
-            <p className="text-xs text-[var(--muted)] mt-4">tap to flip</p>
+            <p className="text-base font-medium leading-relaxed">{card.question}</p>
+            <p className="text-[10px] text-[var(--muted)] mt-3">tap to flip</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Depth Toggle */}
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-1.5">
               <button
                 onClick={(e) => { e.stopPropagation(); setDepth("light"); }}
-                className={`px-3 py-1 rounded text-xs font-medium transition ${depth === "light" ? "bg-[var(--accent)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition ${depth === "light" ? "bg-[var(--accent)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
               >
                 Light
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setDepth("deep"); }}
-                className={`px-3 py-1 rounded text-xs font-medium transition ${depth === "deep" ? "bg-[var(--warning)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition ${depth === "deep" ? "bg-[var(--warning)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
               >
                 Deep
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setDepth("senior"); }}
-                className={`px-3 py-1 rounded text-xs font-medium transition ${depth === "senior" ? "bg-[var(--success)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition ${depth === "senior" ? "bg-[var(--success)] text-white" : "bg-[var(--card-border)] text-[var(--muted)]"}`}
               >
                 Senior
               </button>
@@ -132,20 +129,20 @@ export default function FlashcardsPage() {
             )}
 
             {depth === "light" && (
-              <p className="text-sm text-[var(--muted)] leading-relaxed">{card.explanation}</p>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">{card.explanation}</p>
             )}
             {depth === "deep" && (
-              <p className="text-sm text-[var(--muted)] leading-relaxed">{card.deepDive || card.seniorTip}</p>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">{card.deepDive || card.seniorTip}</p>
             )}
             {depth === "senior" && (
-              <p className="text-sm text-[var(--muted)] leading-relaxed">{card.seniorTip}</p>
+              <p className="text-xs text-[var(--muted)] leading-relaxed">{card.seniorTip}</p>
             )}
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <button onClick={prev} disabled={current === 0} className="btn-secondary flex-1 disabled:opacity-30">
           Prev
         </button>

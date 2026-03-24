@@ -57,13 +57,12 @@ export default function BrowsePage() {
         className="w-full p-3 rounded-lg border border-[var(--card-border)] bg-[var(--card)] text-[var(--fg)] focus:outline-none focus:border-[var(--accent)]"
       />
 
-      {/* Category Filter */}
-      <div>
-        <h3 className="text-xs font-semibold text-[var(--muted)] mb-2">CATEGORY</h3>
-        <div className="flex flex-wrap gap-2">
+      {/* Category Filter - horizontal scroll */}
+      <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
+        <div className="flex gap-1.5 w-max">
           <button
             onClick={() => setCategory(undefined)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${!category ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition ${!category ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
           >
             All ({questions.length})
           </button>
@@ -71,7 +70,7 @@ export default function BrowsePage() {
             <button
               key={cat}
               onClick={() => setCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${category === cat ? "text-white" : "border border-[var(--card-border)]"}`}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 transition ${category === cat ? "text-white" : "border border-[var(--card-border)]"}`}
               style={category === cat ? { background: CATEGORY_COLORS[cat] } : { color: CATEGORY_COLORS[cat] }}
             >
               {CATEGORY_LABELS[cat]} ({categoryCounts[cat] || 0})
@@ -81,25 +80,22 @@ export default function BrowsePage() {
       </div>
 
       {/* Difficulty Filter */}
-      <div>
-        <h3 className="text-xs font-semibold text-[var(--muted)] mb-2">DIFFICULTY</h3>
-        <div className="flex gap-2">
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => setDifficulty(undefined)}
+          className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition ${!difficulty ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
+        >
+          All
+        </button>
+        {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((diff) => (
           <button
-            onClick={() => setDifficulty(undefined)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${!difficulty ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
+            key={diff}
+            onClick={() => setDifficulty(diff)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition ${difficulty === diff ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
           >
-            All
+            {DIFFICULTY_LABELS[diff]}
           </button>
-          {(Object.keys(DIFFICULTY_LABELS) as Difficulty[]).map((diff) => (
-            <button
-              key={diff}
-              onClick={() => setDifficulty(diff)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${difficulty === diff ? "bg-[var(--accent)] text-white" : "bg-[var(--card)] text-[var(--muted)] border border-[var(--card-border)]"}`}
-            >
-              {DIFFICULTY_LABELS[diff]}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
       {/* Results Count */}
