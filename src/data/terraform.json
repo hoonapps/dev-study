@@ -498,5 +498,311 @@
       "aws-organizations",
       "security"
     ]
+  },
+  {
+    "id": "tf-026",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "terraform plan에서 'No changes'라고 나왔는데 terraform apply를 실행하면 변경이 발생하는 경우의 원인은?",
+    "options": [
+      "Terraform에 버그가 있다",
+      "plan 시점과 apply 시점 사이에 인프라가 외부에서 변경되었거나, plan이 -refresh=false로 실행되어 실제 상태를 반영하지 못했다",
+      "state 파일이 암호화되어 있어 plan이 읽지 못했다",
+      "provider가 plan과 apply에서 다른 API를 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "terraform plan은 실행 시점에 실제 인프라 상태를 refresh하여 state와 비교한다. -refresh=false로 plan을 실행하면 state 파일의 캐시된 상태만 보므로, 콘솔에서 수동 변경된 내용을 감지하지 못한다. apply 시에는 기본적으로 refresh가 일어나므로 차이가 발생할 수 있다. 또한 plan과 apply 사이 시간 차이 동안 다른 팀원이 변경하면 같은 문제가 발생한다.",
+    "seniorTip": "이 문제를 방지하는 방법: 1) terraform plan -out=plan.out으로 plan 결과를 저장하고 terraform apply plan.out으로 정확히 그 plan대로만 적용. 2) CI에서 plan과 apply를 연속 실행하되, plan 결과를 아티팩트로 저장. 3) terraform plan -refresh-only로 drift만 확인하는 별도 파이프라인을 주기적으로 실행. 니콘내콘에서 local state를 사용하면 다른 팀원의 변경을 전혀 감지할 수 없으므로, remote backend 전환이 시급하다.",
+    "deepDive": "plan -out 파일이 stale해지는 시점은 언제인가? → plan 파일에는 생성 시점의 state serial이 포함됨. apply 시 현재 state serial과 비교하여 다르면 거부됨. 하지만 인프라 자체의 변경은 감지하지 못함. → -refresh=false를 의도적으로 사용하는 상황은? → 대규모 인프라에서 plan 속도를 높이기 위해. 수백 개의 리소스를 refresh하면 수분이 걸릴 수 있음. 하지만 drift를 놓칠 위험이 있으므로 주기적인 refresh-only plan을 병행. → terraform apply -auto-approve가 위험한 이유는? → plan을 거치지 않고 바로 적용. CI에서 plan 리뷰 없이 사용하면 의도치 않은 변경이 프로덕션에 적용됨.",
+    "tags": [
+      "plan",
+      "refresh",
+      "drift",
+      "apply",
+      "state-consistency"
+    ]
+  },
+  {
+    "id": "tf-027",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "terraform taint(deprecated)와 terraform apply -replace의 차이를 설명하고, 리소스를 강제로 재생성해야 하는 실무 상황을 설명하라.",
+    "answer": "taint는 state에 마크하여 다음 apply 시 재생성, -replace는 plan/apply 시점에 즉시 교체 대상을 지정. taint는 Terraform 0.15.2부터 deprecated되어 -replace 권장",
+    "explanation": "terraform taint aws_instance.web은 state에 tainted 마크를 남기고, 다음 apply에서 해당 리소스를 destroy → create한다. terraform apply -replace=aws_instance.web은 plan 단계에서 교체를 포함한 실행 계획을 보여주고 바로 적용한다. -replace가 더 안전한 이유: plan에서 교체 영향을 미리 볼 수 있고, state를 오염시키지 않는다.",
+    "seniorTip": "강제 재생성이 필요한 실무 상황: 1) EC2 user_data를 변경했지만 Terraform이 in-place update로 처리하여 실제 반영이 안 될 때. 2) EKS 노드그룹의 AMI를 업데이트했지만 기존 노드가 교체되지 않을 때. 3) RDS 파라미터 변경이 재시작 없이 적용되지 않을 때. 4) SSL 인증서가 갱신되었지만 ALB에 반영되지 않을 때. 니콘내콘에서 EKS managed node group의 launch template을 변경할 때, -replace로 노드그룹을 교체하면 create_before_destroy와 함께 무중단 교체가 가능하다.",
+    "deepDive": "-replace로 교체할 때 의존하는 다른 리소스도 재생성되나? → 해당 리소스의 ID가 변경되면 이를 참조하는 리소스도 연쇄 업데이트/재생성될 수 있음. plan에서 확인 필수. → terraform untaint는 언제 사용하나? → 실수로 taint한 리소스를 원복할 때. → lifecycle prevent_destroy가 걸린 리소스에 -replace를 하면? → prevent_destroy가 삭제를 차단하므로 에러 발생. 먼저 prevent_destroy를 제거 후 apply하고, 다시 추가해야 함.",
+    "tags": [
+      "taint",
+      "replace",
+      "recreate",
+      "lifecycle",
+      "force-replacement"
+    ]
+  },
+  {
+    "id": "tf-028",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform provider 버전을 ~> 5.0으로 지정했을 때, provider 5.30.0에서 5.31.0으로 마이너 업데이트 시 인프라가 깨지는 경우가 발생할 수 있는 이유는?",
+    "options": [
+      "마이너 버전은 항상 하위 호환이 보장되므로 깨질 수 없다",
+      "Provider는 AWS API 변경에 따라 리소스 스키마가 마이너 버전에서도 변경될 수 있고, 새로운 기본값이 추가되어 plan에서 예상치 못한 변경이 나타날 수 있다",
+      "Terraform CLI 버전과 provider 버전이 반드시 일치해야 하기 때문이다",
+      "~> 연산자가 메이저 버전 업데이트를 허용하기 때문이다"
+    ],
+    "answer": 1,
+    "explanation": "AWS provider의 마이너 버전 업데이트에서도 리소스 속성의 기본값 변경, 새로운 필수 속성 추가, 리소스 동작 변경이 발생할 수 있다. 예: aws_s3_bucket 리소스가 v4에서 여러 하위 리소스(aws_s3_bucket_versioning 등)로 분리된 사례. 이는 기술적으로 메이저 변경이지만 provider 개발 과정에서 마이너 버전에 포함되기도 한다.",
+    "seniorTip": "Provider 버전 관리 전략: 1) .terraform.lock.hcl을 반드시 git commit — 팀 전체가 동일 버전 사용 보장. 2) version = \"= 5.30.0\"으로 정확한 버전 고정 후, 업데이트는 의도적으로 PR을 통해 진행. 3) terraform init -upgrade 후 terraform plan으로 변경사항을 철저히 리뷰. 4) CHANGELOG.md를 반드시 확인 — aws provider는 릴리스 노트에 breaking change를 명시. 5) 테스트 계정(dev)에서 먼저 업데이트 검증 후 prod에 적용. 니콘내콘의 2 AWS 계정 구조가 이런 상황에 유용하다.",
+    "deepDive": "~> 5.0과 ~> 5.30의 차이는? → ~> 5.0은 >= 5.0, < 6.0 허용. ~> 5.30은 >= 5.30, < 5.31 허용(패치만). 프로덕션에서는 ~> 5.30처럼 좁은 범위가 안전. → lock 파일의 체크섬이 OS별로 다를 수 있나? → terraform init에서 다운받은 provider 바이너리의 체크섬이 OS(darwin/linux)별로 다름. terraform providers lock -platform=linux_amd64 -platform=darwin_amd64으로 멀티 플랫폼 체크섬 생성. → provider 업데이트로 state migration이 필요한 경우는? → 리소스 타입이 변경되거나 속성 구조가 바뀔 때. moved 블록이나 state mv로 수동 마이그레이션 필요.",
+    "tags": [
+      "provider-versioning",
+      "breaking-change",
+      "lock-file",
+      "upgrade",
+      "pinning"
+    ]
+  },
+  {
+    "id": "tf-029",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "terraform_remote_state data source와 일반 data source를 사용한 cross-stack 참조의 차이점과 각각의 위험성을 설명하라.",
+    "answer": "terraform_remote_state는 다른 워크스페이스의 state 전체에 접근 권한이 필요하고 output만 참조 가능. 일반 data source(aws_vpc 등)는 실제 인프라를 직접 조회하여 state 의존성이 없다",
+    "explanation": "terraform_remote_state: 다른 Terraform state의 output 값을 읽어온다. 장점은 Terraform이 관리하는 값을 정확히 참조. 단점은 state 파일 전체에 대한 읽기 권한이 필요하여 보안 위험(민감 정보 노출). 일반 data source: AWS API를 통해 실제 리소스 정보를 직접 조회. state 의존성이 없지만, 리소스가 존재하지 않으면 plan/apply가 실패한다.",
+    "seniorTip": "권장 패턴: 1) terraform_remote_state 대신 SSM Parameter Store에 output을 저장하고 aws_ssm_parameter data source로 조회. 보안적으로 더 안전하고 state 접근 권한 분리 가능. 2) 꼭 terraform_remote_state를 사용해야 한다면 output에 sensitive = true 설정으로 민감 정보 노출 방지. 3) data source는 tags 기반 필터로 리소스를 찾으면 하드코딩을 피할 수 있음. 니콘내콘에서 VPC를 한 모듈에서 만들고 EKS를 다른 모듈에서 만들 때, SSM에 vpc_id를 저장하고 EKS 모듈에서 조회하는 패턴이 깔끔하다.",
+    "deepDive": "SSM Parameter Store 패턴의 구체적 구현은? → VPC 모듈: resource aws_ssm_parameter vpc_id { name = '/infra/prod/vpc_id', value = aws_vpc.main.id }. EKS 모듈: data aws_ssm_parameter vpc_id { name = '/infra/prod/vpc_id' }. → terraform_remote_state의 state가 손상되면? → 참조하는 모든 모듈의 plan/apply가 실패. state 의존성 체인이 깊어지면 장애 전파 범위가 커짐. → data source 조회 시 리소스가 아직 생성되지 않았으면? → plan 단계에서 에러. depends_on으로 순서를 보장하거나, 별도 apply 순서를 문서화해야 함.",
+    "tags": [
+      "remote-state",
+      "cross-stack",
+      "data-source",
+      "ssm",
+      "decoupling"
+    ]
+  },
+  {
+    "id": "tf-030",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform의 의존성 그래프(dependency graph)와 parallelism 옵션이 apply 성능에 미치는 영향을 설명하라.",
+    "answer": "Terraform은 리소스 간 의존성을 DAG(Directed Acyclic Graph)로 관리하고, 의존성이 없는 리소스는 병렬로 생성한다. -parallelism 옵션(기본 10)으로 동시 실행 수를 조절한다",
+    "explanation": "terraform graph 명령으로 DOT 형식의 의존성 그래프를 출력할 수 있다. Terraform은 이 그래프를 분석하여 의존성이 없는 리소스를 동시에 생성/변경한다. parallelism=10이면 최대 10개의 리소스를 동시에 AWS API에 요청한다.",
+    "seniorTip": "parallelism 튜닝 가이드: 1) 리소스가 수백 개인 대규모 인프라에서 parallelism을 높이면(20-30) apply 속도가 크게 향상. 2) 하지만 AWS API rate limit에 걸릴 수 있음 — 특히 IAM, Route53은 글로벌 서비스라 throttling이 자주 발생. 3) rate limit 에러가 발생하면 parallelism을 낮추거나(5), provider의 retry 설정을 조정. 4) terraform graph | dot -Tsvg > graph.svg로 시각화하면 불필요한 의존성(depends_on 남용)으로 인한 직렬화 구간을 발견할 수 있다. 니콘내콘 17개 모듈을 한 번에 apply할 때, 모듈 간 불필요한 depends_on을 제거하면 apply 시간을 크게 단축할 수 있다.",
+    "deepDive": "AWS API rate limit에 걸리면 Terraform이 어떻게 동작하나? → provider가 자동으로 exponential backoff로 재시도. 하지만 재시도 횟수를 초과하면 에러. → depends_on이 parallelism에 미치는 영향은? → 명시적 depends_on은 해당 리소스 간 직렬 실행을 강제. 불필요한 depends_on이 병렬성을 해치는 것이 가장 흔한 성능 저하 원인. → state 파일이 커지면 plan 속도에도 영향을 주나? → plan 시 state의 모든 리소스를 refresh하므로, 리소스가 수백 개면 수분이 걸릴 수 있음. state를 분리(모듈화)하면 각 plan의 범위가 작아져 빨라짐.",
+    "tags": [
+      "graph",
+      "parallelism",
+      "performance",
+      "depends-on",
+      "rate-limit"
+    ]
+  },
+  {
+    "id": "tf-031",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "terraform destroy 시 리소스 삭제 순서가 중요한 이유와, depends_on이 destroy에서 어떻게 동작하는가?",
+    "options": [
+      "destroy 시 depends_on은 무시되고 모든 리소스가 동시에 삭제된다",
+      "destroy 시 depends_on의 역순으로 삭제된다 — 의존하는 리소스가 먼저 삭제된 후 의존 대상이 삭제된다",
+      "destroy는 항상 알파벳 순서로 삭제된다",
+      "depends_on은 create에만 적용되고 destroy에는 적용되지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Terraform의 의존성 그래프는 destroy 시 역순(reverse order)으로 적용된다. A가 B에 depends_on하면, create는 B → A 순서, destroy는 A → B 순서다. 이는 AWS에서도 중요하다: VPC를 삭제하려면 그 안의 모든 서브넷, 보안 그룹, ENI가 먼저 삭제되어야 한다.",
+    "seniorTip": "destroy 순서 문제로 인한 실제 장애 사례: 1) IAM Role을 먼저 삭제하면 Lambda/EKS가 권한을 잃어 정리 작업 실패. 2) VPC를 먼저 삭제하려 하면 'DependencyViolation' 에러 — ENI가 남아있어 VPC 삭제 불가. 3) S3 버킷에 오브젝트가 남아있으면 삭제 실패 → force_destroy = true 또는 별도 정리 스크립트. 4) RDS의 final_snapshot_identifier를 설정하지 않으면 삭제 시 에러. Terraform으로 만들지 않은 리소스(예: 수동으로 추가한 보안 그룹 규칙)가 남아있으면 destroy가 실패할 수 있다.",
+    "deepDive": "destroy가 중간에 실패하면 어떻게 되나? → 성공적으로 삭제된 리소스는 state에서 제거됨. 남은 리소스는 state에 남아있어 다시 destroy 시도 가능. → 특정 리소스만 destroy하려면? → terraform destroy -target=aws_instance.web. 하지만 의존하는 리소스가 있으면 해당 리소스도 같이 삭제될 수 있음. → prevent_destroy가 있는 리소스를 destroy하면? → 에러 발생. terraform state rm으로 state에서 제거 후(실제 리소스는 유지), 나머지 리소스만 destroy 가능.",
+    "tags": [
+      "destroy",
+      "ordering",
+      "depends-on",
+      "reverse-dependency",
+      "cleanup"
+    ]
+  },
+  {
+    "id": "tf-032",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform state 파일이 커지면서 발생하는 성능 문제와 해결 방법을 설명하라.",
+    "answer": "state가 커지면 plan/apply 시 모든 리소스를 refresh하는 시간이 증가하고, state locking 시간도 늘어남. 해결책은 state를 논리적 단위로 분리(모듈화)하고 terraform_remote_state 또는 data source로 연결하는 것",
+    "explanation": "state 파일에 수백 개의 리소스가 있으면: 1) plan 시 각 리소스의 현재 상태를 AWS API로 확인(refresh)하는 데 수분 소요. 2) state 파일 읽기/쓰기에 시간 소요. 3) DynamoDB lock 점유 시간이 길어져 다른 팀원이 대기. 4) plan 출력이 너무 길어 리뷰가 어려움.",
+    "seniorTip": "State 분리 전략: 1) 레이어별 분리: network(VPC/서브넷) → compute(EKS/노드그룹) → app(Helm releases) → monitoring(Datadog/Prometheus). 2) 환경별 분리: dev/prod 각각 별도 state. 3) 서비스별 분리: 독립적인 서비스(예: 결제, 인증)는 별도 state. 분리 기준: '이 리소스를 변경할 때 다른 리소스에 영향을 주는가?' 니콘내콘 17개 모듈이 하나의 state에 있다면, 적어도 network/eks/services 3개로 분리하는 것을 권장. state 분리 작업은 terraform state mv와 moved 블록을 활용.",
+    "deepDive": "state를 분리할 때 기존 리소스를 어떻게 이동하나? → terraform state mv -state-out=new.tfstate aws_vpc.main aws_vpc.main으로 리소스를 새 state로 이동. → state가 1000개 이상인 경우 refresh를 비활성화하면? → -refresh=false로 plan 속도는 빨라지지만 drift를 놓침. -refresh=false로 빠른 plan 후, 주기적으로 -refresh-only로 drift 검사하는 전략이 현실적. → Terragrunt가 state 분리에 도움이 되는 이유는? → 디렉토리 구조별로 자동으로 별도 state를 관리하고, dependency 블록으로 모듈 간 순서와 output 전달을 자동화.",
+    "tags": [
+      "state-size",
+      "performance",
+      "state-splitting",
+      "terragrunt",
+      "modularization"
+    ]
+  },
+  {
+    "id": "tf-033",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform provider 인증에서 정적 키(access_key/secret_key) 대신 OIDC를 사용해야 하는 이유는?",
+    "options": [
+      "OIDC가 정적 키보다 API 호출 속도가 빠르다",
+      "OIDC는 단기 임시 토큰을 발급하여 키 유출 위험을 줄이고, CI/CD에서 시크릿 관리 부담을 제거한다",
+      "AWS가 정적 키 사용을 금지했다",
+      "OIDC는 멀티 리전 배포에서만 필요하다"
+    ],
+    "answer": 1,
+    "explanation": "정적 키는 유출 시 무기한 사용 가능한 심각한 보안 위험이다. OIDC(OpenID Connect)를 사용하면 GitHub Actions 등의 CI/CD가 AWS STS를 통해 단기(15분-1시간) 임시 자격증명을 받아 사용한다. 키가 유출되어도 곧 만료되고, 어떤 리포지토리/브랜치에서 요청했는지 추적 가능하다.",
+    "seniorTip": "GitHub Actions + AWS OIDC 설정 순서: 1) AWS에 IAM OIDC Provider 생성(Terraform으로). 2) IAM Role 생성 시 trust policy에 GitHub OIDC provider와 repo/branch 조건 명시. 3) GitHub Actions에서 aws-actions/configure-aws-credentials@v4로 assume-role-with-web-identity. 4) Terraform provider에 access_key/secret_key 하드코딩 제거. 니콘내콘에서 tfvars에 plaintext 시크릿을 넣고 있다면, OIDC 전환이 보안 개선의 첫 걸음이다. Terraform 실행 환경 자체를 안전하게 만들어야 인프라가 안전하다.",
+    "deepDive": "OIDC trust policy에서 repo와 branch를 제한하는 방법은? → Condition에 StringEquals로 'token.actions.githubusercontent.com:sub': 'repo:org/repo:ref:refs/heads/main' 지정. 다른 repo나 branch에서 assume 시도하면 거부. → Atlantis에서 OIDC를 사용하려면? → Atlantis 서버 자체가 EKS Pod로 실행되면 Pod Identity/IRSA로 AWS 인증. 자체 호스팅이면 EC2 instance profile. → 로컬 개발 환경에서의 인증은? → aws sso login으로 SSO 세션을 활성화하고 profile을 사용. 정적 키 대신 SSO가 표준.",
+    "tags": [
+      "oidc",
+      "authentication",
+      "security",
+      "github-actions",
+      "static-keys"
+    ]
+  },
+  {
+    "id": "tf-034",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "커스텀 Terraform Provider를 개발해야 하는 상황과, 그 대안(null_resource, external data source)을 비교하라.",
+    "answer": "내부 API나 비표준 리소스를 Terraform으로 관리할 때 커스텀 Provider 개발. 간단한 경우 null_resource + local-exec이나 external data source로 대체 가능",
+    "explanation": "커스텀 Provider가 필요한 경우: 1) 사내 PaaS/API의 리소스를 Terraform lifecycle으로 관리하고 싶을 때. 2) 기존 provider에 없는 리소스를 CRUD로 관리해야 할 때. 대안: null_resource + provisioner로 스크립트 실행(멱등성 보장 어려움), external data source로 외부 스크립트 결과를 data로 사용(읽기 전용).",
+    "seniorTip": "의사결정 기준: 1) 일회성 작업(DB 초기화, DNS 레코드 하나) → null_resource + local-exec로 충분. 2) 읽기 전용 데이터 조회(내부 API에서 설정값 가져오기) → external data source. 3) 리소스의 전체 lifecycle(CRUD) 관리가 필요한 반복 작업 → 커스텀 Provider 개발 검토. 4) 커스텀 Provider 개발은 Go 언어 + Terraform Plugin SDK가 필요하여 초기 투자가 큼. Terraform CDK(TypeScript)를 사용하면 프로그래밍 언어로 복잡한 로직을 처리할 수 있어 Provider 개발의 대안이 될 수 있다.",
+    "deepDive": "external data source의 제약은? → 읽기 전용, JSON 출력만 가능, 실행 환경에 의존(CI와 로컬이 다를 수 있음). → null_resource의 triggers가 변경되면 어떻게 되나? → triggers의 값이 변경되면 null_resource가 재생성되어 provisioner가 다시 실행됨. 이를 이용해 특정 조건에서만 스크립트를 재실행 가능. → Terraform Plugin Framework vs SDK v2의 차이는? → Framework는 최신 권장 방식으로 더 나은 타입 시스템과 테스팅을 제공. 새 Provider 개발 시 Framework 사용 권장.",
+    "tags": [
+      "custom-provider",
+      "null-resource",
+      "external-data",
+      "plugin-sdk",
+      "automation"
+    ]
+  },
+  {
+    "id": "tf-035",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform CDK(CDKTF)와 Pulumi가 기존 HCL 대비 가지는 장단점으로 올바른 것은?",
+    "options": [
+      "CDKTF/Pulumi는 항상 HCL보다 우수하다",
+      "프로그래밍 언어(TypeScript 등)로 복잡한 조건/반복 로직을 표현할 수 있지만, 선언적 특성이 약해져 plan의 예측 가능성이 낮아질 수 있다",
+      "CDKTF는 HCL과 완전히 호환되어 같은 state를 공유한다",
+      "Pulumi는 Terraform Provider를 사용할 수 없다"
+    ],
+    "answer": 1,
+    "explanation": "CDKTF/Pulumi는 TypeScript, Python 등 범용 언어로 인프라를 정의한다. 장점: 복잡한 조건문, 반복, 추상화가 자연스럽고 IDE 지원(자동완성, 타입체크)이 강력. 단점: 명령형 코드로 인프라를 정의하면 plan 결과를 예측하기 어렵고, 코드 리뷰 시 인프라 변경사항을 직관적으로 파악하기 어려울 수 있다.",
+    "seniorTip": "선택 기준: 1) HCL이 적합한 경우: 팀이 인프라 전문가, 선언적 패턴이 충분, 생태계(모듈, 문서)가 풍부. 2) CDKTF가 적합한 경우: 기존 TypeScript 팀이 인프라도 관리, 복잡한 로직(동적 서브넷 계산, 조건부 리소스 생성)이 많음. 3) Pulumi: 자체 state 관리, 네이티브 프로그래밍 모델, 하지만 Terraform 생태계 호환성이 완벽하지 않음. 니콘내콘처럼 백엔드 팀이 TypeScript에 익숙하다면 CDKTF가 진입 장벽이 낮을 수 있지만, HCL의 풍부한 커뮤니티 자료와 모듈을 포기하는 트레이드오프를 고려해야 한다.",
+    "deepDive": "CDKTF로 생성한 인프라를 HCL로 마이그레이션할 수 있나? → CDKTF는 내부적으로 Terraform JSON을 생성하고 terraform CLI를 실행. state는 호환되므로 HCL로 전환 가능하지만 코드 재작성 필요. → Pulumi의 state 관리는 Terraform과 어떻게 다른가? → Pulumi는 기본적으로 Pulumi Cloud에 state 저장(또는 S3 self-hosted). Terraform의 backend 개념과 유사하지만 자체 포맷. → OpenTofu와 Terraform의 차이는? → OpenTofu는 Terraform의 오픈소스 포크. BSL 라이선스 변경 이후 커뮤니티가 만든 대안. 대부분의 기능이 호환되지만 새 기능은 별도로 개발됨.",
+    "tags": [
+      "cdktf",
+      "pulumi",
+      "hcl",
+      "opentofu",
+      "language-comparison"
+    ]
+  },
+  {
+    "id": "tf-036",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform 1.5+의 check 블록과 precondition/postcondition의 차이와 사용 사례를 설명하라.",
+    "answer": "precondition은 리소스 생성 전 입력값 검증, postcondition은 생성 후 결과값 검증. check 블록은 리소스와 독립적으로 인프라 상태를 검증하며 실패해도 apply를 중단하지 않고 경고만 표시",
+    "explanation": "precondition: variable이나 data source 값이 기대 조건을 만족하는지 리소스 생성 전에 확인. postcondition: 리소스 생성 후 결과(예: IP 주소가 할당되었는지)를 확인. check: 인프라의 전반적 상태를 검증(예: SSL 인증서 만료 30일 전 경고). check는 apply를 실패시키지 않아 모니터링 용도로 사용한다.",
+    "seniorTip": "실무 활용 예시: 1) precondition: variable.environment가 'dev' 또는 'prod'인지 검증. 잘못된 값이면 plan 단계에서 명확한 에러 메시지. 2) postcondition: RDS 생성 후 endpoint가 할당되었는지 확인. 3) check: SSL 인증서의 만료일이 30일 이내인지 매 plan마다 검사하여 경고. 4) check + data source: 외부 API 헬스체크, DNS 레코드 존재 여부 확인. 니콘내콘에서 Terraform plan을 정기적으로 돌린다면, check 블록으로 '인증서 만료 임박', '보안 그룹 0.0.0.0/0 열림' 같은 컴플라이언스 검사를 자동화할 수 있다.",
+    "deepDive": "check 블록이 실패해도 apply가 성공하는 이유는? → check는 assertion이 아니라 observation. 인프라 변경과 무관하게 상태만 확인하므로, 실패가 인프라를 불안정하게 만들지 않음. → precondition vs variable validation의 차이는? → variable validation은 변수 선언부에서 값 범위를 제한. precondition은 리소스 컨텍스트에서 여러 변수/data source를 조합한 복합 조건 검증 가능. → check를 CI에서 활용하는 방법은? → terraform plan의 exit code와 별개로 check 실패를 파싱하여 Slack 알림. 정기적인 drift 검사와 함께 실행하면 인프라 컴플라이언스 자동화.",
+    "tags": [
+      "check",
+      "precondition",
+      "postcondition",
+      "validation",
+      "compliance"
+    ]
+  },
+  {
+    "id": "tf-037",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform 1.5+의 import 블록과 기존 terraform import CLI 명령의 핵심 차이는?",
+    "options": [
+      "import 블록은 CLI 명령보다 느리다",
+      "import 블록은 plan에서 미리 확인 가능하고, 코드로 관리되어 팀 리뷰가 가능하며, 여러 리소스를 한 번에 import할 수 있다",
+      "CLI terraform import는 더 이상 사용할 수 없다",
+      "import 블록은 state 파일을 수정하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "기존 CLI import: 리소스를 하나씩 state에 추가하며, plan 없이 바로 state를 수정. 코드 리뷰가 불가능하고, 여러 리소스를 스크립트로 반복해야 함. import 블록(1.5+): .tf 파일에 import { to = ..., id = ... }를 선언하고 plan으로 미리 확인 후 apply. Git에 커밋되어 팀 리뷰 가능하고, apply 후 import 블록을 제거하면 된다.",
+    "seniorTip": "import 블록 실무 워크플로우: 1) 콘솔에서 만든 리소스의 ID 확인. 2) .tf에 resource 블록 작성(빈 상태라도 OK). 3) import { to = aws_s3_bucket.logs, id = \"my-log-bucket\" } 추가. 4) terraform plan — import 결과와 코드 차이를 확인. 5) 코드를 실제 상태에 맞게 조정하여 plan이 'No changes'가 될 때까지 반복. 6) apply 후 import 블록 제거. terraform plan -generate-config-out=generated.tf 옵션(실험적)으로 코드 자동 생성도 시도 가능. 니콘내콘에서 콘솔로 만든 리소스를 Terraform으로 전환할 때 이 워크플로우를 사용하자.",
+    "deepDive": "import 후 plan에서 update가 수십 개 나오면 어떻게 접근하나? → 대부분 기본값과 실제 값의 차이. ignore_changes로 불필요한 속성을 무시하되, 최소한만 사용. 중요한 차이는 코드를 수정하여 반영. → for_each로 만든 리소스를 import하려면? → import { to = aws_iam_user.users[\"alice\"], id = \"alice\" }처럼 키를 지정. → 대규모 import를 자동화하는 방법은? → terraformer(오픈소스)가 AWS 리소스를 스캔하여 .tf와 state를 자동 생성. 하지만 생성된 코드의 품질이 낮아 수동 정리가 필요.",
+    "tags": [
+      "import-block",
+      "terraform-import",
+      "migration",
+      "existing-infra",
+      "code-generation"
+    ]
+  },
+  {
+    "id": "tf-038",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform workspace와 디렉토리 분리 방식을 실무 관점에서 비교하고, 어떤 상황에서 각각을 선택해야 하는지 설명하라.",
+    "answer": "workspace는 같은 코드로 여러 state를 관리하지만 환경별 차이 표현이 어렵고 실수 위험이 큼. 디렉토리 분리는 환경별 명시적 코드/설정으로 안전하지만 코드 중복이 발생할 수 있음",
+    "explanation": "workspace: terraform workspace select prod → 같은 코드에서 prod state를 사용. 장점은 코드 중복 없음. 단점은 환경별 차이(인스턴스 크기, replicas 등)를 terraform.workspace 조건문으로 처리해야 해 코드가 복잡해짐. 실수로 잘못된 workspace에서 apply하면 prod를 날릴 수 있음. 디렉토리 분리: environments/dev/, environments/prod/에 각각 별도 코드와 tfvars. 코드 중복이 있지만 환경별 차이가 명확하고 안전하다.",
+    "seniorTip": "실무 권장: 1) 환경(dev/prod) 분리 → 디렉토리 분리가 안전. 특히 prod는 별도 AWS 계정 + 별도 디렉토리 + 별도 CI 파이프라인. 2) workspace가 적합한 경우: 같은 구조의 인프라를 여러 고객/테넌트에 제공할 때(SaaS). 3) Terragrunt를 사용하면 디렉토리 분리의 코드 중복을 해결 — 공통 모듈을 참조하면서 환경별 변수만 override. 니콘내콘의 2 AWS 계정(dev/prod) 구조에서는 디렉토리 분리 + 공통 modules/가 최적이다. workspace를 사용하면 terraform workspace select를 잊어버리고 잘못된 환경에 apply하는 사고가 실제로 발생한다.",
+    "deepDive": "Terragrunt가 코드 중복을 줄이는 방법은? → terragrunt.hcl에서 terraform { source = '../../modules/eks' }로 모듈을 참조하고, inputs = { instance_type = 't3.large' }로 환경별 변수만 override. → Terraform Cloud의 workspace와 CLI workspace의 차이는? → Terraform Cloud workspace는 독립적인 실행 환경 + 변수 + 권한 관리. CLI workspace는 단순히 state 파일만 분리. → workspace에서 prod를 보호하는 방법은? → CI에서 workspace 이름을 branch와 매핑하고, main branch만 prod workspace에 apply 허용. 하지만 이런 보호장치를 구축할 바에 디렉토리 분리가 더 간단하고 안전.",
+    "tags": [
+      "workspace",
+      "directory-structure",
+      "environment-separation",
+      "terragrunt",
+      "safety"
+    ]
+  },
+  {
+    "id": "tf-039",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform 모듈의 버전 관리와 breaking change를 안전하게 배포하는 방법을 설명하라.",
+    "answer": "모듈 소스에 ?ref=v1.0.0으로 버전 고정, SemVer로 변경 수준 명시, breaking change는 메이저 버전 업. 소비자가 준비되면 버전을 올리는 점진적 마이그레이션",
+    "explanation": "모듈 버전 관리: 1) Git tag로 버전 관리 — source = \"git::https://github.com/org/modules.git//eks?ref=v2.0.0\". 2) Terraform Registry 사용 시 version = \"~> 2.0\". SemVer 규칙: Major(breaking change), Minor(새 기능, 하위 호환), Patch(버그 수정). breaking change 예: variable 이름 변경, output 제거, 리소스 구조 변경.",
+    "seniorTip": "Breaking change 안전 배포 전략: 1) 새 variable을 추가하되 default 값을 설정하여 기존 소비자가 영향받지 않도록. 2) 변수명 변경 시 구/신 변수를 모두 유지하고 deprecation 경고(validation + error message). 3) moved 블록으로 리소스 이름/경로 변경 시 state 마이그레이션 자동화. 4) CHANGELOG.md에 breaking change를 명확히 기록. 5) dev 환경에서 먼저 새 버전 적용 후 prod에 전파. 니콘내콘 17개 커스텀 모듈에 이 패턴을 적용하면, 한 모듈의 변경이 다른 모듈을 깨뜨리는 것을 방지할 수 있다.",
+    "deepDive": "moved 블록으로 모듈 내 리소스 이름을 변경하면? → moved { from = aws_instance.old, to = aws_instance.new }로 state에서 자동으로 이름 변경. destroy → create 없이 이름만 변경됨. → 모듈의 source를 로컬 경로에서 Git으로 전환할 때 주의점은? → 로컬 경로는 항상 최신 코드를 사용하지만, Git은 ref로 고정된 버전 사용. 전환 시 terraform init -upgrade 필요. → 모듈 호환성을 자동으로 테스트하는 방법은? → CI에서 각 소비자 환경의 terraform plan을 자동 실행하여 새 모듈 버전과의 호환성 검증. Terraform test 프레임워크(.tftest.hcl)로 모듈 단위 테스트도 가능.",
+    "tags": [
+      "module-versioning",
+      "semver",
+      "breaking-change",
+      "moved-block",
+      "migration"
+    ]
+  },
+  {
+    "id": "tf-040",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform의 kubernetes provider와 helm provider를 사용하여 EKS에 리소스를 배포할 때의 패턴과 주의점을 설명하라.",
+    "answer": "kubernetes/helm provider로 EKS 클러스터에 K8s 리소스와 Helm 차트를 Terraform으로 관리 가능. 하지만 EKS 클러스터가 아직 없는 상태에서 provider가 인증 실패하는 chicken-and-egg 문제에 주의",
+    "explanation": "provider \"kubernetes\" { host = aws_eks_cluster.main.endpoint, token = data.aws_eks_cluster_auth.main.token, cluster_ca_certificate = base64decode(aws_eks_cluster.main.certificate_authority[0].data) }. 문제: EKS 클러스터를 같은 Terraform 코드에서 만들면, 클러스터가 존재하기 전에 kubernetes provider가 초기화를 시도하여 실패할 수 있다.",
+    "seniorTip": "해결 패턴: 1) 2단계 apply: 먼저 EKS 클러스터만 apply(terraform apply -target=module.eks), 그 다음 전체 apply. 자동화하기 어려움. 2) 별도 state로 분리: eks-cluster state와 eks-addons state를 분리. addons state에서 data source로 클러스터 정보 조회. 이 방식이 가장 깔끔. 3) kubernetes provider 대신 ArgoCD에 K8s 리소스 관리를 위임: Terraform은 인프라(EKS, VPC)만, K8s 리소스(Deployment, Service)는 ArgoCD가 담당. 이것이 니콘내콘의 현재 구조(Terraform → EKS, ArgoCD → 179개 서비스)와 일치하며 가장 권장되는 패턴이다. 4) Helm provider로 ALB Controller, ExternalDNS 같은 인프라성 Helm 차트만 Terraform으로 관리하는 하이브리드도 일반적.",
+    "deepDive": "kubernetes provider가 인증 실패하는 정확한 시점은? → terraform init 시에는 provider를 다운로드만 함. plan 시 provider가 초기화되면서 EKS endpoint에 연결을 시도. 클러스터가 없으면 이 시점에 실패. → Helm provider로 설치한 차트를 ArgoCD로 마이그레이션하려면? → Helm release를 ArgoCD Application으로 전환: 1) ArgoCD에 같은 차트를 등록. 2) Terraform에서 helm_release 리소스를 state rm. 3) ArgoCD가 기존 릴리스를 adopt. → EKS 클러스터 업그레이드 시 kubernetes provider 토큰이 만료되면? → aws_eks_cluster_auth data source의 토큰은 15분 유효. 장시간 apply 중 만료되면 K8s 리소스 배포가 실패. exec 기반 인증(aws eks get-token)을 사용하면 자동 갱신.",
+    "tags": [
+      "kubernetes-provider",
+      "helm-provider",
+      "eks",
+      "chicken-and-egg",
+      "argocd-integration"
+    ]
   }
 ]

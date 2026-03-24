@@ -496,5 +496,305 @@
       "api-contract",
       "partner-integration"
     ]
+  },
+  {
+    "id": "nestjs-026",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AsyncLocalStorage가 NestJS에서 요청 추적(request tracing)에 필수적인 이유를 설명하고, 어떤 비동기 패턴에서 컨텍스트가 유실되는지 구체적으로 설명하라.",
+    "answer": "AsyncLocalStorage는 비동기 호출 체인 전체에 걸쳐 requestId, userId 등의 컨텍스트를 함수 인자 없이 전파한다. EventEmitter의 수동 리스너 등록, Worker Threads, native addon 콜백 등에서 컨텍스트가 유실될 수 있다.",
+    "explanation": "기존 방식(함수 인자로 requestId를 넘기기)은 모든 함수 시그니처를 오염시킨다. AsyncLocalStorage.run()으로 시작하면 그 이후의 모든 Promise, setTimeout, setImmediate 체인에서 als.getStore()로 같은 컨텍스트에 접근할 수 있다. 니콘내콘의 LoggerInterceptor가 requestId를 자동 주입하는 것이 바로 이 원리다.",
+    "seniorTip": "컨텍스트 유실 시나리오: 1) EventEmitter에서 .on()으로 등록한 리스너는 등록 시점이 아닌 emit 시점의 컨텍스트를 사용 — AsyncResource.bind()로 감싸야 한다. 2) 네이티브 C++ 애드온(sharp, bcrypt 등)의 콜백은 async_hooks를 통하지 않으므로 컨텍스트가 유실될 수 있다. 3) Worker Threads로 작업을 위임하면 별도 스레드이므로 컨텍스트가 전파되지 않는다. 4) pool.query() 같은 DB 커넥션 풀은 내부적으로 비동기 리소스를 올바르게 추적하는 드라이버를 사용해야 한다. mysql2는 지원하지만 일부 구형 드라이버는 지원하지 않는다.",
+    "deepDive": "왜 EventEmitter.on() 리스너에서 AsyncLocalStorage 컨텍스트가 유실될까? → .on()으로 등록하는 시점과 emit()으로 실행되는 시점의 async context가 다르기 때문이다. emit()은 호출자의 context에서 실행된다. 그러면 어떻게 해결하나? → AsyncResource.bind(listener)로 등록 시점의 컨텍스트를 바인딩하거나, Node.js 20+에서는 EventEmitterAsyncResource 클래스를 사용한다. 그러면 니콘내콘의 RequestContext(AsyncLocalStorage 기반)에서 이 문제가 발생할 수 있는 실제 상황은? → SQS 메시지 처리 시 EventEmitter2로 내부 이벤트를 발행하고 다른 서비스가 구독하는 패턴에서, 구독 리스너의 로그에 requestId가 빠지거나 다른 요청의 requestId가 출력될 수 있다. 이는 장애 추적 시 심각한 혼란을 야기한다.",
+    "tags": [
+      "async-local-storage",
+      "request-context",
+      "tracing",
+      "event-emitter",
+      "context-propagation"
+    ]
+  },
+  {
+    "id": "nestjs-027",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "니콘내콘의 createDynamicModule() + @RequiresModules() 패턴이 해결하는 핵심 문제는?",
+    "options": [
+      "코드 가독성을 높이기 위해 데코레이터로 의존성을 명시한다",
+      "모듈 레벨에서 불필요한 의존성을 제거하여 Lambda/컨테이너의 cold start를 줄이고, 앱별로 필요한 모듈만 로드한다",
+      "순환 의존성을 자동으로 감지하여 에러를 방지한다",
+      "TypeORM 엔티티를 동적으로 로드하여 DB 연결 수를 줄인다"
+    ],
+    "answer": 1,
+    "explanation": "Turborepo 모노레포에서 apps/(apis, consumers, crons 등) 각 앱은 필요한 모듈만 다르다. createDynamicModule()은 @RequiresModules()로 선언된 의존성만 동적으로 imports에 추가한다. 예를 들어, cron 앱은 SQS producer만 필요하고 consumer는 불필요하다. 이 패턴으로 각 앱이 로드하는 모듈 수를 최소화하면 DI 컨테이너 초기화 시간과 메모리 사용량이 줄어든다.",
+    "seniorTip": "이 패턴의 진짜 가치는 179개 서비스를 운영하는 환경에서 드러난다. 모든 공통 모듈을 하나의 CommonModule에 때려넣으면 cron 앱이 HTTP 관련 모듈, WebSocket 모듈까지 로드하게 된다. 140+ ECR repos에서 각 컨테이너 이미지의 시작 시간이 500ms씩만 줄어도 전체 배포 시간에 큰 차이가 난다. @RequiresModules()는 본질적으로 \"이 서비스는 이 모듈들이 있어야 동작한다\"는 선언적 의존성 그래프를 만드는 것이다. 이는 packages/(common-core, common-domain, common-infra, common-service) 레이어 구조와 맞물려 의존성 방향을 강제한다.",
+    "deepDive": "왜 NestJS의 기본 DynamicModule.forRoot() 패턴만으로는 이 문제를 해결할 수 없을까? → forRoot()는 설정값 주입에 초점이지, 모듈 자체의 포함/제외를 결정하지 않는다. 그러면 createDynamicModule()은 내부적으로 어떻게 동작할까? → Reflect.getMetadata()로 @RequiresModules() 데코레이터에서 선언한 모듈 목록을 읽고, DynamicModule의 imports 배열을 런타임에 구성한다. 그러면 이 패턴의 위험성은? → 모듈 간 암묵적 의존성이 @RequiresModules()에 누락되면 런타임에 Provider not found 에러가 발생한다. 따라서 각 앱의 통합 테스트에서 DI 컨테이너가 정상적으로 부트스트랩되는지 반드시 검증해야 한다.",
+    "tags": [
+      "dynamic-module",
+      "tree-shaking",
+      "cold-start",
+      "monorepo",
+      "module-architecture"
+    ]
+  },
+  {
+    "id": "nestjs-028",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘이 sqs-consumer 라이브러리 대신 커스텀 long-polling SQS 컨슈머를 직접 구현한 이유와 trade-off를 설명하라.",
+    "answer": "sqs-consumer는 내부적으로 ReceiveMessage를 재귀 호출하며, 에러 처리/재시도/graceful shutdown 제어가 제한적이다. 커스텀 구현으로 visibility timeout 연장, 배치 크기 동적 조절, shutdown 시 메시지 처리 완료 대기 등을 세밀하게 제어할 수 있다.",
+    "explanation": "sqs-consumer는 편리하지만 블랙박스다. 메인 백엔드처럼 메시지 처리가 비즈니스 크리티컬한 경우, long-polling의 WaitTimeSeconds, MaxNumberOfMessages, VisibilityTimeout을 직접 제어해야 한다. 특히 K8s Pod 종료 시 SIGTERM을 받고 현재 처리 중인 메시지를 완료한 후 polling을 중단하는 graceful shutdown이 핵심이다.",
+    "seniorTip": "커스텀 SQS 컨슈머 구현 포인트: 1) while(isRunning) 루프에서 ReceiveMessage → 처리 → DeleteMessage 사이클. 2) isRunning 플래그를 SIGTERM 핸들러에서 false로 전환. 3) 처리 중인 메시지는 Promise.allSettled()로 완료 대기. 4) VisibilityTimeout이 처리 시간보다 짧으면 같은 메시지가 다른 컨슈머에게 재전달됨 → changeMessageVisibility()로 동적 연장. 5) @SqsMessageHandler(queueName, DtoClass) 데코레이터로 핸들러를 자동 등록하는 패턴은 NestJS의 DiscoveryService + Reflect.getMetadata()로 구현한다.",
+    "deepDive": "왜 SQS long-polling의 WaitTimeSeconds를 20초로 설정하는 것이 일반적일까? → SQS는 short polling(즉시 응답)과 long polling(메시지 올 때까지 대기) 두 모드가 있다. short polling은 빈 응답이 많아 API 호출 비용이 높다. WaitTimeSeconds=20이면 메시지가 없을 때 최대 20초까지 대기하므로 호출 횟수가 급감한다. 그러면 20초 동안 블로킹되는 건 괜찮은가? → Node.js에서 AWS SDK의 ReceiveMessage는 HTTP 요청이므로 이벤트 루프를 블로킹하지 않는다. 20초간 대기하면서도 다른 비동기 작업은 정상 처리된다. 그러면 graceful shutdown 시 20초를 기다려야 하는 문제는? → AbortController를 ReceiveMessage의 AbortSignal로 전달하면 즉시 중단할 수 있다. K8s terminationGracePeriodSeconds를 30초로 설정하면 20초 polling 대기 + 10초 메시지 처리 완료에 충분하다.",
+    "tags": [
+      "sqs",
+      "long-polling",
+      "custom-consumer",
+      "graceful-shutdown",
+      "message-processing"
+    ]
+  },
+  {
+    "id": "nestjs-029",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "PreventDoubleRequestInterceptor가 Redis 기반 멱등성 대신 DB(ER_DUP_ENTRY) 기반 멱등성을 선택한 가장 근본적인 이유는?",
+    "options": [
+      "Redis보다 DB가 더 빠르기 때문에",
+      "Redis SET NX는 TTL 만료 후 같은 키가 재사용될 수 있고, Redis 장애 시 멱등성이 깨지지만, DB unique constraint는 영구적이고 트랜잭션과 함께 원자적으로 보장된다",
+      "NestJS에서 Redis 연동이 복잡하기 때문에",
+      "DB 기반이 코드량이 적기 때문에"
+    ],
+    "answer": 1,
+    "explanation": "Redis SET NX + EX는 TTL이 만료되면 같은 요청 UUID로 다시 처리될 수 있다. 또한 Redis가 failover되거나 메모리 eviction이 발생하면 키가 사라져 중복 처리가 허용된다. DB에 request UUID를 unique key로 INSERT하고 ER_DUP_ENTRY를 catch하면, 데이터가 영구 저장되고 DB 트랜잭션 내에서 비즈니스 로직과 함께 원자적으로 처리된다.",
+    "seniorTip": "결제/쿠폰 발급 같은 금전 관련 연산에서는 \"best-effort 멱등성\"(Redis)이 아니라 \"guaranteed 멱등성\"(DB)이 필요하다. 패턴: 1) 클라이언트가 요청에 X-Request-Id(UUID) 헤더를 포함. 2) Interceptor에서 UUID를 추출하여 processed_requests 테이블에 INSERT. 3) ER_DUP_ENTRY → 이미 처리된 요청이므로 이전 결과를 반환. 4) INSERT 성공 → 비즈니스 로직 실행. 주의: processed_requests 테이블이 무한히 커지므로 partition pruning 또는 주기적 삭제가 필요하다.",
+    "deepDive": "왜 Redis의 멱등성이 \"best-effort\"인가? → Redis는 기본적으로 메모리 DB이므로 maxmemory 도달 시 eviction 정책에 의해 멱등성 키가 삭제될 수 있다. AOF로 영속화해도 Redis 재시작 시 일부 데이터가 유실될 수 있다(appendfsync everysec의 1초 갭). 그러면 DB 기반의 단점은? → 매 요청마다 DB INSERT가 발생하여 부하가 증가하고, 테이블이 빠르게 커진다. 그러면 이 trade-off를 어떻게 관리하나? → 1) 멱등성이 필수인 결제/발급 API에만 적용하고 조회 API에는 적용하지 않는다. 2) processed_requests 테이블은 날짜 기반 파티션으로 관리하여 오래된 레코드를 효율적으로 삭제한다. 3) UUID 컬럼에 인덱스를 걸되, INSERT IGNORE 또는 ON DUPLICATE KEY UPDATE를 사용하면 ER_DUP_ENTRY를 exception이 아닌 정상 흐름으로 처리할 수 있다.",
+    "tags": [
+      "idempotency",
+      "interceptor",
+      "duplicate-prevention",
+      "database",
+      "financial-operations"
+    ]
+  },
+  {
+    "id": "nestjs-030",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘의 PublisherStrategyService처럼 Strategy 패턴으로 8개 이상의 쿠폰 발행사(BGF, COOP, Galaxia 등)를 관리할 때, NestJS DI에서 전략을 동적으로 선택하는 구현 방법과 새 발행사 추가 시 OCP(개방-폐쇄 원칙)를 지키는 방법을 설명하라.",
+    "answer": "각 발행사별 Publisher 클래스를 공통 인터페이스(추상 클래스)로 구현하고, NestJS의 ModuleRef.get() 또는 Map<PublisherType, Publisher>를 DI로 주입받아 런타임에 발행사 타입으로 전략을 선택한다. 새 발행사 추가 시 기존 코드를 수정하지 않고 새 클래스만 추가하면 된다.",
+    "explanation": "Strategy 패턴 구현: 1) abstract class CouponPublisher { abstract publish(coupon: Coupon): Promise<PublishResult> }. 2) BgfPublisher, CoopPublisher, GalaxiaPublisher 등이 이를 상속. 3) PublisherStrategyService에서 Map<string, CouponPublisher>를 생성하여 publisherType으로 조회. 새 발행사 추가 시 새 클래스 작성 + Map에 등록만 하면 된다.",
+    "seniorTip": "NestJS에서 전략 패턴 구현 3가지 방식: 1) useFactory로 Map 주입 — providers에서 { provide: \"PUBLISHER_MAP\", useFactory: (bgf, coop) => new Map([[\"BGF\", bgf], [\"COOP\", coop]]), inject: [BgfPublisher, CoopPublisher] }. 2) DiscoveryService로 자동 수집 — 모든 @Injectable() 클래스 중 특정 데코레이터(@Publisher(\"BGF\"))가 붙은 것을 자동으로 Map에 등록. 3) ModuleRef.get()으로 동적 조회. 방식 2가 가장 OCP 친화적이다 — 새 Publisher 클래스에 @Publisher(\"NEW_TYPE\")만 붙이면 자동 등록된다. 8개 이상 되면 if/else나 switch는 유지보수 지옥이다.",
+    "deepDive": "왜 if/else 분기 대신 Strategy 패턴을 써야 할까? → 발행사가 8개일 때 if/else는 8개 분기가 되고, 각 분기의 로직이 수십 줄이면 함수가 수백 줄이 된다. 새 발행사 추가 시 기존 함수를 수정해야 하므로 OCP 위반이고, 테스트도 어려워진다. 그러면 DiscoveryService 기반 자동 등록은 어떻게 동작하나? → NestJS의 DiscoveryService.getProviders()로 모든 프로바이더를 순회하며, Reflect.getMetadata(\"PUBLISHER_TYPE\", provider.metatype)으로 데코레이터 메타데이터를 읽어 Map에 등록한다. 이 로직은 onModuleInit() 훅에서 실행한다. 그러면 런타임에 존재하지 않는 publisherType이 요청되면? → Map.get()이 undefined를 반환하므로 PublisherNotFoundException을 throw하고, 이를 모니터링하여 누락된 전략 구현을 빠르게 감지한다.",
+    "tags": [
+      "strategy-pattern",
+      "design-pattern",
+      "ocp",
+      "discovery-service",
+      "publisher"
+    ]
+  },
+  {
+    "id": "nestjs-031",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "니콘내콘의 MysqlLeaderElectionService가 Redis 대신 MySQL GET_LOCK()을 사용하여 cron 중복 실행을 방지하는 이유는?",
+    "options": [
+      "MySQL이 Redis보다 빠르기 때문에",
+      "Redis는 이미 캐시 용도로 사용 중이라 부하를 피하기 위해",
+      "Redis의 분산 락(Redlock)은 clock drift와 네트워크 파티션에서 안전하지 않지만, MySQL GET_LOCK()은 단일 DB 인스턴스에서 원자적이고 연결이 끊기면 자동 해제되어 cron 중복 방지에 더 적합하다",
+      "MySQL GET_LOCK()이 코드가 더 간결하기 때문에"
+    ],
+    "answer": 2,
+    "explanation": "Redis 단일 인스턴스의 SET NX는 Redis 장애 시 락이 사라진다. Redlock(5개 Redis 인스턴스)은 Martin Kleppmann이 지적한 대로 clock drift, 프로세스 pause(GC), 네트워크 지연에서 안전성을 보장하지 못한다. MySQL GET_LOCK()은 이미 사용 중인 MySQL에서 추가 인프라 없이 사용 가능하고, 클라이언트 연결이 끊기면 락이 자동 해제되어 데드락이 발생하지 않는다.",
+    "seniorTip": "MySQL GET_LOCK(\"cron_job_name\", timeout_seconds) 패턴: 1) cron 실행 시 GET_LOCK(\"settlement_batch\", 0) 호출. 2) 반환값 1이면 락 획득 성공 → 작업 실행. 3) 반환값 0이면 다른 Pod가 이미 실행 중 → 스킵. 4) 작업 완료 후 RELEASE_LOCK(\"settlement_batch\"). 5) Pod가 비정상 종료되면 MySQL 연결이 끊기면서 자동 해제. 주의: GET_LOCK()은 세션(연결) 기반이므로, 커넥션 풀에서 연결이 반환되면 락이 해제될 수 있다. 전용 연결을 유지하거나 queryRunner를 사용해야 한다.",
+    "deepDive": "왜 커넥션 풀에서 GET_LOCK()이 문제가 될 수 있나? → TypeORM의 커넥션 풀은 쿼리 실행 후 연결을 풀에 반환한다. GET_LOCK()을 실행한 연결이 반환되고 다른 쿼리가 그 연결을 재사용하면, 락이 의도치 않게 유지되거나 해제될 수 있다. 그러면 어떻게 해결하나? → queryRunner.connect()로 전용 연결을 획득하고, 작업 완료 후 RELEASE_LOCK() + queryRunner.release()를 호출한다. 이 연결은 커넥션 풀에서 분리되어 전체 작업 동안 유지된다. 그러면 이 방식의 단점은? → 전용 연결 하나가 cron 실행 시간 동안 점유되므로, 커넥션 풀 크기를 고려해야 한다. 풀 크기가 10인데 cron이 5개 동시에 실행되면 나머지 API 요청이 5개 연결만 사용할 수 있다.",
+    "tags": [
+      "leader-election",
+      "mysql-lock",
+      "cron-dedup",
+      "distributed-systems",
+      "redlock"
+    ]
+  },
+  {
+    "id": "nestjs-032",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 SQL 쿼리에 주석(comment)을 자동 삽입하여 프로덕션 디버깅을 개선하는 patchDataSourceWithStackComment 패턴의 구현 원리와 효과를 설명하라.",
+    "answer": "TypeORM DataSource의 query() 메서드를 monkey-patch하여 실행되는 SQL 앞에 호출 스택(파일명:라인)을 주석으로 삽입한다. Datadog APM이나 MySQL slow query log에서 어떤 코드가 해당 쿼리를 발생시켰는지 즉시 확인할 수 있다.",
+    "explanation": "원본 query()를 래핑하여 SQL 문자열 앞에 /* UserService.findById:45 */ 같은 주석을 추가한다. MySQL은 주석을 무시하므로 쿼리 실행에 영향이 없다. slow query log나 SHOW PROCESSLIST에서 주석이 함께 표시되어 느린 쿼리의 원인 코드를 바로 찾을 수 있다.",
+    "seniorTip": "구현 핵심: 1) new Error().stack에서 호출 스택을 파싱하여 NestJS 서비스의 파일명과 라인 번호를 추출. 2) node_modules 경로는 필터링하여 애플리케이션 코드만 남긴다. 3) SQL 주석은 /* */ 형식으로 삽입. 4) Datadog의 DB 모니터링에서 Query Samples를 볼 때 주석이 있으면 APM 트레이스와 DB 쿼리를 연결할 수 있다. 5) 성능 영향: Error().stack 생성이 약간의 오버헤드가 있으므로 개발/스테이징에만 활성화하거나, 샘플링(10% 요청에만 적용)하는 것도 방법이다.",
+    "deepDive": "왜 단순히 TypeORM의 logging: true 옵션만으로는 부족할까? → logging: true는 애플리케이션 로그에 쿼리를 출력하지만, DBA가 MySQL 서버 측에서 slow query log를 볼 때는 NestJS 로그에 접근할 수 없다. SQL 주석은 DB 서버 측에 남으므로 DBA와 백엔드 개발자가 동일한 정보를 공유할 수 있다. 그러면 Datadog과 어떻게 연동하나? → Datadog의 Database Monitoring은 MySQL의 performance_schema에서 쿼리를 수집한다. 주석이 포함된 쿼리 텍스트를 기반으로 APM 트레이스의 span과 매칭할 수 있어, 특정 API 엔드포인트가 어떤 slow query를 발생시키는지 end-to-end로 추적된다. 그러면 프로덕션에서 항상 켜둬도 되나? → 주석 자체의 오버헤드보다 Error().stack 파싱의 CPU 비용이 더 크다. V8의 Error.captureStackTrace()는 약 1-5us 정도 걸리므로, QPS가 높은 서비스에서는 샘플링하거나 tracing이 활성화된 요청에만 적용하는 것이 현실적이다.",
+    "tags": [
+      "sql-comments",
+      "debugging",
+      "datadog",
+      "slow-query",
+      "observability"
+    ]
+  },
+  {
+    "id": "nestjs-033",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 TypeORM으로 여러 데이터베이스(ncnc_pro, payment, published_coupon 등)에 연결할 때의 설정 방법과, 크로스 데이터베이스 트랜잭션이 가능한지 설명하라.",
+    "answer": "TypeOrmModule.forRoot()를 name 옵션으로 여러 번 호출하여 다중 DataSource를 등록하고, @InjectRepository(Entity, \"payment\")로 특정 DB의 Repository를 주입한다. 크로스 데이터베이스 트랜잭션은 같은 MySQL 서버 내에서만 가능하고, 서로 다른 서버 간에는 불가능하다.",
+    "explanation": "설정: TypeOrmModule.forRoot({ name: \"payment\", host: \"payment-db\", database: \"payment\", entities: [PaymentEntity] }). 사용: @InjectDataSource(\"payment\") paymentDS: DataSource. 같은 MySQL 서버에 있는 다른 데이터베이스라면 하나의 연결에서 ncnc_pro.users JOIN payment.transactions 같은 크로스 DB 쿼리와 트랜잭션이 가능하다.",
+    "seniorTip": "다중 DB 운영 실무 포인트: 1) 각 DB별 커넥션 풀 크기를 별도로 설정 — payment DB는 중요하므로 풀을 더 크게. 2) health check에서 모든 DB 연결 상태를 확인. 3) 마이그레이션도 DB별로 별도 실행 — migration:run --dataSource payment. 4) 크로스 DB 트랜잭션이 정말 필요한 경우, 같은 MySQL 서버에 여러 database를 두고 하나의 DataSource로 연결하면 가능하다. 5) 서로 다른 MySQL 서버 간에는 분산 트랜잭션(XA)이 필요하지만, 실무에서는 Saga 패턴이나 이벤트 기반 eventual consistency를 선호한다.",
+    "deepDive": "왜 니콘내콘은 하나의 DB가 아닌 여러 DB(ncnc_pro, payment, published_coupon, push)로 분리했을까? → 도메인별 데이터 격리와 독립적 스케일링이 목적이다. payment DB는 금전 관련이므로 더 높은 IOPS와 백업 주기가 필요하고, push DB는 일시적 데이터이므로 상대적으로 낮은 사양으로 충분하다. 그러면 분리된 DB 간의 데이터 정합성은 어떻게 보장하나? → 동기적 정합성은 포기하고, SQS 메시지를 통한 eventual consistency를 사용한다. 예: 결제 완료 → payment DB에 기록 → SQS 메시지 발행 → published_coupon DB에 발급 기록. 그러면 SQS 메시지가 유실되면? → DLQ + 정산 배치에서 payment 테이블과 published_coupon 테이블을 대조하여 불일치를 감지하는 reconciliation 프로세스가 안전장치다.",
+    "tags": [
+      "multi-database",
+      "typeorm",
+      "cross-database",
+      "transaction",
+      "data-isolation"
+    ]
+  },
+  {
+    "id": "nestjs-034",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS 모듈 순환 의존성(Circular Dependency)이 실제로 발생하는 가장 흔한 패턴은?",
+    "options": [
+      "Controller가 두 개의 Service를 동시에 주입받을 때",
+      "UserModule의 UserService가 OrderModule의 OrderService를 주입받고, OrderService가 UserService를 주입받아 양방향 의존이 생길 때",
+      "하나의 Module에 Provider가 너무 많을 때",
+      "Guard와 Interceptor가 같은 Service를 주입받을 때"
+    ],
+    "answer": 1,
+    "explanation": "도메인 서비스 간 양방향 호출이 순환 의존성의 가장 흔한 원인이다. UserService.getUserOrders()가 OrderService를 호출하고, OrderService.getOrderUser()가 UserService를 호출하면, UserModule <-> OrderModule 순환이 발생한다.",
+    "seniorTip": "구조적 해결 패턴 3가지: 1) 공통 모듈 추출 — UserService와 OrderService 모두 필요한 로직을 UserOrderSharedModule로 분리. 2) 이벤트 기반 — OrderService가 직접 UserService를 호출하는 대신 EventEmitter2로 \"order.created\" 이벤트를 발행하고, UserModule이 구독. imports 의존이 단방향이 된다. 3) 인터페이스(추상 클래스) 주입 — UserService가 구체 OrderService가 아닌 IOrderQueryService 인터페이스에 의존하도록 DIP 적용. 니콘내콘의 패키지 구조(common-core → common-domain → common-service)가 이 방향을 강제하는 아키텍처다.",
+    "deepDive": "왜 forwardRef()만으로 해결하면 안 되나? → forwardRef()는 DI 컨테이너가 모듈 초기화 순서를 우회하게 해주지만, 논리적 순환 의존은 그대로 남는다. 결국 한쪽 변경이 양쪽 모두에 영향을 주어 테스트와 배포가 어려워진다. 그러면 이벤트 기반으로 바꾸면 디버깅이 어려워지지 않나? → 맞다. 동기 호출은 스택 트레이스로 추적이 쉽지만, 이벤트는 emit/on 사이의 연결이 코드에서 보이지 않는다. 이를 보완하려면 이벤트 핸들러에 명확한 네이밍과 문서화를 하고, OpenTelemetry 스팬으로 이벤트 체인을 추적해야 한다. 그러면 모노레포에서는 어떻게 방지하나? → Turborepo의 패키지 간 의존성 방향을 tsconfig.json의 references로 강제하고, eslint-plugin-import의 no-restricted-paths 규칙으로 역방향 import를 빌드 시점에 차단한다.",
+    "tags": [
+      "circular-dependency",
+      "module-architecture",
+      "event-driven",
+      "dip",
+      "monorepo"
+    ]
+  },
+  {
+    "id": "nestjs-035",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 Interceptor의 실행 순서를 제어하는 방법과, 여러 Interceptor가 겹칠 때의 동작을 설명하라. LoggerInterceptor와 CacheInterceptor가 동시에 적용된 경우의 실행 흐름은?",
+    "answer": "전역 Interceptor → 컨트롤러 레벨 → 메서드 레벨 순서로 적용되며, 각 Interceptor의 intercept() 내 next.handle() 호출을 기준으로 before/after 로직이 양파 껍질(onion) 구조로 실행된다.",
+    "explanation": "Interceptor가 [A, B] 순서로 등록되면: A.before → B.before → Handler → B.after → A.after 순서로 실행된다. 이는 Express 미들웨어와 유사한 onion 모델이다. next.handle()은 RxJS Observable을 반환하므로 pipe()로 응답을 변환하거나 tap()으로 사이드이펙트를 추가할 수 있다.",
+    "seniorTip": "실무 Interceptor 순서 설계: 1) LoggerInterceptor(전역) — 가장 바깥에서 전체 요청 시간 측정. 2) ResponseTransformInterceptor(전역) — 응답을 { data, statusCode } 형태로 래핑. 3) CacheInterceptor(메서드) — 캐시 히트 시 핸들러를 실행하지 않으므로 성능 이점. 순서가 중요한 이유: Logger가 Cache 안쪽에 있으면 캐시 히트 시 로그가 남지 않는다. 디버깅이 어려워질 수 있으므로 Logger는 항상 가장 바깥에 두자. 전역 등록은 app.useGlobalInterceptors() 순서 또는 APP_INTERCEPTOR 토큰의 등록 순서로 제어한다.",
+    "deepDive": "왜 NestJS Interceptor는 RxJS Observable 기반인가? → next.handle()이 Observable을 반환하므로 map(), tap(), timeout(), catchError() 같은 RxJS 연산자를 사용할 수 있다. 예를 들어 timeout(5000)으로 핸들러 실행 시간을 제한하거나, retry(3)으로 재시도 로직을 선언적으로 추가할 수 있다. 그러면 Promise 기반보다 장점이 있나? → Observable은 스트림을 다룰 수 있어 SSE(Server-Sent Events)나 파일 스트리밍 응답에서 중간 변환이 가능하다. 하지만 대부분의 REST API에서는 Observable의 이점이 크지 않아 lastValueFrom()으로 Promise로 변환하여 사용하는 경우도 많다. 그러면 APP_INTERCEPTOR 토큰으로 등록한 여러 Interceptor의 순서를 보장하는 방법은? → providers 배열에서의 등록 순서가 곧 실행 순서다. 명시적으로 순서를 관리하려면 INTERCEPTOR_ORDER 같은 상수를 정의하고 주석으로 문서화하는 것이 현실적이다.",
+    "tags": [
+      "interceptor",
+      "execution-order",
+      "rxjs",
+      "onion-model",
+      "logger"
+    ]
+  },
+  {
+    "id": "nestjs-036",
+    "category": "nestjs",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "NestJS에서 createParamDecorator()로 만든 커스텀 파라미터 데코레이터에 ValidationPipe를 적용하는 방법과, 적용하지 않으면 어떤 보안 문제가 생기는지 설명하라.",
+    "answer": "createParamDecorator의 두 번째 인자로 Pipe를 체이닝하거나, 데코레이터 내부에서 직접 validate() 함수를 호출한다. ValidationPipe 없이 커스텀 데코레이터를 사용하면 request에서 추출한 값이 검증 없이 비즈니스 로직에 전달되어 injection 공격에 노출될 수 있다.",
+    "explanation": "@CurrentUser() 데코레이터가 request.user를 그대로 반환하면, Guard에서 설정한 user 객체가 정확하므로 보통 문제없다. 하지만 @Query()나 @Param()을 래핑한 커스텀 데코레이터는 사용자 입력을 다루므로 ValidationPipe가 필수다. 예: @ApiQuery() 대신 커스텀 @PaginationParams()를 만들 때, 내부에서 PaginationDto를 plainToClass로 변환 후 validate()해야 한다.",
+    "seniorTip": "패턴: 1) 컨트롤러에서 @PaginationParams(new ValidationPipe({ transform: true })) pagination: PaginationDto처럼 Pipe를 인라인으로 전달. 2) 또는 데코레이터 내부에서 plainToInstance + validateSync를 수행하여 잘못된 값은 BadRequestException으로 즉시 거부. 3) NestJS의 applyDecorators()로 여러 데코레이터를 조합할 때도 UsePipes(ValidationPipe)를 포함시키는 것을 잊지 말자. 니콘내콘처럼 외부 파트너 API를 노출하는 경우, 입력 검증 누락은 직접적인 보안 취약점이다.",
+    "deepDive": "왜 NestJS의 ValidationPipe가 커스텀 파라미터 데코레이터에 자동 적용되지 않을까? → ValidationPipe는 @Body(), @Query(), @Param() 같은 NestJS 내장 데코레이터에 대해서만 메타데이터를 읽어 적용한다. createParamDecorator()로 만든 데코레이터는 NestJS가 해당 파라미터의 타입 정보를 읽을 수 있지만, 글로벌 파이프가 적용되는 시점에서 커스텀 데코레이터의 반환값은 이미 변환이 끝난 상태다. 그러면 어떻게 안전하게 처리하나? → 데코레이터 팩토리 패턴으로 ValidationPipe 적용을 강제하거나, 데코레이터 내부에서 class-transformer + class-validator를 직접 호출하여 반환 전에 검증을 완료한다.",
+    "tags": [
+      "custom-decorator",
+      "validation",
+      "param-decorator",
+      "security",
+      "pipe"
+    ]
+  },
+  {
+    "id": "nestjs-037",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS 라이프사이클 훅 중 onModuleInit()과 onApplicationBootstrap()의 실행 시점 차이는?",
+    "options": [
+      "동일한 시점에 실행되며 이름만 다르다",
+      "onModuleInit()은 해당 모듈의 의존성이 해결된 직후 실행되고, onApplicationBootstrap()은 모든 모듈이 초기화된 후 전체 앱이 준비된 시점에 실행된다",
+      "onModuleInit()은 HTTP 서버 시작 후, onApplicationBootstrap()은 HTTP 서버 시작 전에 실행된다",
+      "onApplicationBootstrap()이 먼저 실행되고 onModuleInit()이 나중에 실행된다"
+    ],
+    "answer": 1,
+    "explanation": "실행 순서: 모듈 A의 onModuleInit → 모듈 B의 onModuleInit → ... → 모든 모듈 초기화 완료 → 모듈 A의 onApplicationBootstrap → 모듈 B의 onApplicationBootstrap → app.listen(). onModuleInit은 자기 모듈 준비 시점, onApplicationBootstrap은 전체 앱 준비 시점이다.",
+    "seniorTip": "실무 활용 구분: 1) onModuleInit — DB 커넥션 체크, 캐시 워밍, 설정 검증 등 해당 모듈이 동작하기 위한 전제 조건 확인. 2) onApplicationBootstrap — SQS 컨슈머 시작, 스케줄러 활성화, WebSocket 게이트웨이 초기화 등 다른 모듈에 의존하는 초기화 로직. 3) onApplicationShutdown — graceful shutdown 시 역순으로 실행. SQS 폴링 중단 → 진행 중인 요청 완료 대기 → DB 연결 종료. 니콘내콘에서 DiscoveryService로 @SqsMessageHandler()를 수집하는 로직은 onModuleInit에서 실행하고, 실제 polling 시작은 onApplicationBootstrap에서 하는 것이 안전하다.",
+    "deepDive": "왜 SQS 컨슈머를 onModuleInit이 아닌 onApplicationBootstrap에서 시작해야 할까? → onModuleInit 시점에는 아직 다른 모듈이 초기화되지 않았을 수 있다. SQS 메시지를 처리하려면 다른 서비스(PaymentService, CouponService 등)가 준비되어 있어야 한다. onModuleInit에서 폴링을 시작하면 의존 서비스가 없어서 처리 실패 → 메시지가 DLQ로 빠지는 사고가 발생할 수 있다. 그러면 onApplicationBootstrap에서 시작해도 100% 안전한가? → 대부분 안전하지만, 외부 서비스(Redis, DB)의 연결이 아직 warmup 중일 수 있다. 이를 위해 readinessProbe가 통과한 후에만 K8s가 트래픽을 보내도록 설정하고, SQS 컨슈머도 readiness와 연동하는 것이 이상적이다.",
+    "tags": [
+      "lifecycle-hooks",
+      "onModuleInit",
+      "onApplicationBootstrap",
+      "initialization",
+      "sqs-consumer"
+    ]
+  },
+  {
+    "id": "nestjs-038",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 전역 Guard와 라우트 레벨 Guard의 차이, 그리고 메타데이터 리플렉션 패턴(@SetMetadata + Reflector)을 활용한 유연한 인증/인가 설계를 설명하라.",
+    "answer": "전역 Guard는 APP_GUARD로 등록하여 모든 요청에 적용되고, 라우트 레벨 Guard는 @UseGuards()로 특정 컨트롤러/메서드에 적용된다. Reflector로 메타데이터를 읽어 @Public() 엔드포인트는 인증을 건너뛰고, @Roles(\"admin\") 엔드포인트는 역할 검증을 추가하는 유연한 패턴이 가능하다.",
+    "explanation": "전역 Guard(APP_GUARD) 패턴: 기본적으로 모든 요청에 JWT 인증을 적용하고, @Public() 데코레이터가 있는 엔드포인트만 예외 처리한다. 이렇게 하면 인증이 필요한 새 엔드포인트에 @UseGuards()를 깜빡하는 실수를 방지할 수 있다. whitelist 방식보다 blacklist 방식이 보안상 안전하다.",
+    "seniorTip": "실무 인증/인가 아키텍처: 1) JwtAuthGuard(전역, APP_GUARD) — 모든 요청에 JWT 검증, @Public()이면 skip. 2) RolesGuard(전역, APP_GUARD) — @Roles() 메타데이터가 있으면 역할 검증, 없으면 pass. 3) OwnershipGuard(라우트 레벨) — 특정 리소스의 소유자만 접근 허용 (예: 자기 주문만 조회). 전역 Guard는 DI가 가능하려면 useClass 방식으로 등록해야 한다. app.useGlobalGuards()는 DI 컨테이너 밖이므로 다른 서비스 주입이 불가능하다.",
+    "deepDive": "왜 app.useGlobalGuards(new JwtAuthGuard())보다 APP_GUARD 토큰 등록이 더 좋은가? → app.useGlobalGuards()로 등록하면 NestJS DI 컨테이너 밖에서 인스턴스가 생성되므로 ConfigService, JwtService 같은 의존성을 주입받을 수 없다. APP_GUARD 토큰으로 providers에 등록하면 DI가 정상 작동한다. 그러면 전역 Guard가 여러 개일 때 실행 순서는? → providers 배열에서의 등록 순서대로 실행된다. JwtAuthGuard가 먼저 실행되어 인증을 하고, RolesGuard가 이어서 인가를 하는 순서가 보장되어야 한다. 그러면 Guard에서 false를 반환하면 이후 Guard는 실행되지 않는가? → 맞다. Guard가 false를 반환하거나 예외를 throw하면 파이프라인이 즉시 중단된다. JwtAuthGuard가 거부하면 RolesGuard는 실행되지 않는다.",
+    "tags": [
+      "guard",
+      "global-guard",
+      "metadata-reflection",
+      "authentication",
+      "authorization"
+    ]
+  },
+  {
+    "id": "nestjs-039",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 복잡한 DI 트리를 가진 서비스의 단위 테스트를 작성할 때, 의존성 모킹 전략과 테스트 모듈 구성 방법을 설명하라.",
+    "answer": "Test.createTestingModule()에서 테스트 대상 서비스만 실제로 등록하고, 나머지 의존성은 { provide: DepService, useValue: mockDepService }로 모킹한다. 깊은 의존성 트리도 직접 의존하는 1단계만 모킹하면 된다.",
+    "explanation": "CouponPublishService가 PaymentService, StockService, NotificationService에 의존하고, 각각이 또 다른 서비스에 의존하는 깊은 트리에서도, 단위 테스트에서는 CouponPublishService의 직접 의존성만 모킹하면 된다. 모킹된 서비스가 자체 의존성을 가지지 않으므로 트리가 1단계에서 끊긴다.",
+    "seniorTip": "테스트 모킹 패턴: 1) jest.fn() 기반 — const mockPaymentService = { processPayment: jest.fn().mockResolvedValue({ success: true }) }. 2) Auto-mocking — jest.createMockFromModule()으로 모든 메서드를 자동 모킹. 3) @golevelup/ts-jest의 createMock<PaymentService>()로 타입 안전한 모킹. 4) 통합 테스트에서는 overrideProvider().useValue()로 특정 외부 의존성만 모킹하고 나머지는 실제 사용. 5) ConfigService는 테스트 전용 .env.test 파일이나 직접 값을 주입: { provide: ConfigService, useValue: { get: jest.fn((key) => testConfig[key]) } }.",
+    "deepDive": "왜 모든 의존성을 실제로 로드하는 통합 테스트보다 단위 테스트가 중요한가? → 통합 테스트는 실행이 느리고(DB 연결, 모듈 초기화) 실패 원인이 모호하다. 단위 테스트는 특정 서비스의 비즈니스 로직만 빠르게 검증한다. 그러면 모킹이 많아지면 테스트가 구현에 결합되지 않나? → 맞다. 모킹된 반환값이 실제와 달라지면 테스트가 통과하지만 프로덕션에서는 실패할 수 있다. 이를 보완하려면 모킹의 반환값을 실제 서비스의 응답 구조와 일치시키고, 핵심 흐름은 통합 테스트로도 커버해야 한다. 그러면 니콘내콘처럼 140+ 서비스에서 테스트 전략은? → 단위 테스트로 비즈니스 로직 커버리지를 확보하고, 핵심 결제/발급 플로우는 E2E 테스트로 검증한다. 모든 서비스에 통합 테스트를 작성하면 CI 시간이 기하급수적으로 늘어난다.",
+    "tags": [
+      "testing",
+      "mocking",
+      "di-tree",
+      "unit-test",
+      "jest"
+    ]
+  },
+  {
+    "id": "nestjs-040",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 StreamableFile을 사용하여 대용량 데이터(수십만 행 CSV)를 스트리밍 응답으로 내보내는 방법과, 메모리 효율적으로 구현하는 패턴을 설명하라.",
+    "answer": "TypeORM의 QueryBuilder.stream()으로 DB 결과를 ReadableStream으로 받고, Transform 스트림으로 CSV 변환 후 StreamableFile로 래핑하여 응답한다. 전체 데이터를 메모리에 올리지 않고 chunk 단위로 처리된다.",
+    "explanation": "기존 방식(findAll() → toCSV() → res.send())은 전체 데이터를 메모리에 올리므로 10만 행 이상에서 OOM 위험이 있다. 스트리밍 방식: queryBuilder.stream()으로 MySQL 결과를 row 단위로 읽고, Transform 스트림에서 각 row를 CSV 라인으로 변환하여 StreamableFile로 즉시 응답한다. 메모리 사용량이 데이터 크기와 무관하게 일정하다.",
+    "seniorTip": "구현 패턴: 1) @Header(\"Content-Type\", \"text/csv\") @Header(\"Content-Disposition\", \"attachment; filename=export.csv\"). 2) const stream = await queryBuilder.stream(); return new StreamableFile(stream.pipe(csvTransform)). 3) Transform 스트림에서 highWaterMark를 조절하여 배압(backpressure) 관리. 4) 클라이언트가 다운로드를 중단하면 req.on(\"close\")에서 스트림을 destroy()하여 DB 커서도 정리. 5) 대용량 엑셀(xlsx)은 exceljs의 streaming API를 사용. 6) 니콘내콘에서 정산 데이터 엑스포트, 쿠폰 사용 내역 다운로드 등에 활용 가능.",
+    "deepDive": "왜 queryBuilder.stream()이 find()보다 메모리 효율적인가? → find()는 MySQL에서 모든 결과를 받아 엔티티 객체로 변환한 후 배열로 반환한다. 10만 행이면 10만 개의 JS 객체가 힙에 생성된다. stream()은 MySQL의 COM_STMT_FETCH를 사용하여 row를 하나씩 읽어오므로 동시에 메모리에 있는 객체 수가 제한된다. 그러면 MySQL 커서가 오래 열려 있으면 문제가 되지 않나? → 맞다. 스트리밍 중에 해당 DB 연결이 점유되므로 커넥션 풀에서 하나가 빠진다. 내보내기 API가 동시에 많이 호출되면 커넥션 풀 고갈이 발생할 수 있다. 이를 방지하려면 동시 내보내기 수를 Rate Limiting하거나 전용 read replica를 사용한다. 그러면 스트리밍 도중 네트워크가 느려서 배압(backpressure)이 발생하면? → Node.js Stream은 자동으로 배압을 처리한다. TCP 소켓의 write buffer가 가득 차면 Transform 스트림이 pause되고, DB에서도 데이터를 더 읽지 않는다. 이것이 Stream의 핵심 장점이다.",
+    "tags": [
+      "streaming",
+      "csv-export",
+      "streamable-file",
+      "memory-efficiency",
+      "backpressure"
+    ]
   }
 ]

@@ -413,5 +413,306 @@
       "aws",
       "failover"
     ]
+  },
+  {
+    "id": "devops-021",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "CI 파이프라인이 15분 걸리는 것을 3분으로 줄이는 구체적인 방법들을 설명하라.",
+    "answer": "Docker layer caching, 의존성 캐싱, 테스트 병렬화, affected-only 빌드(변경된 서비스만), 빌드 이미지 최적화(pre-baked CI 이미지)",
+    "explanation": "CI 시간의 주요 병목: 1) npm install: 매번 전체 설치 → 캐시 활용. 2) Docker build: 매번 처음부터 → layer caching. 3) 테스트: 순차 실행 → 병렬화. 4) 전체 빌드: 변경 없는 서비스도 빌드 → monorepo에서 affected 감지. 5) CI 러너 시작: cold start → self-hosted runner 또는 캐시된 이미지.",
+    "seniorTip": "니콘내콘 CI 최적화 실전 가이드: 1) GitHub Actions의 actions/cache로 node_modules와 .npm 캐시. 2) Docker buildx + GitHub Actions cache backend로 BuildKit 레이어 캐시. 3) jest --shard로 테스트를 여러 job에 분배(3 shard = 1/3 시간). 4) 179개 서비스 monorepo라면 turborepo/nx의 affected 명령으로 변경된 서비스만 빌드. 5) CI 전용 Docker 이미지에 Node.js, awscli, kubectl을 미리 설치하여 setup 시간 제거. 6) ECR로의 push를 병렬화: 여러 이미지를 동시에 push. 이 6가지를 모두 적용하면 15분 → 3분이 현실적으로 가능하다.",
+    "deepDive": "GitHub Actions에서 Docker layer caching의 구체적 설정은? → docker/build-push-action@v5에서 cache-from: type=gha, cache-to: type=gha,mode=max 설정. mode=max는 모든 중간 레이어를 캐시. → affected-only 빌드에서 잘못된 의존성 감지로 빌드를 건너뛰면? → CI에서 main branch와의 diff를 기반으로 affected를 계산하지만, 공유 라이브러리 변경 시 의존하는 모든 서비스를 감지해야 함. turborepo의 dependency graph가 이를 자동 처리. → self-hosted runner의 장단점은? → 장점: 캐시가 로컬에 유지되어 빠름, VPC 내 리소스에 직접 접근 가능. 단점: 러너 운영/보안 부담, 스케일링 필요.",
+    "tags": [
+      "ci-optimization",
+      "caching",
+      "parallelism",
+      "affected-build",
+      "github-actions"
+    ]
+  },
+  {
+    "id": "devops-022",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "GitHub Actions에서 Docker build의 layer caching을 가장 효과적으로 구성하는 방법은?",
+    "options": [
+      "매 빌드마다 docker build --no-cache를 사용한다",
+      "BuildKit + GitHub Actions Cache Backend(type=gha)로 모든 중간 레이어를 캐시하고, Dockerfile에서 변경 빈도가 낮은 레이어를 먼저 배치한다",
+      "빌드된 이미지를 ECR에 push하고 다음 빌드에서 pull한다",
+      "Docker Hub의 자동 빌드 기능을 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "BuildKit의 cache-from/cache-to 기능과 GitHub Actions의 GHA cache backend를 조합하면, CI에서 이전 빌드의 모든 레이어를 재사용할 수 있다. Dockerfile 최적화가 핵심: COPY package*.json → RUN npm ci → COPY . 순서로 배치하면 소스 변경 시 npm install 레이어를 캐시에서 재사용한다.",
+    "seniorTip": "Docker build 최적화 체크리스트: 1) multi-stage build: builder 스테이지에서 빌드, production 스테이지에서 결과만 복사. 2) .dockerignore: node_modules, .git, dist 등 제외. 3) COPY package*.json → RUN npm ci --production → COPY . 순서(의존성 캐시). 4) node:20-alpine 또는 distroless 이미지로 최종 이미지 크기 최소화(보안 + 배포 속도). 5) GitHub Actions에서: docker/build-push-action@v5, cache-from: type=gha, cache-to: type=gha,mode=max. 6) NestJS 빌드 시 tsconfig의 incremental: true로 TypeScript 컴파일 캐시도 활용. 니콘내콘 179개 서비스가 같은 Dockerfile 구조를 공유한다면, shared Dockerfile template을 만들어 일관성을 유지하자.",
+    "deepDive": "type=gha와 type=registry cache의 차이는? → gha: GitHub Actions 캐시에 저장(10GB 제한, 빠름). registry: ECR 등에 cache manifest를 push(용량 제한 없음, 약간 느림). → mode=max와 mode=min의 차이는? → max는 모든 중간 레이어를 캐시. min은 최종 이미지의 레이어만 캐시. multi-stage build에서는 max가 훨씬 효과적. → Dockerfile에서 RUN npm ci vs npm install의 차이는? → npm ci는 package-lock.json을 정확히 따르고 node_modules를 삭제 후 재설치하여 재현 가능한 빌드. CI에서는 항상 npm ci 사용 권장.",
+    "tags": [
+      "docker-cache",
+      "buildkit",
+      "github-actions",
+      "dockerfile",
+      "multi-stage"
+    ]
+  },
+  {
+    "id": "devops-023",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ArgoCD에서 CRD(Custom Resource Definition)의 health check를 커스텀 Lua 스크립트로 정의해야 하는 이유와 방법을 설명하라.",
+    "answer": "ArgoCD는 기본 K8s 리소스의 health만 판단 가능. CRD(Certificate, ExternalSecret 등)는 건강 상태 판단 로직이 없어 항상 Healthy로 표시됨. Lua 스크립트로 CRD의 .status 필드를 읽어 커스텀 health 판단 필요",
+    "explanation": "ArgoCD는 Deployment는 availableReplicas로, Service는 type별로 health를 판단한다. 하지만 cert-manager의 Certificate, External Secrets의 ExternalSecret 같은 CRD는 ArgoCD가 health 판단 로직을 모른다. 이 경우 ArgoCD는 해당 리소스를 'Healthy'로 간주하여, 실제로는 인증서 발급에 실패했거나 시크릿 동기화가 안 되어도 Sync가 성공으로 표시된다.",
+    "seniorTip": "Lua health check 설정 방법: argocd-cm ConfigMap에 resource.customizations.health.<group_kind> 키로 Lua 스크립트를 추가한다. 예시 (ExternalSecret): hs = {}; if obj.status ~= nil then; if obj.status.conditions ~= nil then; for _, c in ipairs(obj.status.conditions) do; if c.type == 'Ready' and c.status == 'True' then hs.status = 'Healthy'; hs.message = 'Secret synced'; return hs end end end end; hs.status = 'Progressing'; return hs. 니콘내콘에서 External Secrets Operator를 사용한다면 이 설정이 없으면 시크릿 동기화 실패를 ArgoCD에서 감지할 수 없어 위험하다.",
+    "deepDive": "cert-manager Certificate의 health check Lua는 어떻게 작성하나? → status.conditions에서 type: Ready, status: 'True'를 확인. renewalTime이 지났는데 갱신 안 되면 Degraded 반환. → ArgoCD의 resource.customizations.actions로 커스텀 액션도 추가할 수 있나? → Lua로 CRD에 대한 커스텀 액션(예: Certificate 수동 갱신, Rollout 재시작)을 ArgoCD UI에서 실행 가능. → health check가 Progressing 상태로 오래 머물면? → ArgoCD의 timeout 설정으로 일정 시간 후 Degraded로 전환 가능. SyncWave와 함께 사용하면 CRD 리소스가 Healthy가 된 후에 다음 리소스를 배포.",
+    "tags": [
+      "argocd",
+      "health-check",
+      "lua",
+      "crd",
+      "external-secrets",
+      "cert-manager"
+    ]
+  },
+  {
+    "id": "devops-024",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Helm hooks(pre-install, post-upgrade 등)를 DB 마이그레이션에 사용할 때의 장점과 위험은?",
+    "options": [
+      "Helm hooks는 DB 마이그레이션에 사용할 수 없다",
+      "pre-upgrade hook으로 앱 배포 전 마이그레이션을 실행할 수 있지만, hook Job이 실패하면 배포가 중단되고 롤백이 복잡해질 수 있다",
+      "Helm hooks는 항상 성공하므로 위험이 없다",
+      "post-upgrade hook만 마이그레이션에 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "pre-upgrade hook: Helm 차트 업그레이드 전에 Job을 실행. DB 마이그레이션을 앱 배포 전에 수행하여 새 코드가 새 스키마를 사용하도록 보장. 위험: hook Job이 실패하면 Helm release가 PENDING-UPGRADE 상태에 빠지고, helm rollback도 pre-rollback hook이 없으면 스키마를 원복하지 못한다.",
+    "seniorTip": "DB 마이그레이션 안전 패턴: 1) Expand-Contract 패턴 필수: 마이그레이션은 항상 하위 호환(구 코드도 동작). 2) hook-delete-policy: hook-succeeded로 성공한 Job 자동 정리. 3) Job에 activeDeadlineSeconds와 backoffLimit 설정으로 무한 대기 방지. 4) 마이그레이션 Job의 로그를 Loki/Datadog에 전송하여 실패 원인 추적. 5) 대안: ArgoCD Sync Wave를 사용하여 마이그레이션 Job(wave 0) → 앱 Deployment(wave 1) 순서로 배포. Hook보다 ArgoCD의 Sync Wave가 더 가시적이고 디버깅이 쉽다. 니콘내콘 sync window(Mon-Fri 9-19 KST) 내에서만 마이그레이션이 실행되도록 ArgoCD Sync Window와 함께 설정하자.",
+    "deepDive": "Helm hook Job이 실패하여 PENDING-UPGRADE 상태가 되면 어떻게 복구하나? → helm rollback <release> <revision>으로 이전 상태로 롤백. 하지만 DB 스키마는 이미 변경되었을 수 있어 수동 개입 필요. → ArgoCD Sync Wave vs Helm hooks의 차이는? → Sync Wave는 ArgoCD가 관리하여 UI에서 상태 확인 가능. Hook은 Helm이 관리하여 ArgoCD에서 보이지 않을 수 있음. → pre-install vs pre-upgrade의 차이는? → pre-install은 최초 설치 시에만, pre-upgrade는 업그레이드 시에만 실행. 둘 다 필요하면 두 annotation을 모두 추가.",
+    "tags": [
+      "helm-hooks",
+      "db-migration",
+      "sync-wave",
+      "argocd",
+      "expand-contract"
+    ]
+  },
+  {
+    "id": "devops-025",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Argo Rollouts를 사용한 카나리 배포에서 Analysis를 통해 자동 롤백하는 구성을 설명하라.",
+    "answer": "Argo Rollouts의 AnalysisTemplate에 Prometheus/Datadog 메트릭 쿼리를 정의하고, 카나리 단계마다 Analysis를 실행하여 에러율/레이턴시가 임계치를 넘으면 자동 롤백",
+    "explanation": "Argo Rollouts의 canary strategy: 1) setWeight: 10 → 카나리에 10% 트래픽. 2) pause + analysis: AnalysisTemplate으로 메트릭 검증. 3) 성공 시 setWeight: 50 → 100으로 점진적 확대. 4) 실패 시 자동 rollback. AnalysisTemplate에서 Datadog 메트릭(avg:http.error_rate{service:my-service})을 조회하고 successCondition으로 임계치를 설정한다.",
+    "seniorTip": "니콘내콘 카나리 배포 구성 예시: 1) AnalysisTemplate: Datadog provider로 에러율 < 1%, p99 레이턴시 < 500ms 조건. 2) 카나리 단계: 5%(1분 분석) → 20%(2분 분석) → 50%(3분 분석) → 100%. 3) 실패 시 자동 롤백 + Slack 알림. 4) ArgoCD ApplicationSet과 통합: 서비스별 Rollout CRD를 공유 Helm chart에 포함. 5) 주의: 카나리 중 DB 스키마 변경이 있으면 Expand-Contract 패턴을 반드시 적용해야 구/신 버전이 공존 가능. Datadog APM의 version 태그를 활용하면 카나리와 stable의 메트릭을 명확히 분리하여 분석할 수 있다.",
+    "deepDive": "AnalysisRun이 Inconclusive(판단 불가) 상태가 되면? → 메트릭 데이터가 부족하거나 Datadog API 에러. inconclusive → abort 또는 continue 정책을 설정. 트래픽이 적은 서비스에서 자주 발생. → Argo Rollouts vs Istio의 카나리 차이는? → Rollouts는 ReplicaSet 기반으로 카나리 Pod 수를 조절. Istio는 VirtualService weight로 트래픽 비율을 제어. Rollouts + Istio 통합 시 트래픽 비율을 더 정밀하게 제어 가능. → 카나리 중 사용자가 두 버전 사이를 왔다갔다하는 문제는? → 세션 친화성(sticky session)이 없으면 같은 사용자가 카나리와 stable을 번갈아 경험. ALB의 stickiness 설정이나 Istio의 consistent hash로 해결.",
+    "tags": [
+      "argo-rollouts",
+      "canary",
+      "analysis",
+      "auto-rollback",
+      "progressive-delivery"
+    ]
+  },
+  {
+    "id": "devops-026",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Observability-driven development에서 SLI를 코딩 전에 정의해야 하는 이유와 방법을 설명하라.",
+    "answer": "코딩 전 SLI를 정의하면 '무엇을 모니터링할지'가 명확해져, 계측(instrumentation) 코드를 처음부터 포함할 수 있고, 배포 후 '성공' 기준이 객관적으로 존재한다",
+    "explanation": "Observability-driven development: 1) 기능 요구사항과 함께 SLI를 정의 (예: '쿠폰 발급 API는 p99 레이턴시 200ms 이내, 에러율 0.1% 이하'). 2) 코드에 계측(metric emission, structured logging, trace span)을 포함. 3) 배포 전 대시보드와 알림을 준비. 4) 배포 후 SLI를 기반으로 성공/실패를 판단.",
+    "seniorTip": "SLI 정의 실무 가이드: 1) 가용성 SLI: 성공 응답 수 / 전체 응답 수 (HTTP 5xx 제외). 2) 레이턴시 SLI: 200ms 이내 응답 비율 (p50이 아닌 p99를 사용해야 꼬리 지연 감지). 3) 정확성 SLI: 올바른 결과를 반환한 비율 (결제 금액 불일치 등). 4) SLI를 기반으로 SLO 설정: 가용성 99.9%, 레이턴시 p99 < 200ms. 5) Error Budget = 100% - SLO. SLI 없이 배포하면 '체감상 잘 되는 것 같다'가 유일한 기준이 되어 장애 감지가 늦어진다. 니콘내콘 쿠폰 이벤트처럼 트래픽이 급증하는 상황에서 SLI가 없으면 장애인지 정상인지 판단 불가.",
+    "deepDive": "SLI를 코드에 어떻게 계측하나? → NestJS에서 Interceptor/Middleware로 요청마다 duration, status_code를 Prometheus 메트릭으로 emit. Datadog에서는 dd-trace의 자동 계측 + 커스텀 메트릭. → SLO 기반 알림이 전통적 임계치 알림보다 나은 이유는? → '에러율 > 1%'는 트래픽이 적을 때 false positive 발생. 'Error Budget 소진율이 2시간 내 100% 예상'은 실제 사용자 영향 기반으로 더 정확. → Datadog에서 SLO를 설정하는 방법은? → Datadog SLO 기능에서 monitor 기반 또는 metric 기반 SLO를 정의. Error Budget 소진 알림과 대시보드를 자동 생성.",
+    "tags": [
+      "observability",
+      "sli",
+      "slo",
+      "instrumentation",
+      "error-budget"
+    ]
+  },
+  {
+    "id": "devops-027",
+    "category": "devops",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Synthetic Monitoring(합성 모니터링)이 실제 사용자 모니터링(RUM)과 다른 점은?",
+    "options": [
+      "Synthetic은 실제 사용자 트래픽을 분석하고, RUM은 가상 트래픽을 생성한다",
+      "Synthetic은 사전 정의된 스크립트로 주기적으로 API/웹을 테스트하여 가용성을 확인하고, RUM은 실제 사용자의 브라우저에서 성능 데이터를 수집한다",
+      "두 가지는 동일하며 이름만 다르다",
+      "Synthetic은 프로덕션에서 사용할 수 없다"
+    ],
+    "answer": 1,
+    "explanation": "Synthetic Monitoring: Datadog/Pingdom 등이 세계 각지에서 API endpoint를 주기적으로 호출하여 응답 시간, 상태 코드, SSL 인증서 만료 등을 확인. 실제 사용자가 없어도 장애를 감지 가능. RUM(Real User Monitoring): 실제 사용자의 브라우저에 JavaScript SDK를 삽입하여 페이지 로드 시간, JS 에러, 사용자 경험을 수집.",
+    "seniorTip": "Synthetic + RUM 조합 전략: 1) Synthetic API Test: 핵심 API 엔드포인트(쿠폰 발급, 결제, 로그인)를 1분 간격으로 테스트. 응답 시간 > 1초 또는 비정상 응답 시 P1 알림. 2) Synthetic Browser Test: 주요 사용자 플로우(회원가입 → 쿠폰 조회 → 쿠폰 사용)를 Headless Chrome으로 재현. UI 깨짐도 감지. 3) RUM: 실제 사용자의 성능 데이터로 지역별/디바이스별 성능 차이 분석. 4) Synthetic이 RUM보다 먼저 장애를 감지하는 이유: 트래픽이 없는 새벽에도 모니터링이 가능. 니콘내콘 2.1M 사용자 중 야간 트래픽이 적을 때 장애가 발생하면 Synthetic만이 감지할 수 있다.",
+    "deepDive": "Datadog Synthetic의 multi-step API test란? → 여러 API 호출을 순서대로 실행하고 이전 응답의 값을 다음 요청에 사용. 예: 로그인 → 토큰 획득 → 쿠폰 목록 조회. → Synthetic test가 false positive(오탐)를 발생시키면? → 재시도 횟수 설정(min_failure_duration), 여러 위치에서 동시에 실패할 때만 알림. → Synthetic과 실제 API 성능 차이가 큰 이유는? → Synthetic은 단일 요청이므로 캐시가 없고 cold path를 타는 경우가 많음. 실제 트래픽은 캐시 hit율이 높아 더 빠름.",
+    "tags": [
+      "synthetic-monitoring",
+      "rum",
+      "datadog",
+      "api-health",
+      "proactive-monitoring"
+    ]
+  },
+  {
+    "id": "devops-028",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "온콜(On-Call) 피로를 줄이면서 효과적인 알림 체계를 구축하는 방법을 설명하라.",
+    "answer": "증상이 아닌 사용자 영향 기반으로 알림. P1(즉시 대응: 서비스 다운)만 페이지, P2(업무시간: 성능 저하)는 Slack, P3(비긴급)은 티켓. 알림-대-액션 비율을 추적하여 노이즈 제거",
+    "explanation": "온콜 피로의 원인: 1) 너무 많은 알림(노이즈). 2) False positive(오탐). 3) 액션이 불필요한 알림(정보성 알림이 P1으로 설정). 4) 반복되는 같은 알림(자동화되지 않은 수동 작업). 해결: 증상 기반이 아닌 사용자 영향 기반으로 알림을 설계해야 한다.",
+    "seniorTip": "알림 설계 원칙: 1) 'CPU > 80%'가 아니라 'SLO error budget 2시간 내 소진 예상'으로 알림. CPU가 높아도 사용자에게 영향이 없으면 긴급하지 않음. 2) 복합 조건: '에러율 > 0.5% AND 요청 수 > 50/s' — 트래픽이 적을 때 오탐 방지. 3) 알림 메시지에 포함할 것: 무엇이 문제인가, 영향 범위, Runbook 링크, 관련 대시보드 링크. 4) 주간 알림 리뷰: 지난 주 알림 중 실제 액션으로 이어진 비율 분석. 50% 미만이면 노이즈 알림을 제거하거나 임계치를 조정. 5) 니콘내콘 179개 서비스 각각에 알림을 설정하지 말고, SLO 기반으로 핵심 서비스(쿠폰, 결제, 인증)에만 P1 알림을 설정하고, 나머지는 aggregate 알림으로 관리.",
+    "deepDive": "PagerDuty/OpsGenie의 에스컬레이션 정책은 어떻게 설정하나? → 5분 내 응답 없으면 2차 담당자에게 에스컬레이션. 10분 내 응답 없으면 팀 리더에게. 30분 내 미해결 시 시니어 엔지니어에게. → 온콜 번아웃을 방지하는 로테이션은? → 최소 2명 이상의 로테이션. 주간 교대. 온콜 후 다음 날 오전 자유 시간 보장. 온콜 보상(수당 또는 대체 휴무). → 알림을 자동으로 해결하는 방법은? → 자동 복구 스크립트(Runbook Automation): 디스크 80% → 오래된 로그 자동 삭제. Pod CrashLoop → 자동 롤백. 자동화할 수 없는 알림만 사람에게 전달.",
+    "tags": [
+      "on-call",
+      "alert-fatigue",
+      "pagerduty",
+      "slo-based-alerting",
+      "runbook"
+    ]
+  },
+  {
+    "id": "devops-029",
+    "category": "devops",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Toil(반복적 수작업)을 식별하고 줄이는 방법을 설명하라.",
+    "answer": "수동 반복 작업을 기록하고 빈도/시간을 측정. 2회 이상 반복되면 자동화 검토. 자동화 ROI가 높은 것부터 순서대로 자동화",
+    "explanation": "Google SRE의 Toil 정의: 수동적이고, 반복적이며, 자동화 가능하고, 서비스 성장에 비례하여 증가하며, 장기적 가치가 없는 작업. 예: 수동 배포, 인증서 갱신, 사용자 권한 추가, 로그 정리, 환경 설정.",
+    "seniorTip": "니콘내콘에서 자동화 우선순위가 높은 Toil: 1) Terraform local state를 remote로 전환 — 팀원 간 state 충돌 해결에 소요되는 시간 제거. 2) tfvars의 plaintext 시크릿 → AWS Secrets Manager + data source 자동화. 3) EKS 노드 업그레이드 → Terraform + 롤링 업데이트 자동화. 4) 새 서비스 온보딩 → ArgoCD ApplicationSet generator로 자동 등록. 5) SSL 인증서 갱신 → cert-manager 자동화. Toil 측정 방법: 1주일 동안 수동 작업을 시간 단위로 기록. SRE 기준으로 Toil이 전체 업무의 50%를 넘으면 위험 신호. 자동화에 투자할 시간을 확보하기 위해 경영진에게 Toil 데이터를 보여주는 것이 효과적이다.",
+    "deepDive": "자동화의 ROI를 어떻게 계산하나? → (수동 작업 시간 x 빈도 x 기간) vs 자동화 개발 시간. 주 1회 30분 작업을 1년 하면 26시간. 자동화에 8시간이면 3.25배 ROI. → 자동화가 오히려 위험한 경우는? → 위험한 작업(프로덕션 DB 마이그레이션)을 충분한 검증 없이 자동화하면 사고 규모가 커짐. 자동화에 dry-run 모드와 확인 단계를 포함. → Toil을 줄여도 새로운 Toil이 계속 생기는 이유는? → 서비스 성장에 따라 새로운 수동 작업이 발생. 정기적인 Toil 리뷰(월 1회)와 'Toil이 0이 되어야 한다'가 아닌 '50% 이하로 유지'가 현실적 목표.",
+    "tags": [
+      "toil",
+      "automation",
+      "sre",
+      "productivity",
+      "roi"
+    ]
+  },
+  {
+    "id": "devops-030",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS 비용 태깅(tagging) 전략에서 가장 효과적인 접근법은?",
+    "options": [
+      "모든 리소스에 Name 태그만 붙이면 충분하다",
+      "Team, Service, Environment, CostCenter 태그를 필수로 설정하고, AWS Organizations SCP 또는 Terraform으로 태깅을 강제하여 Cost Explorer에서 서비스별/팀별 비용을 추적한다",
+      "태깅은 선택사항이므로 신경 쓰지 않아도 된다",
+      "AWS가 자동으로 모든 리소스에 태그를 붙여준다"
+    ],
+    "answer": 1,
+    "explanation": "태그가 없으면 AWS 비용이 어떤 서비스/팀에서 발생하는지 추적이 불가능하다. Cost Allocation Tags를 활성화하면 Cost Explorer에서 태그별 비용 필터링이 가능하다. 태깅 없는 리소스 = 비용 책임 불분명 = 최적화 불가능.",
+    "seniorTip": "태깅 전략 구현: 1) 필수 태그 정의: Team(backend/infra), Service(coupon/payment), Environment(dev/prod), CostCenter(engineering). 2) Terraform에서 default_tags로 모든 리소스에 자동 적용: provider 'aws' { default_tags { tags = { Team = 'backend', Environment = var.env } } }. 3) AWS Organizations Tag Policy로 태그 형식 강제(예: Environment는 dev/staging/prod만 허용). 4) 태그 없는 리소스를 찾는 AWS Config Rule을 설정하여 위반 시 알림. 5) 월간 비용 리뷰에서 서비스별 비용 트렌드를 팀에 공유(showback). 니콘내콘 179개 서비스의 EKS Pod 비용은 Kubecost나 OpenCost로 추적하면 서비스별 CPU/메모리 비용을 분석할 수 있다.",
+    "deepDive": "EKS에서 Pod 수준 비용 추적은 어떻게 하나? → Kubecost: Pod의 requests 기반으로 노드 비용을 할당. 서비스별, 네임스페이스별 비용 대시보드. → showback과 chargeback의 차이는? → showback: 팀에 비용을 보여주되 실제 청구하지 않음. chargeback: 팀 예산에서 실제 차감. 스타트업에서는 showback으로 시작하여 비용 인식을 높인 후 chargeback으로 전환. → 예상치 못한 비용 급증을 어떻게 감지하나? → AWS Budgets로 월/일 예산 초과 알림. Datadog/Grafana에서 일별 비용 트렌드 대시보드로 이상 감지.",
+    "tags": [
+      "cost-tagging",
+      "finops",
+      "showback",
+      "kubecost",
+      "cost-optimization"
+    ]
+  },
+  {
+    "id": "devops-031",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "멀티 클러스터 K8s 환경을 관리하는 패턴과, ArgoCD로 멀티 클러스터 배포를 구현하는 방법을 설명하라.",
+    "answer": "Hub-Spoke 패턴: 중앙 관리 클러스터(Hub)에서 ArgoCD가 여러 워크로드 클러스터(Spoke)에 배포. ApplicationSet의 cluster generator로 클러스터 목록을 자동 감지하여 동일 앱을 여러 클러스터에 배포",
+    "explanation": "멀티 클러스터가 필요한 이유: 1) dev/prod 환경 분리. 2) 리전별 배포(재해 복구). 3) 팀별 격리. ArgoCD 멀티 클러스터: Hub 클러스터에 ArgoCD를 설치하고, Spoke 클러스터를 argocd cluster add로 등록. ApplicationSet의 cluster generator가 등록된 클러스터 목록을 자동으로 가져와 각 클러스터에 Application을 생성한다.",
+    "seniorTip": "니콘내콘 멀티 클러스터 전략: 1) 현재 2 AWS 계정(dev/prod)에 각각 EKS 클러스터 → ArgoCD를 prod 클러스터에 설치하고 dev 클러스터도 관리. 2) ApplicationSet 예시: generators: [{clusters: {selector: {matchLabels: {env: prod}}}}]로 prod 클러스터에만 특정 앱 배포. 3) 클러스터별 values override: values 파일을 cluster 이름으로 분기(values-dev.yaml, values-prod.yaml). 4) 중앙 ArgoCD에서 모든 클러스터의 배포 상태를 한눈에 확인 가능. 5) 주의: Hub 클러스터가 다운되면 모든 클러스터의 배포가 중단되므로 Hub의 HA 구성이 필수(ArgoCD HA: 3 replicas + Redis HA).",
+    "deepDive": "ArgoCD의 클러스터 인증 방식은? → argocd cluster add가 ServiceAccount + bearer token을 생성. 보안을 위해 token을 주기적으로 갱신하는 자동화 필요. → 클러스터 간 설정 차이를 어떻게 관리하나? → ApplicationSet의 values 파일을 클러스터 metadata(이름, 레이블)로 동적 선택. 또는 Kustomize overlay로 클러스터별 패치 적용. → 멀티 클러스터에서 서비스 메시(Istio multi-cluster)는 언제 필요한가? → 클러스터 간 서비스 호출이 필요할 때. 니콘내콘처럼 dev/prod가 완전히 분리된 경우는 불필요.",
+    "tags": [
+      "multi-cluster",
+      "argocd",
+      "applicationset",
+      "hub-spoke",
+      "cluster-management"
+    ]
+  },
+  {
+    "id": "devops-032",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "GitOps 환경에서 K8s Secret을 안전하게 관리하는 3가지 방식 중, 니콘내콘 환경에 가장 적합한 것은?",
+    "options": [
+      "Sealed Secrets: Git에 암호화된 Secret을 커밋, 클러스터에서 복호화",
+      "External Secrets Operator: AWS Secrets Manager에서 Secret을 동기화 — 이미 AWS 환경이고 ArgoCD GitOps를 사용 중이므로 가장 자연스러운 통합",
+      "HashiCorp Vault: 동적 시크릿과 세밀한 접근 제어가 필요한 대규모 멀티 클라우드 환경에 적합",
+      "K8s Secret을 base64로 Git에 커밋하면 충분하다"
+    ],
+    "answer": 1,
+    "explanation": "External Secrets Operator(ESO)는 AWS Secrets Manager, SSM Parameter Store 등 외부 시크릿 저장소에서 K8s Secret을 자동으로 동기화한다. AWS 환경에서 가장 자연스러운 선택이며, 시크릿 로테이션도 자동화할 수 있다. Sealed Secrets는 외부 저장소 없이 Git만으로 관리 가능하지만, 로테이션 자동화가 어렵다. Vault는 기능이 강력하지만 운영 복잡도가 높다.",
+    "seniorTip": "니콘내콘 ESO 도입 가이드: 1) Terraform으로 AWS Secrets Manager에 시크릿 생성(DB 비밀번호, API 키 등). 2) EKS에 ESO Helm 차트 설치(ArgoCD로 관리). 3) ExternalSecret CRD로 어떤 시크릿을 어떤 K8s Secret으로 매핑할지 정의. 4) Pod Identity로 ESO가 Secrets Manager에 접근할 수 있도록 IAM 설정. 5) refreshInterval로 주기적 동기화(시크릿 로테이션 시 자동 반영). 6) Reloader(Stakater)를 함께 설치하면 Secret 변경 시 Deployment를 자동 롤링 재시작. 현재 tfvars에 plaintext 시크릿을 넣고 있다면, 이 구성으로 전환하면 시크릿이 Git에 노출되지 않는다.",
+    "deepDive": "ESO에서 시크릿 동기화가 실패하면 Pod에 어떤 영향이? → 기존 K8s Secret은 유지됨. 하지만 Secret이 아직 생성되지 않은 첫 배포에서 실패하면 Pod가 시작 불가. → Sealed Secrets에서 클러스터 재구축 시 시크릿 복구는? → Sealed Secrets Controller의 비밀키를 백업해두어야 함. 백업이 없으면 모든 SealedSecret을 다시 생성해야 함. → AWS Secrets Manager의 비용은? → 시크릿당 $0.40/월 + API 호출 $0.05/10,000회. 179개 서비스에서 시크릿 수가 많으면 비용이 누적될 수 있으므로, 서비스별로 시크릿을 하나의 JSON으로 묶어 관리하면 비용 절약.",
+    "tags": [
+      "gitops-secrets",
+      "external-secrets",
+      "sealed-secrets",
+      "vault",
+      "secret-management"
+    ]
+  },
+  {
+    "id": "devops-033",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "데이터베이스 백업이 존재하면 복구가 보장되므로, 백업 복원 테스트는 불필요하다.",
+    "answer": "X",
+    "explanation": "백업이 존재한다고 복구가 보장되지 않는다. 실제 사례: 1) 백업 파일이 손상되어 복원 불가. 2) 백업은 되었지만 복원 절차를 아무도 모름. 3) 복원에 8시간이 걸려 RTO를 초과. 4) 백업에 특정 테이블이 누락. 5) 복원 후 애플리케이션이 스키마 불일치로 동작하지 않음. 정기적으로 실제 복원을 수행하여 검증해야 한다.",
+    "seniorTip": "백업 복원 테스트 자동화: 1) 주간 자동화: RDS 스냅샷에서 임시 RDS 인스턴스를 생성 → 스키마/데이터 무결성 검증 쿼리 실행 → 결과를 Slack에 보고 → 임시 인스턴스 삭제. 2) Terraform으로 임시 RDS를 코드로 관리하면 재현 가능. 3) 복원 소요 시간을 측정하여 RTO 목표와 비교. 4) 분기별 전체 DR Drill: 실제로 백업에서 전체 서비스를 복구하는 훈련. 5) RDS의 PITR(Point-In-Time Recovery)도 테스트 — 특정 시점으로 복원이 가능한지, 복원 후 데이터가 맞는지 확인. 니콘내콘 결제/정산 데이터의 경우, 백업 복원 실패는 사업적으로 치명적이므로 복원 테스트는 필수다.",
+    "deepDive": "RDS PITR의 제약사항은? → 보존 기간(기본 7일, 최대 35일) 이내만 복원 가능. PITR은 새 RDS 인스턴스를 생성하므로 엔드포인트가 변경됨. 애플리케이션의 DB 연결 설정 변경 필요. → 논리적 백업(mysqldump)과 물리적 백업(RDS 스냅샷)의 차이는? → 논리적: 느리지만 부분 복원/다른 엔진 이관 가능. 물리적: 빠르지만 같은 엔진에서만 복원. → 백업에서 특정 테이블만 복원하려면? → RDS 스냅샷은 전체 인스턴스 복원만 지원. 특정 테이블만 필요하면 임시 인스턴스에서 복원 후 해당 테이블을 mysqldump로 추출하여 프로덕션에 적용.",
+    "tags": [
+      "backup-verification",
+      "disaster-recovery",
+      "rds",
+      "pitr",
+      "restore-testing"
+    ]
+  },
+  {
+    "id": "devops-034",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘 쿠폰 이벤트처럼 예측 가능한 트래픽 스파이크에 대한 용량 계획(Capacity Planning)을 어떻게 수행하는가?",
+    "answer": "과거 이벤트 데이터 기반 트래픽 예측 → 부하 테스트로 현재 시스템 한계 확인 → HPA/노드 사전 확장(pre-scaling) → 이벤트 중 실시간 모니터링 → 이벤트 후 스케일다운",
+    "explanation": "예측 가능한 스파이크는 자동 스케일링만으로는 부족하다. HPA가 반응하고 새 Pod가 Ready되고 Cluster Autoscaler가 노드를 추가하는 데 수 분이 걸린다. 이벤트 시작 순간에 이미 트래픽이 폭증하므로, 사전 확장(pre-scaling)이 필수다.",
+    "seniorTip": "니콘내콘 쿠폰 이벤트 Capacity Planning 체크리스트: 1) D-7: 과거 이벤트 메트릭 분석 — 피크 RPS, 동시 접속자, DB 커넥션 수. 2) D-5: k6/Locust로 부하 테스트 — 예상 트래픽의 150%까지 테스트하여 병목 식별(DB? Redis? API?). 3) D-3: 병목 해결(DB 인덱스 추가, Redis 캐시 계층, API 코드 최적화). 4) D-1: Pre-scaling — HPA min replicas를 피크 기준으로 올리고, Cluster Autoscaler가 노드를 미리 추가하도록 Warm Pool 설정. 5) D-Day: Grafana/Datadog 실시간 대시보드로 모니터링. 알림 임계치를 이벤트 기준으로 일시 조정(평소보다 높은 트래픽이 정상). 6) D+1: 스케일다운 — HPA min을 원복하고, 이벤트 포스트모텀 작성.",
+    "deepDive": "Pre-scaling을 자동화하는 방법은? → CronHPA(KEDA의 Cron trigger) 또는 Kubernetes CronJob으로 이벤트 시작 30분 전에 HPA min replicas를 변경하고, 이벤트 종료 후 원복. → DB 커넥션 풀이 병목일 때 대응은? → RDS Proxy를 사용하여 커넥션 풀링을 DB 앞단에서 처리. 또는 PgBouncer를 K8s에 배포. NestJS의 TypeORM 풀 크기를 노드 수에 맞게 계산(Pod 수 x poolSize < max_connections). → CDN/캐시 전략은? → 정적 자산은 CloudFront로 캐시. 쿠폰 목록 같은 읽기 API는 Redis 캐시 + 짧은 TTL로 DB 부하 감소. 쿠폰 발급(쓰기)은 캐시 불가능하므로 DB 직접 부하 — 이 부분이 진짜 병목.",
+    "tags": [
+      "capacity-planning",
+      "pre-scaling",
+      "load-testing",
+      "traffic-spike",
+      "event-driven"
+    ]
+  },
+  {
+    "id": "devops-035",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "포스트 인시던트 리뷰(PIR/포스트모텀)에서 실제로 재발을 방지하는 액션 아이템을 도출하는 방법을 설명하라.",
+    "answer": "5 Whys로 근본 원인을 파고, 사람의 실수가 아닌 시스템의 취약점을 찾아 기술적/프로세스적 개선 액션을 도출. 각 액션에 담당자, 기한, 추적 이슈를 할당",
+    "explanation": "나쁜 액션 아이템: '더 조심한다', '교육을 실시한다'. 좋은 액션 아이템: '배포 전 자동 카나리 분석을 추가한다(담당: 김OO, 기한: 2주)', 'DB 커넥션 풀 고갈 시 자동 알림을 추가한다'. 사람에게 의존하는 액션은 반드시 실패한다. 시스템이 실수를 방지하도록 만들어야 한다.",
+    "seniorTip": "효과적인 PIR 구조: 1) 타임라인: 장애 발생부터 복구까지 분 단위 기록. 누가 언제 무엇을 했는지. 2) 영향: 영향받은 사용자 수, 기간, 비즈니스 손실(쿠폰 발급 실패 건수 등). 3) 근본 원인 분석(5 Whys): '왜 서비스가 다운됐나?' → DB 커넥션 고갈 → 왜? → 커넥션 풀 크기가 부족 → 왜? → 새 서비스 추가 시 커넥션 계산을 하지 않았음 → 왜? → 온보딩 체크리스트에 DB 커넥션 검증이 없음. 4) 액션 아이템: 기술적(커넥션 풀 모니터링 알림 추가) + 프로세스적(온보딩 체크리스트에 DB 커넥션 계산 항목 추가). 5) 추적: JIRA 이슈로 생성하고 다음 스프린트에 포함. 완료 여부를 월간 PIR 리뷰에서 추적. Blameless 원칙: '누가 실수했나'가 아니라 '왜 시스템이 이런 실수를 허용했나'에 집중해야 다음에도 실수를 보고하는 문화가 유지된다.",
+    "deepDive": "5 Whys에서 멈추는 기준은? → '이것을 바꾸면 같은 장애가 재발하지 않는다'고 확신할 수 있는 수준. 보통 3-5단계. 너무 깊이 파면 '인간은 실수한다'에 도달하므로 실용적 수준에서 멈춤. → 액션 아이템이 실행되지 않는 이유와 대응은? → 담당자가 바쁘거나 우선순위가 밀림. 대응: PIR 액션을 스프린트 백로그에 명시적으로 포함. 월간 PIR 리뷰에서 미완료 액션을 추적. 경영진에게 미완료 액션 = 재발 위험으로 보고. → 같은 유형의 장애가 반복되면? → 이전 PIR의 액션 아이템이 실행되었는지 먼저 확인. 실행되었는데도 재발했으면 액션이 근본 원인을 해결하지 못한 것. 더 깊은 근본 원인 분석 필요.",
+    "tags": [
+      "post-incident-review",
+      "postmortem",
+      "5-whys",
+      "blameless",
+      "action-items"
+    ]
   }
 ]

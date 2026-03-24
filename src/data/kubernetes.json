@@ -504,5 +504,320 @@
       "drain",
       "ha"
     ]
+  },
+  {
+    "id": "k8s-026",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "kube-proxy iptables 모드에서 Service가 10,000개 이상일 때 발생하는 성능 문제의 근본 원인과 해결책은?",
+    "options": [
+      "kube-proxy 프로세스의 CPU 사용량이 높아져서 패킷을 처리하지 못한다",
+      "iptables 규칙이 선형 탐색(O(n))되어 패킷당 레이턴시가 증가하며, IPVS 모드(O(1) 해시 테이블)로 전환해야 한다",
+      "CoreDNS가 10,000개 이상의 Service를 처리하지 못한다",
+      "etcd에 저장되는 Service 오브젝트 크기가 너무 커진다"
+    ],
+    "answer": 1,
+    "explanation": "iptables 모드에서 kube-proxy는 Service마다 여러 개의 iptables 규칙을 생성한다. 10,000개 Service면 수만 개의 규칙이 생기고, 각 패킷은 이 규칙들을 순차적으로 탐색해야 한다(O(n)). IPVS 모드는 해시 테이블을 사용해 O(1)로 목적지를 찾으며, 규칙 업데이트 시에도 전체 규칙을 다시 쓰지 않고 개별 항목만 수정한다.",
+    "seniorTip": "니콘내콘처럼 179개 서비스 정도에서는 iptables로도 충분하지만, 각 Service의 Endpoints 수까지 고려하면 규칙 수가 급격히 증가한다. IPVS 전환 시 체크리스트: 1) kube-proxy ConfigMap에서 mode: ipvs로 변경. 2) 노드에 ipvsadm, ip_vs 커널 모듈 필요. 3) IPVS는 Round Robin 외에 Least Connection, Source Hash 등 다양한 LB 알고리즘을 지원 — Source Hash는 세션 유지가 필요한 서비스에 유용. 4) 전환 시 conntrack 테이블이 초기화되므로 기존 연결이 끊길 수 있다. 유지보수 시간에 롤링으로 전환하자.",
+    "deepDive": "iptables에서 IPVS로 전환할 때 기존 TCP 연결이 끊기는 이유는 무엇인가? → conntrack 테이블의 NAT 매핑이 iptables 기반에서 IPVS 기반으로 변경되면서 기존 매핑을 찾지 못함. → IPVS에서 Source Hash 알고리즘이 세션 유지에 유리한 이유는? → 같은 소스 IP의 패킷이 항상 같은 백엔드 Pod로 라우팅되므로 L4 수준의 세션 친화성을 제공. → eBPF 기반 kube-proxy 대체(Cilium)는 IPVS보다 어떤 점이 나은가? → Cilium은 iptables/IPVS를 완전히 우회하고 커널의 XDP/TC 훅에서 직접 패킷을 처리. conntrack 오버헤드도 줄이고, 소켓 레벨 로드밸런싱으로 NAT 자체를 제거할 수 있다.",
+    "tags": [
+      "kube-proxy",
+      "iptables",
+      "ipvs",
+      "performance",
+      "networking",
+      "cilium"
+    ]
+  },
+  {
+    "id": "k8s-027",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "etcd compaction이란 무엇이고, etcd 디스크가 가득 차면 K8s 클러스터에 어떤 문제가 발생하는가?",
+    "answer": "etcd compaction은 오래된 revision을 정리하는 작업. 디스크가 가득 차면 etcd가 읽기 전용 모드로 전환되어 모든 쓰기 작업(Pod 생성, ConfigMap 변경 등)이 실패한다",
+    "explanation": "etcd는 모든 키의 이전 revision을 보존한다(MVCC). compaction은 특정 revision 이전의 히스토리를 삭제하여 디스크를 확보한다. etcd는 기본적으로 자동 compaction(--auto-compaction-retention)을 수행하지만, DB 크기가 quota(기본 2GB, 최대 8GB)를 초과하면 NOSPACE 알람이 발생하고 쓰기가 차단된다.",
+    "seniorTip": "etcd 디스크 풀 장애 복구 순서: 1) etcdctl alarm list로 NOSPACE 알람 확인. 2) etcdctl compact <revision>으로 히스토리 정리. 3) etcdctl defrag로 실제 디스크 공간 확보(defrag 중 etcd가 잠시 멈추므로 리더가 아닌 멤버부터). 4) etcdctl alarm disarm으로 알람 해제. 예방책: Prometheus로 etcd_mvcc_db_total_size_in_bytes를 모니터링하고 quota의 80%에서 알림. EKS는 AWS가 etcd를 관리하므로 직접 compaction 걱정은 없지만, 대량의 ConfigMap/Secret을 남발하면 API 서버 성능이 저하된다.",
+    "deepDive": "defrag 중 etcd가 멈추면 K8s 컨트롤 플레인에 어떤 영향이 있나? → 리더 etcd 멤버가 defrag 중이면 모든 API 서버 요청이 일시 중단됨. 팔로워부터 defrag 후 리더를 마지막에 처리해야 함. → EKS에서 etcd 관련 성능 문제를 간접적으로 감지하는 방법은? → API 서버의 응답 지연(apiserver_request_duration_seconds)과 etcd 요청 지연(etcd_request_duration_seconds) 메트릭을 Prometheus로 수집. LIST 요청이 느려지면 오브젝트 수가 너무 많은 것. → 대량의 CRD 오브젝트가 etcd에 미치는 영향은? → ArgoCD ApplicationSet으로 179개 Application을 관리하면 각 Application의 status가 주기적으로 업데이트되어 etcd 쓰기 부하가 됨. ArgoCD의 reconciliation 주기를 적절히 조절해야 한다.",
+    "tags": [
+      "etcd",
+      "compaction",
+      "disk",
+      "control-plane",
+      "troubleshooting"
+    ]
+  },
+  {
+    "id": "k8s-028",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s 스케줄러가 Pod를 노드에 배치하는 과정을 Filtering과 Scoring 단계로 나누어 설명하고, Pod Priority와 Preemption이 동작하는 시점을 설명하라.",
+    "answer": "Filtering은 조건에 맞지 않는 노드를 제거하고, Scoring은 남은 노드에 점수를 매겨 최적 노드를 선택. 모든 노드가 Filtering에서 탈락하면 Priority 기반으로 낮은 우선순위 Pod를 Preemption(축출)한다",
+    "explanation": "스케줄링 과정: 1) Filtering: nodeSelector, affinity, taint/toleration, 리소스 가용량 등으로 후보 노드를 필터링. 2) Scoring: 남은 노드에 대해 리소스 균형(LeastAllocated/MostAllocated), 안티어피니티, 토폴로지 분산 등으로 점수를 매김. 3) 최고 점수 노드에 바인딩. Preemption: 모든 노드가 필터에서 탈락하면, 현재 Pod의 PriorityClass가 다른 Pod보다 높으면 낮은 우선순위 Pod를 축출하고 그 자리에 스케줄링.",
+    "seniorTip": "PriorityClass 실무 설계: 1) system-cluster-critical/system-node-critical은 시스템 컴포넌트용(건드리지 말 것). 2) 결제/인증 같은 핵심 서비스에 높은 priority(예: 1000). 3) 배치/크론잡에 낮은 priority(예: 100). 4) preemptionPolicy: Never를 설정하면 우선순위만 높고 다른 Pod를 축출하지는 않음. 니콘내콘 prod에서 쿠폰 이벤트 트래픽 폭증 시, HPA가 스케일아웃하면서 노드 리소스가 부족할 때 배치 Job이 축출되고 API Pod가 먼저 스케줄되도록 구성하면 사용자 영향을 최소화할 수 있다.",
+    "deepDive": "Preemption이 발생하면 축출되는 Pod는 즉시 종료되나? → terminationGracePeriodSeconds가 적용됨. 축출 후 자리가 확보되면 높은 우선순위 Pod가 스케줄됨. → Pod Anti-Affinity와 HPA가 데드락을 일으키는 시나리오는? → 3개 노드에서 required anti-affinity(같은 노드 2개 금지) + HPA min:5면, 4번째 Pod부터 Pending. → 데드락 방지법은? → preferred anti-affinity로 변경하거나, Cluster Autoscaler maxSize를 충분히 확보. topologySpreadConstraints의 whenUnsatisfiable: ScheduleAnyway도 대안.",
+    "tags": [
+      "scheduler",
+      "scoring",
+      "priority",
+      "preemption",
+      "anti-affinity",
+      "hpa"
+    ]
+  },
+  {
+    "id": "k8s-029",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Pod anti-affinity를 required(hard)로 설정하고 HPA를 함께 사용할 때 발생할 수 있는 문제는?",
+    "options": [
+      "HPA가 아예 동작하지 않는다",
+      "anti-affinity 조건을 만족하는 노드가 없으면 HPA가 새 Pod를 생성해도 Pending 상태로 남아 스케일아웃이 실패한다",
+      "anti-affinity가 자동으로 해제된다",
+      "기존 Pod가 재배치되어 서비스 중단이 발생한다"
+    ],
+    "answer": 1,
+    "explanation": "requiredDuringSchedulingIgnoredDuringExecution으로 Pod anti-affinity를 설정하면, 같은 노드(또는 같은 zone)에 동일 앱 Pod를 2개 이상 배치할 수 없다. HPA가 스케일아웃하여 Pod 수가 노드(또는 zone) 수를 초과하면 조건을 만족하는 노드가 없어 새 Pod가 영구적으로 Pending 상태가 된다.",
+    "seniorTip": "실제 장애 시나리오: 니콘내콘 main API가 HPA min:5 max:30, 3개 AZ(각 1-2 노드)에서 required anti-affinity(hostname 기준)를 설정하면 노드 수(예: 6대)를 초과하는 순간 스케일아웃이 멈춘다. 해결책: 1) preferredDuringScheduling으로 soft 제약 전환. 2) topologySpreadConstraints로 대체 — maxSkew와 whenUnsatisfiable: ScheduleAnyway 조합이 더 유연. 3) Cluster Autoscaler의 maxSize를 충분히 확보. 4) zone 기반 anti-affinity는 AZ 수 제한(보통 3개)이 있어 특히 주의.",
+    "deepDive": "topologySpreadConstraints와 Pod anti-affinity의 차이점은? → anti-affinity는 바이너리 제약이고, topologySpreadConstraints는 maxSkew 이내 균등 분산이라 더 유연. → maxSkew: 1, whenUnsatisfiable: DoNotSchedule 설정 시 3 AZ에 Pod 10개가 어떻게 분배되나? → 4-3-3처럼 최대 편차 1 이내로 분배. → Cluster Autoscaler가 Pending Pod를 감지하고 노드를 추가하는 데 걸리는 시간은? → AWS에서 보통 2-5분. 이 gap 동안 요청을 처리하려면 Karpenter 같은 빠른 프로비저너를 고려.",
+    "tags": [
+      "anti-affinity",
+      "hpa",
+      "scheduling-deadlock",
+      "topology-spread",
+      "cluster-autoscaler"
+    ]
+  },
+  {
+    "id": "k8s-030",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "kubectl debug 명령을 사용한 Ephemeral Container 디버깅이 기존 kubectl exec와 어떻게 다르고, 어떤 상황에서 유용한가?",
+    "answer": "kubectl debug는 실행 중인 Pod에 임시 디버그 컨테이너를 추가하여 디버깅 도구 없는 프로덕션 이미지에서도 디버깅 가능. exec는 기존 컨테이너에 접속하므로 셸이나 도구가 없으면 사용 불가",
+    "explanation": "Ephemeral Container(K8s 1.25+ GA): Pod 스펙을 변경하지 않고 임시 컨테이너를 주입. 이 컨테이너는 Pod의 네트워크, PID, IPC 네임스페이스를 공유하므로 다른 컨테이너의 프로세스, 네트워크, 파일시스템을 볼 수 있다. distroless 이미지에는 셸이 없어 exec가 불가능한데, debug 컨테이너로 nicolaka/netshoot를 주입하면 네트워크 진단이 가능하다.",
+    "seniorTip": "프로덕션 디버깅 명령어: 1) kubectl debug -it pod/my-pod --image=busybox --target=app-container: 대상 컨테이너의 프로세스 네임스페이스 공유. 2) kubectl debug node/my-node -it --image=ubuntu: 노드 수준 디버깅(호스트 파일시스템이 /host에 마운트). 3) kubectl debug pod/my-pod --copy-to=my-debug-pod --share-processes: Pod를 복제하여 디버깅(원본에 영향 없음). 니콘내콘에서 distroless 이미지를 사용한다면 프로덕션 장애 시 debug 컨테이너가 유일한 디버깅 수단이 될 수 있다.",
+    "deepDive": "Ephemeral Container가 기존 Pod의 프로세스를 볼 수 있는 원리는? → --target 플래그로 PID 네임스페이스를 공유하면 /proc에서 대상 컨테이너의 프로세스 목록이 보임. strace, gdb도 사용 가능. → 프로덕션에서 tcpdump로 패킷을 캡처할 때 보안 우려는? → NET_RAW capability가 필요하므로 디버그 컨테이너에만 일시적으로 부여. 캡처 파일에 민감 데이터가 포함될 수 있어 처리 후 즉시 삭제. → kubectl debug node는 어떻게 노드에 접근하나? → 대상 노드에 privileged Pod를 생성하고 hostPID, hostNetwork, 호스트 파일시스템을 마운트. SSH 없이 노드 디버깅이 가능하지만, 강력한 권한이므로 RBAC 제한 필수.",
+    "tags": [
+      "ephemeral-container",
+      "kubectl-debug",
+      "troubleshooting",
+      "distroless",
+      "production-debugging"
+    ]
+  },
+  {
+    "id": "k8s-031",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s API 서버가 요청을 처리하는 전체 흐름을 Authentication, Authorization, Admission Control, Persistence 단계로 설명하라.",
+    "answer": "1) Authentication: 요청자 신원 확인(인증서, 토큰, OIDC). 2) Authorization: RBAC/ABAC으로 허용 여부 확인. 3) Admission Control: Mutating/Validating webhook으로 요청 수정/검증. 4) Persistence: etcd에 오브젝트 저장",
+    "explanation": "kubectl create pod → API 서버 수신 → 1) 인증: 누구인가? (ServiceAccount 토큰, x509 인증서, OIDC 등) → 2) 인가: 이 사용자가 이 namespace에서 pods를 create할 수 있나? (RBAC 체크) → 3) Admission: MutatingAdmissionWebhook(sidecar 주입, 기본값 추가) → ValidatingAdmissionWebhook(정책 검증, OPA/Gatekeeper) → 4) etcd에 저장 → 응답 반환.",
+    "seniorTip": "실무에서 각 단계가 문제를 일으키는 경우: 1) 인증 실패: EKS에서 aws-auth ConfigMap에 IAM 역할 매핑이 없으면 'Unauthorized'. Pod Identity로 마이그레이션 했다면 aws-auth 의존성 제거 가능. 2) 인가 실패: 'forbidden' 에러 — RBAC 디버깅은 kubectl auth can-i --as=system:serviceaccount:ns:sa-name create pods. 3) Admission 실패: OPA/Gatekeeper 정책이 이미지 소스를 제한하면 ECR 외 이미지가 거부됨. 4) etcd 쓰기 실패: 리소스 quota 초과. 니콘내콘 179개 서비스에서 Admission Webhook이 모든 Pod 생성에 관여하므로, webhook이 다운되면 전체 배포가 중단된다. failurePolicy: Ignore vs Fail을 신중하게 설정하자.",
+    "deepDive": "MutatingAdmissionWebhook이 다운되면 Pod 생성이 어떻게 되나? → failurePolicy: Fail이면 모든 Pod 생성이 차단됨. Ignore면 사이드카 주입 없이 Pod가 생성됨. → Istio sidecar injection webhook이 다운된 상태에서 배포하면? → Envoy 없이 Pod가 시작되어 mTLS, 트레이싱이 작동하지 않음. → ValidatingAdmissionPolicy(K8s 1.30+ GA)가 Webhook보다 나은 점은? → CEL로 API 서버 내에서 직접 검증하므로 외부 Webhook 호출 없이 빠르고 안정적. 네트워크 장애로 Webhook 호출이 실패하는 문제를 근본적으로 해결.",
+    "tags": [
+      "api-server",
+      "authentication",
+      "authorization",
+      "admission-control",
+      "rbac",
+      "webhook"
+    ]
+  },
+  {
+    "id": "k8s-032",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "GitOps에서 kubectl apply와 kubectl create의 근본적인 차이와, kubectl apply가 GitOps에 필수인 이유는?",
+    "options": [
+      "create는 리소스 생성만, apply는 생성 또는 업데이트 모두 가능하며, 선언적(declarative) 관리를 위해 apply가 GitOps 필수",
+      "apply는 create보다 빠르다",
+      "create는 YAML만, apply는 JSON만 지원한다",
+      "apply는 Helm에서만 사용 가능하다"
+    ],
+    "answer": 0,
+    "explanation": "kubectl create는 명령형(imperative) — 리소스가 이미 존재하면 에러. kubectl apply는 선언형(declarative) — 리소스가 없으면 생성, 있으면 업데이트. apply는 last-applied-configuration 어노테이션을 사용해 3-way merge를 수행한다. GitOps에서는 Git의 desired state를 지속적으로 apply해야 하므로 선언형이 필수다.",
+    "seniorTip": "apply의 3-way merge가 중요한 이유: 1) Git의 상태(desired), 클러스터의 현재 상태(live), 마지막으로 apply한 상태(last-applied) 3가지를 비교. 2) HPA가 replicas를 변경한 경우, Git에 replicas가 명시되어 있으면 apply가 덮어씀 → ArgoCD에서 ignoreDifferences 설정이 필요한 이유. 3) Server-Side Apply(SSA, K8s 1.22+ GA)는 필드 소유권(field ownership)으로 충돌을 더 정교하게 관리. ArgoCD 2.5+에서 SSA를 활성화하면 대규모 매니페스트에서 성능이 크게 향상된다.",
+    "deepDive": "3-way merge에서 충돌이 발생하는 구체적인 시나리오는? → kubectl edit으로 env 변수를 추가했지만 Git에 반영하지 않음. ArgoCD sync 시 해당 env가 삭제됨. → Server-Side Apply가 Client-Side Apply보다 나은 점은? → 필드 단위 소유권 추적으로 여러 컨트롤러(HPA, VPA, 사람)가 같은 리소스의 다른 필드를 안전하게 관리 가능. → ArgoCD에서 ignoreDifferences를 남용하면? → Git과 클러스터의 실제 상태가 괴리되어 'Git = Source of Truth' 원칙이 무너진다. 최소한의 필드에만 적용해야 함.",
+    "tags": [
+      "kubectl-apply",
+      "declarative",
+      "gitops",
+      "server-side-apply",
+      "3-way-merge"
+    ]
+  },
+  {
+    "id": "k8s-033",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "K8s NetworkPolicy에서 default deny 정책을 적용한 후 DNS 조회가 실패하는 문제의 원인과 해결책은?",
+    "options": [
+      "NetworkPolicy가 DNS 트래픽을 자동으로 허용하므로 다른 원인을 찾아야 한다",
+      "default deny가 kube-system의 CoreDNS로 향하는 UDP 53 트래픽까지 차단하므로, DNS를 명시적으로 허용하는 egress 규칙을 추가해야 한다",
+      "NetworkPolicy는 DNS에 적용되지 않는다",
+      "CoreDNS를 각 네임스페이스에 별도로 배포해야 한다"
+    ],
+    "answer": 1,
+    "explanation": "NetworkPolicy는 기본적으로 모든 트래픽을 허용하지만, 한 개라도 정책이 적용되면 명시적으로 허용된 트래픽만 통과한다. default deny egress를 적용하면 CoreDNS(kube-system, UDP/TCP 53)로의 트래픽도 차단되어 모든 서비스 디스커버리가 중단된다.",
+    "seniorTip": "NetworkPolicy 도입 시 필수 순서: 1) 먼저 DNS 허용 정책을 만든다: egress to kube-system namespace, port 53 UDP/TCP. 2) 그 다음 default deny를 적용. 순서를 바꾸면 모든 서비스가 DNS 해석을 못해 장애. 추가 함정들: 1) AWS VPC CNI의 NetworkPolicy 지원은 v1.14+부터. 2) NetworkPolicy는 Pod 수준이므로 NodePort/LoadBalancer 외부 트래픽에는 적용 안 됨. 3) 외부 IP 기반 egress 제한은 CIDR로 명시. 니콘내콘처럼 서비스 간 통신이 많은 환경에서는 Helm values로 NetworkPolicy를 관리하면 일관성 유지 가능.",
+    "deepDive": "외부 API(PG사, 알림톡 등) 호출이 차단되는 문제를 어떻게 해결하나? → egress 규칙에 외부 API의 IP CIDR 또는 0.0.0.0/0을 허용. 보안이 중요하면 특정 CIDR만 화이트리스트. → Calico vs Cilium의 NetworkPolicy 차이는? → Cilium은 L7(HTTP path, header) 기반 정책도 지원. Calico는 L3/L4 주력이지만 GlobalNetworkPolicy로 클러스터 전체 정책 가능. → DNS 허용 정책에서 kube-system이 아닌 podSelector로 지정하는 것이 더 안전한 이유는? → 방어적으로 app: kube-dns 레이블까지 지정하면 해당 Pod만 DNS 대상으로 허용됨.",
+    "tags": [
+      "network-policy",
+      "dns",
+      "default-deny",
+      "security",
+      "calico",
+      "cilium"
+    ]
+  },
+  {
+    "id": "k8s-034",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "컨테이너의 OOM Kill과 CPU Throttling 중 서비스 레이턴시에 더 치명적인 것은?",
+    "options": [
+      "OOM Kill이 더 치명적이다 — Pod가 재시작되어 서비스가 중단된다",
+      "CPU Throttling이 더 치명적이다 — 사용자가 느끼는 지연이 지속적이고 감지하기 어렵다",
+      "둘 다 동일한 수준의 영향을 미친다",
+      "CPU Throttling은 발생하지 않는다 — 커널이 CPU를 공정하게 분배한다"
+    ],
+    "answer": 1,
+    "explanation": "OOM Kill은 극적이지만 Pod가 재시작되어 빨리 감지된다. CPU Throttling은 Pod가 살아있지만 응답이 느려지는 '조용한 장애'다. CFS가 CPU quota를 초과한 컨테이너를 매 100ms 주기마다 강제로 일시 정지시키기 때문에, 짧은 작업도 100ms 단위로 지연된다.",
+    "seniorTip": "CPU Throttling 감지와 대응: 1) container_cpu_cfs_throttled_periods_total / container_cpu_cfs_periods_total로 스로틀링 비율을 Prometheus에서 모니터링. 5% 이상이면 대응 필요. 2) CPU limits를 제거하거나 크게 늘린다. Google SRE 팀은 CPU limits를 설정하지 않는 것을 권장. 3) requests는 반드시 설정(스케줄링에 필요), limits는 선택적. 4) memory limits는 반드시 설정하되 애플리케이션 최대 메모리 사용량(p99) + 20% 여유. 니콘내콘에서 NestJS API의 p99 레이턴시가 간헐적으로 치솟는다면 CPU Throttling을 의심하자.",
+    "deepDive": "CPU limits를 제거하면 다른 Pod에 영향을 주지 않나? → requests가 설정되어 있으면 해당 CPU는 보장됨. 노드의 남는 CPU를 여러 Pod가 requests 비율로 공정하게 분배. → 메모리 OOM Kill에도 우선순위가 있나? → oom_score_adj에 따라 결정. BestEffort(1000, 가장 먼저 Kill) > Burstable(2-999) > Guaranteed(-997, 가장 나중). → CFS 100ms 주기가 왜 문제인가? → 10ms짜리 요청이 quota 소진 시점에 도착하면 최대 90ms 대기. 초당 수백 건 처리하는 API에서 이 지연이 쌓이면 p99 레이턴시가 극적으로 악화됨.",
+    "tags": [
+      "oom-kill",
+      "cpu-throttling",
+      "qos",
+      "cfs",
+      "resources",
+      "latency"
+    ]
+  },
+  {
+    "id": "k8s-035",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s의 QoS(Quality of Service) 클래스 3가지와 노드 메모리 압박 시 eviction 순서를 설명하라.",
+    "answer": "Guaranteed(requests=limits), Burstable(requests<limits), BestEffort(미설정). Eviction 순서: BestEffort → Burstable(requests 초과) → Guaranteed",
+    "explanation": "kubelet은 노드 메모리가 eviction threshold(기본: 100Mi)에 도달하면 Pod를 축출하기 시작한다. 축출 순서: 1) BestEffort Pod 먼저. 2) Burstable Pod 중 requests를 초과한 Pod. 3) Guaranteed Pod는 마지막. 같은 QoS 내에서는 메모리 사용량이 requests 대비 초과 비율이 높은 Pod부터 축출된다.",
+    "seniorTip": "QoS 전략 설계: 1) 결제/인증 핵심 서비스: requests=limits로 Guaranteed. 쿠폰 이벤트 폭증에도 축출 안 됨. 2) 일반 API: Burstable. 평소 적은 리소스로 동작하되 피크 시 burst. 3) 로그 수집, 메트릭 에이전트: BestEffort — 노드 리소스 부족 시 가장 먼저 축출되지만 DaemonSet으로 회복. 주의: kubelet eviction이 커널 OOM보다 먼저 작동하도록 eviction threshold를 적절히 설정해야 한다.",
+    "deepDive": "kubelet eviction과 커널 OOM Killer의 차이는? → kubelet은 graceful하게 SIGTERM → SIGKILL. 커널 OOM Killer는 oom_score 최고인 프로세스를 즉시 SIGKILL. kubelet이 먼저 개입하지 못하면 커널이 임의 프로세스를 Kill. → Burstable Pod의 eviction 우선순위 계산법은? → (실제 사용량 - requests) / requests 비율. requests 256Mi에 512Mi 사용이면 100%, requests 1Gi에 1.2Gi면 20%. 전자가 먼저 축출. → EKS managed node group에서 system-reserved는? → EKS bootstrap.sh가 노드 타입별 자동 계산. t3.large(8Gi)에서 약 574Mi가 예약되어 실제 할당 가능은 약 7.4Gi.",
+    "tags": [
+      "qos",
+      "eviction",
+      "guaranteed",
+      "burstable",
+      "besteffort",
+      "memory-pressure"
+    ]
+  },
+  {
+    "id": "k8s-036",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "K8s Secret은 etcd에 암호화되어 저장되므로, 별도의 암호화 설정 없이도 안전하다.",
+    "answer": "X",
+    "explanation": "K8s Secret은 기본적으로 etcd에 base64 인코딩된 상태로 저장된다. base64는 암호화가 아니라 인코딩이므로 누구나 디코딩할 수 있다. etcd에 접근할 수 있으면 모든 Secret을 평문으로 읽을 수 있다. 진정한 암호화를 위해서는 EncryptionConfiguration을 통해 etcd encryption at rest를 활성화해야 한다.",
+    "seniorTip": "Secret 보안 성숙도 레벨: Level 1) 기본 Secret + RBAC(최소한). Level 2) EncryptionConfiguration으로 etcd at-rest 암호화(aescbc/kms). Level 3) External Secrets Operator + AWS Secrets Manager/Vault(Secret 값이 Git에 없음). Level 4) Sealed Secrets로 Git에 암호화된 Secret 커밋(GitOps 완성). 니콘내콘에서 tfvars에 plaintext 시크릿을 넣고 있다면, K8s Secret도 마찬가지로 위험하다. EKS는 AWS KMS 기반 etcd 암호화를 지원하므로 클러스터 생성 시 반드시 활성화하자.",
+    "deepDive": "EKS에서 etcd 암호화를 나중에 활성화하면 기존 Secret은? → 암호화되지 않은 상태로 남음. 모든 Secret을 재적용해야 암호화됨. → Sealed Secrets의 작동 원리는? → kubeseal CLI가 클러스터의 공개키로 Secret을 암호화하여 SealedSecret CRD로 변환. 클러스터의 Controller만 비밀키로 복호화 가능. → External Secrets Operator vs Sealed Secrets 선택 기준은? → ESO: 이미 Secrets Manager/Vault 사용 중이면 자연스러운 연동. 로테이션 자동화 가능. Sealed Secrets: 외부 저장소 없이 Git만으로 관리. 클러스터 비밀키 분실 시 복구 불가.",
+    "tags": [
+      "secrets",
+      "encryption",
+      "etcd",
+      "sealed-secrets",
+      "external-secrets",
+      "security"
+    ]
+  },
+  {
+    "id": "k8s-037",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "HPA와 VPA를 같은 Deployment에 동시에 적용할 때 주의할 점은?",
+    "options": [
+      "HPA와 VPA는 항상 함께 사용해야 한다",
+      "HPA가 CPU/메모리 메트릭을 사용하면 VPA와 충돌할 수 있으므로, HPA는 custom metrics를, VPA는 리소스 추천만 사용해야 한다",
+      "VPA는 HPA를 자동으로 비활성화한다",
+      "둘 다 동시에 사용하면 클러스터가 다운된다"
+    ],
+    "answer": 1,
+    "explanation": "HPA와 VPA가 둘 다 CPU/메모리를 기준으로 조정하면 충돌이 발생한다. VPA가 requests를 올리면 HPA가 계산하는 사용률이 낮아져 스케일다운하고, 스케일다운하면 사용률이 올라가 다시 스케일아웃하는 진동(oscillation)이 발생할 수 있다.",
+    "seniorTip": "안전한 HPA + VPA 조합: 1) HPA는 custom metrics(큐 depth, RPS)를 사용하고, VPA는 CPU/메모리 requests 추천. 2) VPA를 UpdateMode: Off(추천만)로 설정하고 추천값을 참고하여 수동 조정. 3) KEDA 같은 통합 솔루션 고려. 니콘내콘 메인 API에서 HPA(CPU 기반 min:5 max:30) 사용 중이라면, VPA는 추천 모드로만 돌려 적정 requests를 파악하고, Datadog custom metrics(쿠폰 API 요청 수)로 HPA를 전환하면 더 정확한 스케일링이 가능하다.",
+    "deepDive": "VPA UpdateMode: Auto가 Pod를 재시작하는 이유는? → requests/limits 변경에는 Pod 재생성이 필요(InPlacePodVerticalScaling은 K8s 1.32+ alpha). 트래픽 많을 때 VPA가 Pod를 재시작하면 처리 용량이 줄어듬. → KEDA와 HPA의 차이는? → KEDA는 scale-to-zero 가능하고, 외부 이벤트 소스(SQS, Kafka lag, Datadog 메트릭)를 직접 지원. 내부적으로 HPA를 관리. → InPlacePodVerticalScaling이 GA되면? → Pod 재시작 없이 requests/limits 동적 변경 가능. VPA의 최대 단점이 해소되어 HPA와 동시 사용이 실용적으로 변함.",
+    "tags": [
+      "hpa",
+      "vpa",
+      "autoscaling",
+      "keda",
+      "custom-metrics",
+      "conflict"
+    ]
+  },
+  {
+    "id": "k8s-038",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Pod Topology Spread Constraints를 사용하여 고가용성을 달성하는 방법과, Pod Anti-Affinity와의 차이를 설명하라.",
+    "answer": "topologySpreadConstraints는 maxSkew로 토폴로지 도메인 간 Pod 분포 편차를 제한. Anti-Affinity는 바이너리(배치/비배치)이지만 Topology Spread는 균등 분산(비율 기반)이라 더 유연하다",
+    "explanation": "topologySpreadConstraints는 topology key(hostname, zone)별로 Pod 분포의 최대 편차(maxSkew)를 지정한다. 예: maxSkew: 1, topologyKey: topology.kubernetes.io/zone이면 AZ 간 Pod 수 차이가 최대 1개. whenUnsatisfiable: DoNotSchedule(hard) 또는 ScheduleAnyway(soft)로 제약 강도를 조절한다.",
+    "seniorTip": "니콘내콘 prod HA 설정 예시: 1) zone 분산: maxSkew: 1, topologyKey: zone → 3 AZ에 5 Pod = 2-2-1. 2) node 분산: maxSkew: 1, topologyKey: hostname → 같은 노드 2개 이상 방지. 3) 두 제약 동시 적용 가능. Anti-Affinity 대비 장점: AZ 3개, Pod 10개면 anti-affinity(required)는 3개만 스케줄되지만, topologySpreadConstraints는 4-3-3으로 균등 분배. Shared Helm chart에 기본값으로 넣어 179개 서비스에 일괄 적용하자.",
+    "deepDive": "minDomains 필드의 역할은? → Pod가 분산되어야 하는 최소 토폴로지 도메인 수 지정. minDomains: 3이면 3개 이상 AZ에 분산 필요. AZ가 2개뿐이면 스케줄링 실패. → Cluster Autoscaler가 topologySpreadConstraints를 어떻게 고려하나? → Pending Pod가 있으면 어느 AZ에 노드를 추가해야 제약을 만족하는지 계산. --balance-similar-node-groups으로 node group 간 균형도 유지. → Karpenter와의 차이는? → Karpenter는 Pod의 topologySpreadConstraints를 직접 읽고 최적 AZ에 노드를 즉시 프로비저닝. node group에 의존하지 않아 더 빠르고 유연.",
+    "tags": [
+      "topology-spread",
+      "ha",
+      "availability-zone",
+      "scheduling",
+      "karpenter"
+    ]
+  },
+  {
+    "id": "k8s-039",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Rolling Update 중 502 에러가 발생하는 원인(endpoint propagation delay)과 이를 방지하는 방법을 설명하라.",
+    "answer": "Pod 종료 시 Service Endpoints에서 제거되기 전에 kube-proxy/ingress의 규칙이 아직 업데이트되지 않아 종료 중인 Pod로 트래픽이 전달되어 502 발생. preStop hook의 sleep으로 전파 지연을 흡수해야 한다",
+    "explanation": "Pod 종료 과정에서 두 가지가 동시에 병렬 진행된다: 1) Endpoint controller가 Pod IP 제거 → kube-proxy iptables 업데이트 → Ingress 업스트림 제거. 2) preStop hook → SIGTERM → 앱 종료. 2번이 1번보다 빨리 완료되면, 아직 iptables에 남아있는 Pod IP로 트래픽이 전달되지만 앱은 이미 종료되어 502 발생.",
+    "seniorTip": "502 완전 방지 체크리스트: 1) preStop: exec: command: ['sleep', '5']. 2) terminationGracePeriodSeconds: 30 이상. 3) readinessProbe 설정. 4) 앱에서 SIGTERM 시 새 요청 거부 + 진행 중 요청 완료 후 종료. 5) NestJS: app.enableShutdownHooks() + onModuleDestroy에서 HTTP 서버 close. 니콘내콘 179개 서비스에서 배포 시 간헐적 502가 보인다면 shared Helm chart에 preStop sleep이 빠져있을 가능성이 높다.",
+    "deepDive": "Nginx Ingress에서 502 대신 503이 발생하는 경우는? → upstream에 healthy Pod가 하나도 없을 때 503. 모든 Pod가 동시에 종료되는 경우(Recreate 전략). → preStop sleep을 너무 길게 잡으면? → terminationGracePeriodSeconds를 초과하면 SIGKILL로 강제 종료. preStop 30초 + 앱 종료 10초인데 terminationGracePeriodSeconds가 30초면 graceful 종료 실패. → AWS ALB deregistration delay와의 관계는? → ALB target deregistration 기본 300초. K8s Pod는 이미 종료인데 ALB는 드레인 중이면 502. alb.ingress.kubernetes.io/target-group-attributes 어노테이션으로 조정 필요.",
+    "tags": [
+      "rolling-update",
+      "502-error",
+      "endpoint-propagation",
+      "prestop",
+      "graceful-shutdown"
+    ]
+  },
+  {
+    "id": "k8s-040",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Datadog Custom Metrics를 사용한 HPA 구성 방법을 설명하고, CPU 기반 HPA 대비 어떤 장점이 있는가?",
+    "answer": "Datadog Cluster Agent가 external metrics API를 제공하고, HPA가 Datadog 메트릭(큐 depth, RPS, 에러율 등)을 기준으로 스케일링. CPU 기반보다 비즈니스 로직에 맞는 정밀한 스케일링이 가능하다",
+    "explanation": "구성 순서: 1) Datadog Cluster Agent에서 external metrics provider 활성화. 2) Datadog에 custom metric 전송(예: queue.depth). 3) HPA에 external metrics 타입으로 Datadog 메트릭 지정. CPU는 실제 부하를 간접적으로만 반영하지만, 큐 depth나 동시 접속 수는 실제 부하를 직접 반영하므로 더 정확한 스케일링이 가능하다.",
+    "seniorTip": "니콘내콘 실전 시나리오: 1) 쿠폰 이벤트 API: avg:http.request.count{service:coupon-api}.as_rate()로 초당 요청 수 기반 스케일링. CPU보다 빠르게 반응. 2) 비동기 처리: avg:queue.depth{queue:coupon-claim}으로 SQS 큐 깊이 기반 스케일링. 3) DatadogMetric CRD를 사용하면 복잡한 쿼리도 가능. 주의: Datadog 메트릭 수집 주기(10-15초)가 HPA 결정에 지연을 줄 수 있으므로 scaleUp stabilization window를 함께 조정하자.",
+    "deepDive": "Datadog custom metrics HPA에서 메트릭이 일시적으로 누락되면? → HPA가 메트릭을 못 가져오면 스케일링 결정을 보류(기존 replicas 유지). 지속 실패 시 HPA conditions에 ScalingLimited 표시. → KEDA Datadog Scaler와 Cluster Agent 방식의 차이는? → KEDA는 Datadog API를 직접 호출하고 scale-to-zero 지원. Cluster Agent는 K8s external metrics API를 통해 네이티브 통합이지만 scale-to-zero 불가. → 여러 메트릭 조합 HPA는 어떻게 동작하나? → 각 메트릭이 제안하는 replicas 중 최대값을 채택. CPU 70% 기준 5개, 큐 depth 기준 8개면 8개로 스케일아웃. 이해하지 못하면 예상보다 많은 Pod가 생성되어 비용 폭증.",
+    "tags": [
+      "hpa",
+      "custom-metrics",
+      "datadog",
+      "keda",
+      "autoscaling",
+      "queue-depth"
+    ]
   }
 ]
