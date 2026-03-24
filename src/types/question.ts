@@ -14,7 +14,9 @@ export type Category =
   | "ai-llm"
   | "git"
   | "aws"
-  | "ncnc";
+  | "ncnc"
+  | "monitoring"
+  | "argocd";
 
 export interface Question {
   id: string;
@@ -58,6 +60,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   git: "Git/Collaboration",
   aws: "AWS/EKS",
   ncnc: "My Work/Resume",
+  monitoring: "Monitoring",
+  argocd: "ArgoCD/GitOps",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -75,6 +79,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   git: "#f05032",
   aws: "#ff9900",
   ncnc: "#14b8a6",
+  monitoring: "#a855f7",
+  argocd: "#ef6c35",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

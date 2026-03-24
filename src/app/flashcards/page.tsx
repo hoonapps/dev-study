@@ -13,7 +13,7 @@ export default function FlashcardsPage() {
   const [category, setCategory] = useState<Category | undefined>();
 
   useEffect(() => {
-    setCards(getRandomQuestions(20, category));
+    setCards(getRandomQuestions(999, category));
     setCurrent(0);
     setFlipped(false);
   }, [category]);

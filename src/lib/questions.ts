@@ -15,6 +15,8 @@ import gitQuestions from "@/data/git.json";
 import awsQuestions from "@/data/aws.json";
 import ncncQuestions from "@/data/ncnc.json";
 import ncncInfraQuestions from "@/data/ncnc-infra.json";
+import monitoringQuestions from "@/data/monitoring.json";
+import argocdQuestions from "@/data/argocd.json";
 
 const allQuestions: Question[] = [
   ...(mysqlQuestions as Question[]),
@@ -32,6 +34,8 @@ const allQuestions: Question[] = [
   ...(awsQuestions as Question[]),
   ...(ncncQuestions as Question[]),
   ...(ncncInfraQuestions as Question[]),
+  ...(monitoringQuestions as Question[]),
+  ...(argocdQuestions as Question[]),
 ];
 
 export function getAllQuestions(): Question[] {
