@@ -1,1 +1,547 @@
-[]
+[
+  {
+    "id": "algo-001",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "Big-O 표기법이란 무엇이고, 왜 백엔드 개발자에게 중요한가요?",
+    "answer": "Big-O는 입력 크기 n이 증가할 때 알고리즘의 실행 시간 또는 공간이 어떻게 증가하는지를 나타내는 점근적 표기법입니다. 상수와 낮은 차수 항을 무시하고 지배적인 항만 표현합니다.",
+    "explanation": "O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2ⁿ) 순으로 복잡도가 증가합니다. 백엔드에서는 API 응답 시간, DB 쿼리 성능, 메모리 사용량을 예측하는 데 직접적으로 활용됩니다. 예를 들어 O(1)인 해시 조회와 O(n)인 선형 탐색의 차이는 데이터가 100만 건일 때 수십만 배 차이가 납니다.",
+    "deepDive": "왜 상수를 무시하나요? → 점근적 분석은 실제 하드웨어 성능이 아닌 알고리즘 자체의 확장성을 평가하기 위함입니다. 상수는 언어, 컴파일러, CPU에 따라 달라지기 때문에 이론적 분석에서 제거합니다. 그렇다면 상수가 매우 클 경우엔? → 실제 운영에서는 Big-O가 같아도 상수 차이로 성능이 크게 달라질 수 있습니다. 이를 '숨겨진 상수(hidden constant)' 문제라 하며, 프로파일링으로만 확인 가능합니다. 최선/평균/최악 케이스 중 어떤 것을 봐야 하나요? → 일반적으로 최악 케이스(worst case)를 기준으로 설계합니다. SLA를 보장하려면 최악 상황에서도 응답 시간이 허용 범위 내에 있어야 하기 때문입니다.",
+    "seniorTip": "Big-O는 이론이지만, 실제 운영에서는 캐시 히트율, 네트워크 레이턴시, DB 커넥션 풀 등 알고리즘 외 요소가 더 큰 병목이 되는 경우가 많습니다. 항상 프로파일링과 함께 분석하세요.",
+    "tags": [
+      "big-o",
+      "complexity",
+      "performance",
+      "backend"
+    ]
+  },
+  {
+    "id": "algo-002",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "O(n²) 알고리즘이 실제 API에서 어떻게 장애를 유발할 수 있나요?",
+    "answer": "O(n²)은 데이터 크기가 두 배가 될 때 처리 시간이 네 배 증가합니다. API에서 요청 하나가 O(n²) 로직을 실행한다면, 동시 요청이 몰리는 상황에서 서버 전체가 마비될 수 있습니다.",
+    "explanation": "예시: 주문 목록에서 중복 상품을 찾는 로직을 이중 for-loop으로 구현하면 주문 100건은 10,000번, 10,000건은 1억 번 비교가 발생합니다. Node.js 단일 스레드 환경에서는 이 로직이 이벤트 루프를 블로킹하여 다른 모든 요청의 응답 지연을 유발합니다.",
+    "deepDive": "이중 루프를 어떻게 O(n)으로 바꿀 수 있나요? → Set 또는 Map을 활용해 한 번 순회하면서 방문 여부를 기록하면 O(n)으로 해결됩니다. Node.js 이벤트 루프 블로킹은 왜 위험한가요? → Node.js는 단일 스레드이므로 CPU 집약적 작업이 event loop를 점령하면 setImmediate나 setTimeout 콜백도 실행되지 않아 헬스체크, 타임아웃, 다른 요청 모두가 멈춥니다. 이를 방지하려면? → CPU 집약적 작업은 Worker Threads나 별도 마이크로서비스로 분리하거나, 처리량을 제한하는 페이지네이션을 적용해야 합니다.",
+    "seniorTip": "ORM을 사용할 때 N+1 쿼리 문제도 결국 O(n²) 패턴입니다. TypeORM의 eager loading이나 QueryBuilder의 JOIN을 활용해 단일 쿼리로 해결하세요. APM 도구로 slow query를 모니터링하는 것이 필수입니다.",
+    "tags": [
+      "big-o",
+      "O(n²)",
+      "event-loop",
+      "nodejs",
+      "performance"
+    ]
+  },
+  {
+    "id": "algo-003",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "TypeORM에서 N+1 문제가 발생하는 원인과 Big-O 관점에서의 해결책을 설명해주세요.",
+    "answer": "N+1 문제는 1번의 쿼리로 N개의 레코드를 가져온 뒤, 각 레코드의 연관 데이터를 가져오기 위해 N번의 추가 쿼리가 발생하는 패턴입니다. 이는 사실상 O(n)개의 DB 왕복을 유발합니다.",
+    "explanation": "TypeORM에서 relations 옵션 없이 User를 조회한 뒤 user.orders에 접근하면, 각 user마다 SELECT 쿼리가 발생합니다. 1000명의 유저가 있다면 1001번의 쿼리가 실행됩니다. 해결책: (1) find({ relations: ['orders'] }) - LEFT JOIN으로 단일 쿼리, (2) QueryBuilder의 leftJoinAndSelect(), (3) DataLoader 패턴으로 배치 처리.",
+    "deepDive": "JOIN을 사용하면 항상 N+1보다 빠른가요? → 반드시 그렇지는 않습니다. 연관 데이터가 매우 많다면 카테시안 곱으로 인해 네트워크 전송량이 폭발적으로 증가할 수 있습니다. 이 경우 DataLoader처럼 IN 쿼리로 배치 처리하는 것이 더 효율적입니다. DataLoader 패턴이란? → GraphQL에서 유명해진 패턴으로, 단일 틱 내에 발생하는 여러 개별 조회 요청을 모아서 단일 IN 쿼리로 처리합니다. 배치 크기 제한도 함께 고려해야 합니다. 인덱스 없이 JOIN을 하면? → 인덱스가 없는 FK 컬럼 기반 JOIN은 full table scan을 유발해 O(n*m) 복잡도가 됩니다. 항상 FK에 인덱스를 생성해야 합니다.",
+    "seniorTip": "TypeORM의 lazy loading은 편리하지만 N+1의 주범입니다. Production 코드에서는 명시적 eager loading 또는 QueryBuilder를 사용하고, 쿼리 로그를 활성화해 실제 실행되는 SQL을 항상 검증하세요.",
+    "tags": [
+      "typeorm",
+      "n+1",
+      "big-o",
+      "database",
+      "orm"
+    ]
+  },
+  {
+    "id": "algo-004",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "해시 테이블의 동작 원리와 평균 O(1) 조회가 가능한 이유를 설명해주세요.",
+    "answer": "해시 테이블은 키를 해시 함수를 통해 배열 인덱스로 변환하고, 해당 인덱스에 값을 저장합니다. 인덱스를 직접 계산하기 때문에 평균적으로 O(1)에 삽입/조회/삭제가 가능합니다.",
+    "explanation": "동작 과정: (1) key → hash function → index 계산, (2) index 위치에 값 저장. JavaScript의 Map과 객체({})는 내부적으로 해시 테이블로 구현됩니다. Set도 마찬가지입니다. 해시 충돌이 발생하면 체이닝(연결 리스트) 또는 개방 주소법으로 해결하며, 이 경우 최악 O(n)이 될 수 있습니다.",
+    "deepDive": "해시 함수의 조건은 무엇인가요? → (1) 결정론적(같은 입력 → 같은 출력), (2) 균일 분포(충돌 최소화), (3) 빠른 계산 속도. 암호학적 해시(SHA-256)는 느리기 때문에 해시 테이블에는 MurmurHash, FNV 같은 비암호학적 해시를 사용합니다. 로드 팩터(load factor)란? → 현재 저장된 항목 수 / 버킷 수의 비율입니다. 일반적으로 0.7~0.75를 초과하면 rehashing(배열 크기를 늘리고 모든 항목 재배치)을 수행합니다. rehashing은 O(n) 비용이지만 amortized O(1)이 유지됩니다. JavaScript 객체({})와 Map의 차이는? → Map은 키 삽입 순서를 보장하고, 어떤 타입이든 키로 사용 가능하며, 반복 성능이 더 좋습니다. 객체는 문자열/심볼만 키로 사용 가능하고 prototype chain 오염 위험이 있습니다.",
+    "seniorTip": "캐시 키 설계 시 해시 충돌 가능성을 고려해야 합니다. Redis에서 해시 태그({user})를 사용할 때 클러스터 슬롯이 해시 결과에 따라 배분되므로, 키 분포를 균등하게 설계하는 것이 중요합니다.",
+    "tags": [
+      "hash-table",
+      "map",
+      "set",
+      "collision",
+      "javascript"
+    ]
+  },
+  {
+    "id": "algo-005",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "JavaScript Map과 일반 객체를 중복 제거에 사용할 때의 차이점과 해시 충돌 처리를 설명해주세요.",
+    "answer": "Map은 O(1) 삽입/조회로 중복 제거에 적합하며, 어떤 타입이든 키로 사용 가능합니다. 객체는 toString() 호환 타입만 키로 사용 가능해 객체 키 사용 시 '[object Object]'로 충돌이 발생합니다.",
+    "explanation": "중복 제거 예시: [...new Set(array)]는 O(n)으로 가장 효율적입니다. Map을 사용한 그룹화는 array.reduce((map, item) => map.set(item.id, item), new Map()) 패턴을 사용합니다. 객체를 키로 사용할 때 객체는 참조 동등성으로 비교되므로 내용이 같아도 다른 키로 처리됩니다.",
+    "deepDive": "해시 충돌을 완전히 없앨 수 있나요? → 완전 해시 함수(perfect hash function)는 충돌이 없지만, 모든 가능한 키를 미리 알고 있을 때만 설계 가능합니다. 일반적인 상황에서는 충돌을 최소화하는 것이 목표입니다. V8 엔진의 Map 내부 구현은? → V8은 소규모 Map에는 선형 탐색을, 임계값 초과 시 해시 테이블로 전환하는 하이브리드 방식을 사용합니다. WeakMap과 Map의 차이는? → WeakMap의 키는 반드시 객체여야 하고, GC 대상에서 제외되지 않습니다(약한 참조). 키 객체가 다른 곳에서 참조되지 않으면 자동으로 제거됩니다. 메모리 누수 방지에 유용합니다.",
+    "seniorTip": "대용량 데이터 중복 제거 시 Set/Map이 충분하지 않다면 Bloom Filter를 검토하세요. 100% 정확도는 없지만 메모리를 극단적으로 절약할 수 있습니다. Redis의 PFADD(HyperLogLog)도 비슷한 트레이드오프를 가집니다.",
+    "tags": [
+      "hash-table",
+      "map",
+      "set",
+      "deduplication",
+      "javascript",
+      "v8"
+    ]
+  },
+  {
+    "id": "algo-006",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "배열과 연결 리스트의 차이점을 CPU 캐시 관점에서 설명해주세요.",
+    "answer": "배열은 메모리에 연속적으로 저장되어 CPU 캐시 효율이 높고, 인덱스 접근이 O(1)입니다. 연결 리스트는 노드가 힙 전체에 흩어져 있어 캐시 미스가 자주 발생하고, 순차 접근이 O(n)입니다.",
+    "explanation": "CPU 캐시 지역성(locality): 배열 순회 시 연속 메모리 블록이 캐시 라인에 한 번에 로드됩니다. 연결 리스트는 각 노드가 포인터를 따라가야 해서 캐시 라인마다 미스가 발생합니다. 현대 CPU에서 캐시 미스 비용은 메모리 접근의 수백 배입니다. 삽입/삭제는 반대로 연결 리스트가 O(1)(노드만 변경), 배열이 O(n)(이후 요소 이동)입니다.",
+    "deepDive": "캐시 라인이란? → CPU가 메모리에서 데이터를 읽는 최소 단위(보통 64바이트)입니다. 배열 원소가 8바이트라면 하나를 읽을 때 연속된 8개 원소가 함께 캐시에 올라옵니다. 실제로 연결 리스트가 배열보다 빠른 경우는? → 삽입/삭제가 매우 빈번하고 인덱스 접근이 불필요한 경우(예: 양 끝에서만 추가/제거하는 큐). 단, 현대 메모리 환경에서는 배열 기반 구조가 캐시 효과로 대부분 우위를 보입니다. JavaScript 배열의 내부 구현은? → V8은 배열이 밀집(dense)일 때 실제 C++ 배열로 구현하고, 희소(sparse)해지면 해시 테이블로 전환합니다. 따라서 배열에 빈 자리를 만드는 것은 성능에 치명적입니다.",
+    "seniorTip": "TypeScript/JavaScript에서 Queue가 필요하면 Array.shift()는 O(n)이므로 사용을 피하세요. 대신 head 포인터를 관리하는 방식이나 deque 라이브러리를 사용하거나, 단순히 인덱스 기반으로 순회하는 것이 효율적입니다.",
+    "tags": [
+      "array",
+      "linked-list",
+      "cpu-cache",
+      "memory",
+      "performance"
+    ]
+  },
+  {
+    "id": "algo-007",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "백엔드 서비스에서 배열과 연결 리스트 중 어떤 자료구조를 선택해야 하는지 실제 사례와 함께 설명해주세요.",
+    "answer": "조회가 빈번하고 크기가 고정적이면 배열, 삽입/삭제가 빈번하고 순서 유지가 중요하면 연결 리스트를 선택합니다. 단, JavaScript 환경에서는 대부분 배열이 더 실용적입니다.",
+    "explanation": "실제 사례: (1) 요청 처리 큐 - 연결 리스트 기반이 적합(양 끝 O(1) 삽입/삭제), (2) 정렬된 결과 반환 - 배열(인덱스 접근, 슬라이싱), (3) 미들웨어 체인 - 배열(순서대로 순회, 캐시 효율), (4) LRU 캐시 - 이중 연결 리스트 + 해시 맵 조합이 최적.",
+    "deepDive": "Node.js 내부의 타이머 관리는 어떤 자료구조를 쓰나요? → libuv는 최소 힙(min-heap)으로 타이머를 관리합니다. setTimeout이 많아질수록 O(log n) 삽입 비용이 발생합니다. 연결 리스트의 메모리 오버헤드는? → 각 노드가 데이터 외에 포인터(64비트 시스템에서 8바이트)를 추가로 저장합니다. 데이터가 4바이트라면 포인터가 데이터보다 2배 더 큰 오버헤드가 됩니다. V8 Hidden Class 최적화와 배열의 관계는? → 배열의 타입을 일관되게 유지하면(예: 항상 숫자만) V8이 SMI(Small Integer) 최적화를 적용해 메모리와 속도 모두 개선됩니다.",
+    "seniorTip": "실제 운영에서는 자료구조 선택보다 I/O 최적화가 훨씬 큰 영향을 미칩니다. 메모리 내 자료구조 성능 차이가 마이크로초 단위라면, 네트워크/DB 레이턴시는 밀리초 단위입니다. 병목을 먼저 프로파일링하세요.",
+    "tags": [
+      "array",
+      "linked-list",
+      "data-structure",
+      "selection",
+      "backend"
+    ]
+  },
+  {
+    "id": "algo-008",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "스택과 큐의 차이를 설명하고, JavaScript 콜 스택과의 관계를 설명해주세요.",
+    "answer": "스택은 LIFO(Last In, First Out) 구조로 마지막에 넣은 것을 먼저 꺼냅니다. 큐는 FIFO(First In, First Out) 구조로 먼저 넣은 것을 먼저 꺼냅니다. JavaScript 엔진의 콜 스택은 함수 호출을 LIFO 방식으로 관리합니다.",
+    "explanation": "콜 스택 동작: 함수 호출 시 스택 프레임이 push, 함수 반환 시 pop됩니다. 재귀 함수가 깊어지면 스택 프레임이 쌓여 'Maximum call stack size exceeded' 오류가 발생합니다. 반면 이벤트 루프의 태스크 큐(MacroTask Queue)와 마이크로태스크 큐(MicroTask Queue)는 FIFO 구조입니다.",
+    "deepDive": "콜 스택 크기 제한을 어떻게 늘릴 수 있나요? → node --stack-size=65536 app.js로 증가 가능하지만 이는 임시방편입니다. 근본적으로는 꼬리 재귀 최적화(TCO)나 반복문으로 변환해야 합니다. V8은 strict mode에서만 TCO를 지원합니다. 마이크로태스크 큐가 매크로태스크 큐보다 먼저 처리되는 이유는? → 마이크로태스크(Promise.then, queueMicrotask)는 현재 태스크가 끝난 직후, 다음 매크로태스크 전에 모두 비워집니다. 이는 Promise 콜백이 즉각적으로 처리되어야 하는 의미론적 요구사항 때문입니다. 스택 기반 DFS vs 큐 기반 BFS 선택 기준은? → 깊이 우선 탐색이 필요하거나 메모리가 부족하면 스택(DFS), 최단 경로나 레벨별 처리가 필요하면 큐(BFS)를 사용합니다.",
+    "seniorTip": "재귀를 많이 쓰는 코드(예: JSON 파싱, 트리 순회)는 스택 오버플로우 위험이 있습니다. 명시적 스택을 사용한 반복문으로 변환하거나, 입력 깊이를 제한하는 방어 코드를 추가하세요.",
+    "tags": [
+      "stack",
+      "queue",
+      "call-stack",
+      "event-loop",
+      "javascript"
+    ]
+  },
+  {
+    "id": "algo-009",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "Node.js 이벤트 루프에서 큐가 어떻게 동작하는지, Promise와 setTimeout의 실행 순서를 설명해주세요.",
+    "answer": "Node.js 이벤트 루프는 여러 단계(phase)로 구성되며, 각 단계는 콜백 큐를 가집니다. Promise의 then 콜백(마이크로태스크)은 각 단계 종료 후 즉시 처리되고, setTimeout 콜백(매크로태스크)은 timers 단계에서 처리됩니다.",
+    "explanation": "실행 순서 예시: setTimeout(() => console.log('A'), 0); Promise.resolve().then(() => console.log('B')); 결과는 B → A 순입니다. 현재 스택이 비워지면 마이크로태스크 큐(B)를 먼저 처리한 뒤, 이벤트 루프의 다음 tick에서 매크로태스크(A)를 처리합니다. process.nextTick은 마이크로태스크보다도 우선순위가 높습니다.",
+    "deepDive": "Node.js 이벤트 루프의 6단계는? → (1) timers(setTimeout/setInterval), (2) pending callbacks(I/O 오류), (3) idle/prepare(내부), (4) poll(I/O 콜백, 블로킹 대기), (5) check(setImmediate), (6) close callbacks. setImmediate와 setTimeout(0)의 차이는? → setImmediate는 현재 이벤트 루프 순회의 check 단계에서 실행됩니다. 메인 모듈에서는 실행 순서가 불확정적이지만, I/O 콜백 내에서는 항상 setImmediate가 먼저 실행됩니다. 마이크로태스크 큐가 무한히 쌓이면? → 이벤트 루프가 다음 단계로 진행하지 못해 timers, I/O 등 모든 비동기 작업이 starvation됩니다. Promise 체인이 무한 루프가 되지 않도록 주의해야 합니다.",
+    "seniorTip": "NestJS에서 async/await를 남용하면 모든 작업이 마이크로태스크로 처리되어 CPU 집약적 작업이 이벤트 루프를 독점할 수 있습니다. CPU 집약적 작업은 worker_threads 모듈로 분리하거나 setImmediate를 사용해 이벤트 루프에 양보하는 패턴을 활용하세요.",
+    "tags": [
+      "event-loop",
+      "nodejs",
+      "promise",
+      "settimeout",
+      "microtask",
+      "macrotask"
+    ]
+  },
+  {
+    "id": "algo-010",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "트리 자료구조와 B-Tree 인덱스의 관계를 설명하고, 왜 데이터베이스가 B-Tree를 사용하는지 설명해주세요.",
+    "answer": "트리는 계층적 자료구조로 부모-자식 관계를 가집니다. B-Tree는 모든 노드가 여러 키를 가질 수 있고 모든 리프가 같은 깊이인 균형 트리입니다. DB는 디스크 I/O를 최소화하기 위해 B-Tree를 사용합니다.",
+    "explanation": "B-Tree 특성: (1) 노드 하나에 여러 키 저장(디스크 페이지 크기 활용), (2) 항상 균형 유지(O(log n) 보장), (3) 범위 검색 효율적(리프 노드가 연결 리스트). MySQL InnoDB는 B+Tree를 사용하며, 모든 데이터는 리프 노드에만 저장하고 내부 노드는 키만 저장해 캐시 효율을 높입니다.",
+    "deepDive": "왜 Red-Black Tree나 AVL Tree가 아닌 B-Tree를 쓰나요? → 메모리 기반 자료구조(RB Tree, AVL)는 노드 하나가 하나의 키를 가집니다. 디스크에서는 1회 I/O로 4KB 페이지를 읽으므로, 노드 하나에 수백 개의 키를 저장하는 B-Tree가 훨씬 효율적입니다. 트리 높이가 낮을수록 I/O 횟수가 감소합니다. B+Tree와 B-Tree의 차이는? → B+Tree는 내부 노드에 데이터 없이 키만 저장하고, 모든 데이터는 리프에 저장합니다. 리프 노드들이 연결 리스트로 연결되어 범위 쿼리(BETWEEN, >, <)가 효율적입니다. 인덱스 카디널리티란? → 컬럼의 고유값 수입니다. 카디널리티가 낮은 컬럼(성별 등)은 인덱스 효과가 미미합니다. 복합 인덱스는 카디널리티 높은 컬럼을 앞에 배치해야 합니다.",
+    "seniorTip": "인덱스를 추가한다고 무조건 좋은 것이 아닙니다. INSERT/UPDATE/DELETE 시 B-Tree를 재조정하는 비용이 발생합니다. 쓰기가 많은 테이블은 인덱스를 최소화하고, EXPLAIN ANALYZE로 실제 실행 계획을 항상 검증하세요.",
+    "tags": [
+      "tree",
+      "b-tree",
+      "index",
+      "database",
+      "mysql",
+      "innodb"
+    ]
+  },
+  {
+    "id": "algo-011",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "깊이 우선 탐색(DFS)으로 중첩 JSON 트리를 순회하는 방법을 설명하고, 재귀와 반복 방식을 비교해주세요.",
+    "answer": "DFS는 스택을 사용해 현재 노드를 처리한 뒤 자식 노드를 탐색합니다. 재귀는 콜 스택을 암묵적 스택으로 사용하고, 반복(명시적 스택)은 스택 오버플로우 위험이 없습니다.",
+    "explanation": "재귀 방식: function traverse(node) { process(node); node.children?.forEach(traverse); } 반복 방식: const stack = [root]; while(stack.length) { const node = stack.pop(); process(node); stack.push(...(node.children || [])); } API 응답으로 받은 카테고리 트리, 조직도, 폴더 구조 파싱에 활용됩니다.",
+    "deepDive": "BFS가 DFS보다 유리한 경우는? → 트리의 특정 레벨 데이터를 처리하거나, 최단 경로를 찾거나, 트리가 매우 깊어 재귀 스택 오버플로우 위험이 있을 때입니다. 메모리는 DFS가 O(depth), BFS가 O(width)를 사용합니다. JSON 순환 참조(circular reference) 탐지는? → 방문한 객체를 WeakSet에 저장하고, 순회 중 WeakSet에 있는 객체를 다시 만나면 순환 참조로 판단합니다. JSON.stringify도 내부적으로 이 방식을 사용합니다. 매우 큰 JSON 처리 성능을 높이려면? → 스트리밍 JSON 파서(예: stream-json, JSONStream)를 사용해 전체를 메모리에 올리지 않고 처리합니다.",
+    "seniorTip": "외부 API에서 받은 JSON에는 깊이 제한을 두세요. 악의적인 중첩 JSON은 서버 메모리를 고갈시킬 수 있습니다. NestJS의 ValidationPipe에 forbidUnknownValues: true와 함께 깊이 검증을 추가하는 것을 권장합니다.",
+    "tags": [
+      "tree",
+      "dfs",
+      "bfs",
+      "json",
+      "traversal",
+      "recursion"
+    ]
+  },
+  {
+    "id": "algo-012",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "그래프 자료구조와 의존성 그래프를 설명하고, 순환 의존성 탐지 방법을 알려주세요.",
+    "answer": "그래프는 노드(vertex)와 엣지(edge)로 구성됩니다. 의존성 그래프는 모듈/서비스 간 의존 관계를 방향 그래프(DAG)로 표현합니다. 순환 의존성 탐지는 DFS로 색칠 알고리즘(white/gray/black)을 사용합니다.",
+    "explanation": "색칠 알고리즘: white(미방문) → gray(방문중) → black(완료). DFS 중 gray 노드를 다시 방문하면 순환이 존재합니다. NestJS는 모듈 로딩 시 내부적으로 순환 의존성을 감지해 오류를 발생시킵니다. forwardRef()는 이를 해결하는 임시 방편입니다.",
+    "deepDive": "위상 정렬(Topological Sort)이란? → DAG에서 모든 엣지 u→v에 대해 u가 v보다 앞에 오는 순서를 결정하는 알고리즘입니다. npm 패키지 설치 순서, 빌드 시스템, 마이그레이션 순서 결정에 활용됩니다. Kahn's 알고리즘(BFS 기반)이 구현이 간단합니다. NestJS의 순환 의존성 해결 방법은? → (1) forwardRef(() => ServiceB) 사용, (2) 두 서비스를 하나로 통합, (3) 공통 의존성을 별도 모듈로 추출. forwardRef는 모듈 로딩을 지연시켜 순환을 해소하지만, 아키텍처 문제의 증상이므로 리팩토링이 근본 해결책입니다. 그래프의 강한 연결 요소(SCC)란? → 서로 왕래 가능한 노드 집합입니다. SCC를 찾으면 순환 의존성의 범위를 파악할 수 있습니다. Tarjan 알고리즘이나 Kosaraju 알고리즘으로 O(V+E)에 찾을 수 있습니다.",
+    "seniorTip": "마이크로서비스 아키텍처에서 서비스 간 순환 의존성은 배포 순서 문제를 만듭니다. 이벤트 기반 통신으로 의존성을 역전시키거나, 공통 서비스를 별도 추출하는 방식으로 해결하세요. 의존성 그래프를 시각화하는 도구를 CI 파이프라인에 포함시키는 것을 권장합니다.",
+    "tags": [
+      "graph",
+      "dependency",
+      "cycle-detection",
+      "nestjs",
+      "topological-sort"
+    ]
+  },
+  {
+    "id": "algo-013",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "application",
+    "question": "마이크로서비스 간 의존성 그래프에서 데드락 가능성을 탐지하는 방법을 설명해주세요.",
+    "answer": "데드락은 두 서비스가 서로 상대방의 응답을 기다리는 순환 대기 상태입니다. 리소스 할당 그래프에서 사이클을 탐지하면 잠재적 데드락을 발견할 수 있습니다.",
+    "explanation": "탐지 방법: (1) 각 서비스를 노드, 동기 호출을 방향 엣지로 표현, (2) DFS로 사이클 검출. 예방 방법: (1) 타임아웃 설정(Circuit Breaker), (2) 비동기 메시지 큐로 동기 호출 제거, (3) 서비스 계층 구조 강제(상위 → 하위 방향만 허용). 분산 트랜잭션의 데드락은 SAGA 패턴으로 해결합니다.",
+    "deepDive": "분산 시스템에서 데드락을 완전히 방지할 수 있나요? → 이론적으로 Coffman 조건(상호 배제, 점유 대기, 비선점, 순환 대기) 중 하나를 제거하면 됩니다. 실제로는 타임아웃 + 재시도 + Circuit Breaker 조합으로 데드락을 감지하고 복구하는 방식이 현실적입니다. SAGA 패턴과 데드락의 관계는? → SAGA는 분산 트랜잭션을 일련의 로컬 트랜잭션으로 분해합니다. 각 단계가 실패하면 보상 트랜잭션을 실행해 롤백합니다. 동기 RPC 대신 비동기 이벤트를 사용하므로 순환 대기 자체가 불가능합니다. 데이터베이스 데드락은 어떻게 처리하나요? → MySQL InnoDB는 데드락을 자동 감지하고 롤백합니다. 애플리케이션에서는 retry with exponential backoff를 구현해야 합니다. 항상 같은 순서로 테이블/행을 잠금으로 예방할 수 있습니다.",
+    "seniorTip": "분산 시스템 데드락은 단일 서버보다 탐지가 어렵습니다. Distributed tracing(Jaeger, Zipkin)으로 서비스 간 호출 그래프를 시각화하면 잠재적 순환 의존성을 사전에 발견할 수 있습니다.",
+    "tags": [
+      "graph",
+      "deadlock",
+      "microservices",
+      "distributed-system",
+      "saga"
+    ]
+  },
+  {
+    "id": "algo-014",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "이진 탐색의 동작 원리와 git bisect에서 어떻게 활용되는지 설명해주세요.",
+    "answer": "이진 탐색은 정렬된 배열에서 중간값과 목표값을 비교해 탐색 범위를 절반씩 줄입니다. O(log n)의 시간 복잡도로 O(n) 선형 탐색보다 훨씬 효율적입니다.",
+    "explanation": "git bisect는 이진 탐색으로 버그를 도입한 커밋을 찾습니다. (1) git bisect start, (2) 나쁜 커밋 마킹, (3) 좋은 커밋 마킹, (4) 테스트 후 good/bad 표시. 1000개 커밋 중 버그 커밋 찾기: 선형 탐색은 최대 1000번, 이진 탐색은 최대 10번(log₂1000 ≈ 10)만에 찾습니다.",
+    "deepDive": "이진 탐색의 구현에서 자주 발생하는 버그는? → 중간값 계산 시 (left + right) / 2는 정수 오버플로우 위험이 있습니다. left + (right - left) / 2가 안전합니다. JavaScript는 부동소수점이라 오버플로우 위험은 없지만 관용적으로 안전한 방식을 씁니다. lower_bound와 upper_bound 변형은? → lower_bound는 target 이상인 첫 번째 위치, upper_bound는 target 초과인 첫 번째 위치를 반환합니다. 데이터베이스 인덱스 레인지 스캔에서 정확히 이 개념을 사용합니다. 이진 탐색이 불가능한 경우는? → 배열이 정렬되지 않았거나, 비교 가능한 순서가 없는 경우입니다. 거의 정렬된 배열은 삽입 정렬이, 무작위 접근이 불가능한(연결 리스트 등) 구조는 선형 탐색이 더 적합합니다.",
+    "seniorTip": "DB 인덱스의 레인지 스캔은 이진 탐색과 동일한 원리입니다. EXPLAIN의 type이 'range'이면 인덱스를 이진 탐색으로 활용하는 것입니다. type이 'ALL'이면 풀 스캔이므로 인덱스 추가를 검토하세요.",
+    "tags": [
+      "binary-search",
+      "git-bisect",
+      "search",
+      "algorithm",
+      "database"
+    ]
+  },
+  {
+    "id": "algo-015",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "데이터베이스 인덱스 탐색(Index Seek)에서 이진 탐색이 어떻게 동작하는지, 복합 인덱스에서의 동작을 설명해주세요.",
+    "answer": "인덱스 탐색은 B-Tree의 루트에서 시작해 이진 탐색으로 리프 노드까지 내려갑니다. 복합 인덱스는 왼쪽에서 오른쪽 순서로 탐색되며, 선행 컬럼 없이 후행 컬럼만으로는 인덱스를 사용할 수 없습니다.",
+    "explanation": "복합 인덱스 (A, B, C)에서: WHERE A=1은 인덱스 사용, WHERE A=1 AND B=2는 인덱스 사용, WHERE B=2는 인덱스 미사용, WHERE A=1 AND C=3은 A만 인덱스 사용합니다. 선두 컬럼에 범위 조건(>, <, LIKE 'prefix%')이 오면 이후 컬럼은 인덱스를 사용하지 못합니다.",
+    "deepDive": "인덱스 스킵 스캔이란? → MySQL 8.0+에서 선두 컬럼을 건너뛰고 인덱스를 사용하는 최적화입니다. 선두 컬럼의 고유값이 적을 때만 효율적입니다. Covering Index란? → 쿼리에 필요한 모든 컬럼이 인덱스에 포함되어 실제 테이블 행을 읽지 않아도 되는 인덱스입니다. Extra: 'Using index'로 확인 가능하며, I/O를 크게 줄입니다. 인덱스 정렬 활용은? → ORDER BY가 인덱스 순서와 일치하면 filesort 없이 인덱스 순서대로 반환됩니다. 인덱스 컬럼으로만 ORDER BY를 설계하면 정렬 비용을 제거할 수 있습니다.",
+    "seniorTip": "쿼리 패턴을 분석해 복합 인덱스를 설계할 때는 등호(=) 조건 컬럼을 앞에, 범위 조건 컬럼을 뒤에, ORDER BY 컬럼을 마지막에 배치하는 원칙을 따르세요. 하나의 인덱스로 여러 쿼리를 커버할 수 있도록 설계합니다.",
+    "tags": [
+      "binary-search",
+      "index",
+      "database",
+      "mysql",
+      "covering-index"
+    ]
+  },
+  {
+    "id": "algo-016",
+    "category": "algorithm",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "TimSort 알고리즘이 무엇이고, JavaScript의 Array.sort()가 TimSort를 사용하는 이유를 설명해주세요.",
+    "answer": "TimSort는 합병 정렬(Merge Sort)과 삽입 정렬(Insertion Sort)을 결합한 하이브리드 정렬 알고리즘입니다. 실제 데이터에서 자주 나타나는 부분 정렬 상태를 활용해 최선 O(n), 최악 O(n log n)의 성능을 보장합니다.",
+    "explanation": "TimSort 동작: (1) 배열을 작은 블록(run)으로 나눔, (2) 각 run을 삽입 정렬로 정렬, (3) run들을 합병 정렬로 병합. V8 엔진은 TimSort를 사용하며, 안정 정렬(stable sort)을 보장합니다. 2019년까지 V8은 quicksort를 사용했지만 불안정 정렬이었습니다.",
+    "deepDive": "안정 정렬(stable sort)이 왜 중요한가요? → 동일한 키를 가진 원소들이 정렬 후에도 원래 상대 순서를 유지합니다. 예: 이름으로 1차 정렬된 배열을 나이로 2차 정렬할 때, 안정 정렬이면 나이가 같은 사람들끼리는 이름 순서가 유지됩니다. 복합 정렬 기준에 필수입니다. 퀵 정렬이 평균적으로 더 빠른데 왜 TimSort를 쓰나요? → 퀵 정렬은 평균 O(n log n)이지만 최악 O(n²)이고 불안정 정렬입니다. TimSort는 최악도 O(n log n)이고 안정 정렬이며, 실제 데이터(부분 정렬된 경우 많음)에서 더 빠릅니다. 정렬 알고리즘 선택 기준은? → 데이터 크기, 메모리 제약, 안정성 요구, 데이터 분포에 따라 다릅니다. 소규모(~20개)는 삽입 정렬, 대규모는 TimSort/HeapSort가 적합합니다.",
+    "seniorTip": "DB에서 ORDER BY를 사용할 때 인덱스로 커버되지 않으면 filesort가 발생합니다. 애플리케이션에서 정렬하면 전체 데이터를 메모리에 올려야 하므로, 가능하면 DB 인덱스를 활용한 정렬을 우선시하세요.",
+    "tags": [
+      "sorting",
+      "timsort",
+      "javascript",
+      "stable-sort",
+      "v8"
+    ]
+  },
+  {
+    "id": "algo-017",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "대량 데이터 정렬에서 외부 정렬(External Sort)이 필요한 경우와 구현 방법을 설명해주세요.",
+    "answer": "외부 정렬은 데이터가 메모리보다 커서 디스크를 활용해야 할 때 사용합니다. 데이터를 메모리에 맞는 청크로 나눠 각각 정렬한 뒤, 다중 방향 합병(K-way merge)으로 병합합니다.",
+    "explanation": "외부 정렬 단계: (1) 분할 - 파일을 메모리 크기만큼 읽어 정렬 후 임시 파일 생성, (2) 병합 - 모든 임시 파일의 최솟값을 최소 힙으로 추출해 출력 파일에 순서대로 기록. Node.js에서는 스트림(Readable/Writable)과 외부 sort 명령을 조합하거나, 전용 라이브러리를 사용합니다.",
+    "deepDive": "K-way 병합에서 최소 힙을 사용하는 이유는? → K개의 정렬된 파일에서 최솟값을 매번 선형 탐색하면 O(K), 최소 힙을 사용하면 O(log K)입니다. 수백만 건의 데이터에서 K가 크면 큰 차이가 납니다. 데이터베이스의 정렬은 어떻게 이루어지나요? → MySQL의 filesort는 유사한 외부 정렬을 수행합니다. sort_buffer_size 이내면 메모리 내 정렬, 초과하면 임시 파일을 사용합니다. max_length_for_sort_data를 초과하면 row pointer를 정렬해 추가 I/O가 발생합니다. 스트리밍 정렬의 한계는? → 스트리밍으로 읽으면서 동시에 정렬하는 것은 불가능합니다. 정렬은 전체 데이터를 알아야 하기 때문입니다. 부분 정렬(top-K)은 최대 힙으로 O(n log K)에 스트리밍 처리 가능합니다.",
+    "seniorTip": "CSV 대용량 임포트 시 정렬이 필요하다면 애플리케이션에서 처리하지 말고 DB LOAD DATA INFILE이나 COPY 명령과 인덱스를 활용하세요. 그것도 부족하면 Apache Spark 같은 분산 처리 엔진을 고려하세요.",
+    "tags": [
+      "sorting",
+      "external-sort",
+      "merge-sort",
+      "heap",
+      "stream"
+    ]
+  },
+  {
+    "id": "algo-018",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "정규식의 시간 복잡도와 ReDoS 공격이 무엇인지 설명해주세요.",
+    "answer": "정규식은 최악의 경우 지수 시간 O(2ⁿ)이 소요될 수 있습니다. ReDoS(Regular Expression Denial of Service)는 취약한 정규식에 특정 입력을 제공해 무한에 가까운 백트래킹을 유발하는 공격입니다.",
+    "explanation": "취약한 패턴 예시: (a+)+ 또는 (a|aa)+에 'aaaaab' 같은 입력을 주면 정규식 엔진이 모든 가능한 조합을 시도(백트래킹)하며 지수 시간이 소요됩니다. Node.js는 단일 스레드라서 ReDoS 하나가 전체 서버를 마비시킬 수 있습니다.",
+    "deepDive": "ReDoS를 방지하는 방법은? → (1) safe-regex, vuln-regex-detector 같은 정적 분석 도구로 취약 패턴 탐지, (2) 입력 길이 제한, (3) 타임아웃 설정, (4) NFA 대신 DFA 기반 엔진 사용(RE2 라이브러리). Node.js에서 RE2 사용: const RE2 = require('re2'); new RE2('pattern'). 안전한 정규식 작성 원칙은? → (1) 중첩된 수량자 피하기(*(+)), (2) 대체(|) 그룹의 접두사 공유 피하기, (3) 원자 그룹(atomic group) 또는 소유 수량자(possessive quantifier) 사용. 정규식 외의 성능 이슈는? → 글로벌 플래그(g)가 있는 정규식을 반복 사용할 때 lastIndex를 수동으로 초기화하지 않으면 예상치 못한 동작이 발생합니다. 정규식 리터럴은 컴파일 결과를 캐시하지만, new RegExp(str)은 매번 컴파일합니다.",
+    "seniorTip": "사용자 입력을 정규식에 직접 사용하지 마세요. 만약 동적 정규식이 필요하다면 escape-string-regexp로 특수문자를 이스케이프하고, 반드시 RE2 라이브러리를 사용해 선형 시간을 보장하세요.",
+    "tags": [
+      "regex",
+      "redos",
+      "security",
+      "nodejs",
+      "performance"
+    ]
+  },
+  {
+    "id": "algo-019",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "문자열 검색 알고리즘(KMP, Rabin-Karp)과 DB의 LIKE 연산자 성능을 비교해주세요.",
+    "answer": "KMP는 O(n+m), Rabin-Karp는 평균 O(n+m)으로 naive 방식 O(nm)보다 빠릅니다. DB의 LIKE 'prefix%'는 인덱스를 사용하지만, '%substring%'는 풀 스캔(O(n))입니다.",
+    "explanation": "LIKE 성능: LIKE 'abc%'는 인덱스 레인지 스캔 가능, LIKE '%abc' 또는 LIKE '%abc%'는 인덱스 무용으로 풀 스캔합니다. 전문 검색이 필요하면 FULLTEXT 인덱스(MySQL) 또는 Elasticsearch/OpenSearch를 사용해야 합니다. 역방향 인덱스(inverted index)를 활용합니다.",
+    "deepDive": "KMP의 실패 함수(failure function)란? → 패턴의 접두사이면서 접미사인 최대 길이를 미리 계산합니다. 불일치 발생 시 처음부터 다시 비교하지 않고, 실패 함수 값만큼 패턴을 이동시켜 중복 비교를 없앱니다. Rabin-Karp의 해시 롤링이란? → 현재 윈도우의 해시값에서 가장 왼쪽 문자의 기여를 빼고 오른쪽 문자를 추가해 O(1)에 해시를 갱신합니다. 여러 패턴을 동시에 검색할 때 KMP보다 유리합니다. Elasticsearch의 역인덱스 구조는? → 각 토큰(단어)이 등장하는 문서 ID 목록을 저장합니다. 'apple'을 검색하면 apple이 포함된 모든 문서 ID를 O(1)에 조회 가능합니다. TF-IDF나 BM25로 관련도 점수를 계산합니다.",
+    "seniorTip": "검색 기능 구현 시 처음에는 LIKE로 시작해도 되지만, 사용자 수가 늘면 Elasticsearch나 OpenSearch 전환을 미리 계획하세요. DB 풀 텍스트 검색은 확장성에 한계가 있고, 형태소 분석, 동의어 처리, 오타 교정 등 고급 기능이 필요해집니다.",
+    "tags": [
+      "string",
+      "kmp",
+      "rabin-karp",
+      "like",
+      "fulltext-search",
+      "elasticsearch"
+    ]
+  },
+  {
+    "id": "algo-020",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "힙(Heap) 자료구조의 원리와 작업 스케줄링에 어떻게 활용되는지 설명해주세요.",
+    "answer": "힙은 부모 노드가 항상 자식보다 크거나(최대 힙) 작은(최소 힙) 완전 이진 트리입니다. 삽입/삭제가 O(log n)이며, 최솟값/최댓값 조회는 O(1)입니다. 우선순위 큐를 구현하는 데 최적입니다.",
+    "explanation": "작업 스케줄링 활용: (1) 우선순위 큐 - 긴급 요청을 일반 요청보다 먼저 처리, (2) Dijkstra 최단 경로 - 최소 힙으로 다음 방문할 노드 선택, (3) 타이머 관리 - Node.js libuv가 setTimeout을 최소 힙으로 관리. Bull/BullMQ의 delayed job도 우선순위 힙 개념을 활용합니다.",
+    "deepDive": "힙을 배열로 구현할 때의 인덱스 관계는? → 인덱스 i의 노드에 대해: 왼쪽 자식 = 2i+1, 오른쪽 자식 = 2i+2, 부모 = floor((i-1)/2). 배열 표현이 포인터 기반 트리보다 캐시 효율이 좋습니다. heapify의 시간 복잡도는? → 개별 삽입으로 힙 구성은 O(n log n)이지만, Floyd의 heapify 알고리즘으로 O(n)에 구성 가능합니다. 리프 노드는 이미 힙 조건을 만족하므로 내부 노드만 sift-down을 수행합니다. d-ary 힙은? → 이진 힙의 일반화로 자식 수를 d개로 늘린 힙입니다. 삽입은 빠르지만(트리 높이 감소) 삭제는 느립니다. Fibonacci 힙은 decrease-key가 O(1) amortized로 Dijkstra 최적화에 이론적으로 유리합니다.",
+    "seniorTip": "BullMQ에서 job priority를 설정하면 내부적으로 Redis의 Sorted Set(ZSET)으로 구현됩니다. ZADD의 score가 우선순위 힙 역할을 합니다. Redis ZSET은 skiplist로 구현되어 O(log n) 삽입/삭제를 보장합니다.",
+    "tags": [
+      "heap",
+      "priority-queue",
+      "scheduler",
+      "bullmq",
+      "redis"
+    ]
+  },
+  {
+    "id": "algo-021",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "Top-K 문제를 힙으로 O(n log K)에 해결하는 방법을 설명하고 실제 사용 사례를 들어주세요.",
+    "answer": "크기 K의 최소 힙을 유지하면서 n개의 원소를 순회합니다. 현재 원소가 힙의 최솟값보다 크면 최솟값을 제거하고 삽입합니다. 최종적으로 힙에 남은 K개가 상위 K개입니다.",
+    "explanation": "시간 복잡도: O(n log K). K가 n보다 훨씬 작으면 전체 정렬 O(n log n)보다 훨씬 빠릅니다. 실제 사례: (1) 실시간 인기 상품 Top 10 계산, (2) 로그에서 가장 많이 발생한 에러 Top 5, (3) 가장 느린 API 엔드포인트 Top 20. Redis ZSET의 ZRANGEBYSCORE나 ZRANGE로도 구현 가능합니다.",
+    "deepDive": "스트리밍 데이터에서 Top-K를 계산하는 방법은? → 고정 메모리로 스트리밍 Top-K를 계산하는 Space-Saving 알고리즘이 있습니다. K개의 카운터를 유지하고 새 항목이 나타나면 가장 적은 카운터를 대체합니다. 오차가 있지만 메모리 효율이 매우 좋습니다. Count-Min Sketch란? → 해시 함수 여러 개와 카운터 배열로 빈도를 근사 추정하는 확률적 자료구조입니다. 항상 과대 추정하며 절대 과소 추정하지 않습니다. Redis의 Heavy Hitter 탐지에 활용됩니다. QuickSelect 알고리즘은? → 평균 O(n)에 K번째 큰 원소를 찾는 알고리즘입니다. 퀵 정렬의 partition을 활용하며, 정렬 없이 K번째 원소만 필요할 때 유용합니다. 최악 O(n²)이지만 Median of Medians로 O(n) 보장 가능합니다.",
+    "seniorTip": "실시간 랭킹 시스템은 Redis ZSET으로 구현하는 것이 가장 실용적입니다. ZADD O(log n), ZRANGE O(log n + K)로 확장성이 좋으며, 만료 시간 관리도 쉽습니다. 다만 멤버 수가 수억 개를 초과하면 메모리 압박이 생깁니다.",
+    "tags": [
+      "heap",
+      "top-k",
+      "redis",
+      "zset",
+      "ranking",
+      "streaming"
+    ]
+  },
+  {
+    "id": "algo-022",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "슬라이딩 윈도우 알고리즘을 설명하고 API Rate Limiting에 어떻게 적용하는지 설명해주세요.",
+    "answer": "슬라이딩 윈도우는 고정 크기 범위를 배열/시간 위에서 이동하며 부분합이나 최솟값을 효율적으로 계산하는 기법입니다. 이전 윈도우의 계산 결과를 재사용해 O(n)에 처리합니다.",
+    "explanation": "Rate Limiting 구현: (1) 고정 윈도우 - 1분 단위로 요청 수 카운트(경계 버스트 취약), (2) 슬라이딩 윈도우 카운터 - 현재 시간에서 1분 전까지 요청 수를 정확히 측정, (3) 토큰 버킷 - 일정 속도로 토큰 보충, 요청마다 토큰 소비. Redis의 ZADD + ZCOUNT 또는 INCR + EXPIRE로 구현합니다.",
+    "deepDive": "슬라이딩 윈도우 카운터와 슬라이딩 윈도우 로그의 차이는? → 로그 방식은 모든 요청 타임스탬프를 저장하고 오래된 것을 제거합니다. 정확하지만 메모리 소비가 큽니다. 카운터 방식은 현재 윈도우와 이전 윈도우의 카운터를 결합해 근사값을 계산합니다. 메모리 효율적이지만 약간의 오차가 있습니다. Redis로 정확한 슬라이딩 윈도우 구현 방법은? → ZADD key timestamp member, ZREMRANGEBYSCORE key -inf (now-window), ZCOUNT key -inf +inf을 Lua 스크립트로 원자적으로 실행합니다. 분산 환경에서 Redis 없이 Rate Limiting 구현 방법은? → 각 서버가 독립적으로 카운트하면 총 허용 요청이 N*limit이 됩니다. 일관된 해싱으로 같은 사용자는 같은 서버로 라우팅하거나, 중앙 카운터(Redis)를 사용해야 정확합니다.",
+    "seniorTip": "NestJS에서 @nestjs/throttler를 사용하면 Redis 기반 슬라이딩 윈도우 Rate Limiting을 쉽게 구현할 수 있습니다. 하지만 DDoS 수준의 공격은 애플리케이션 레벨이 아닌 API Gateway나 CDN 레벨에서 방어해야 합니다.",
+    "tags": [
+      "sliding-window",
+      "rate-limiting",
+      "redis",
+      "algorithm",
+      "api"
+    ]
+  },
+  {
+    "id": "algo-023",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "슬라이딩 윈도우의 최솟값/최댓값 문제를 단순 접근과 모노토닉 덱을 사용한 O(n) 접근으로 비교 설명해주세요.",
+    "answer": "단순 접근은 윈도우마다 최솟값을 선형 탐색해 O(nk)입니다. 모노토닉 덱(Monotonic Deque)을 사용하면 각 원소가 한 번씩만 삽입/삭제되어 O(n)에 해결됩니다.",
+    "explanation": "모노토닉 덱 동작: 덱이 항상 단조 증가(최솟값용) 또는 단조 감소(최댓값용) 순서를 유지합니다. (1) 새 원소 추가 전 뒤에서 현재보다 큰(최솟값용) 원소를 제거, (2) 앞에서 범위를 벗어난 인덱스 제거, (3) 덱의 front가 현재 윈도우 최솟값. 모니터링 메트릭의 이동 평균 계산에 활용됩니다.",
+    "deepDive": "모노토닉 덱이 올바른 결과를 보장하는 이유는? → 덱에서 제거된 원소는 제거 시점의 새 원소에 의해 지배됩니다. 즉, 제거된 원소보다 새 원소가 같거나 작고(최솟값용), 새 원소의 유효 범위가 더 넓습니다. 따라서 제거된 원소는 앞으로 최솟값이 될 수 없습니다. 이를 단조성 불변식이라 합니다. 슬라이딩 윈도우 중앙값 문제는? → 최솟값/최댓값과 달리 중앙값은 O(n log k)가 최적입니다. 최대 힙(하위 절반)과 최소 힙(상위 절반)을 유지하며 밸런스를 조정합니다. 실시간 메트릭 이동 평균 계산 최적화는? → 새 값을 더하고 윈도우를 벗어난 값을 빼면 O(1)에 이동 평균 갱신이 가능합니다. 부동소수점 누적 오차가 문제라면 Kahan summation algorithm을 사용하세요.",
+    "seniorTip": "실시간 모니터링 시스템(Prometheus, 자체 메트릭 집계)에서 이동 평균, 이동 최솟값/최댓값 계산은 슬라이딩 윈도우 알고리즘의 핵심 응용입니다. 알림 임계값 계산에 모노토닉 덱을 활용하면 CPU 사용량을 크게 줄일 수 있습니다.",
+    "tags": [
+      "sliding-window",
+      "monotonic-deque",
+      "optimization",
+      "monitoring",
+      "metrics"
+    ]
+  },
+  {
+    "id": "algo-024",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "투 포인터 기법을 설명하고 데이터베이스 Merge Join에서 어떻게 활용되는지 설명해주세요.",
+    "answer": "투 포인터는 두 개의 포인터를 사용해 정렬된 배열에서 O(n) 또는 O(n+m)에 문제를 해결하는 기법입니다. DB의 Merge Join은 두 정렬된 테이블을 동시에 순회해 O(n+m)에 조인합니다.",
+    "explanation": "Merge Join 동작: (1) 양 테이블을 조인 키로 정렬, (2) 두 포인터를 각 테이블 시작에 배치, (3) 키가 같으면 결과에 추가하고 양쪽 전진, 작은 쪽을 전진. 정렬 비용이 있지만 이미 인덱스로 정렬된 경우 Hash Join보다 메모리 효율적입니다.",
+    "deepDive": "Hash Join과 Merge Join의 선택 기준은? → Hash Join: 대용량 테이블, 동등 조인, 인덱스 없을 때 유리. Merge Join: 이미 정렬된 인덱스 있을 때, 범위 조인, 메모리 제한 환경에서 유리. Nested Loop Join: 한 테이블이 매우 작을 때(outer table)가 유리합니다. 투 포인터로 정렬된 배열 합병 복잡도 증명은? → 두 포인터가 각각 최대 n번, m번 이동하므로 총 이동 횟수 = n+m, 즉 O(n+m)입니다. 각 이동 시 O(1) 비교를 수행하므로 전체 O(n+m)입니다. 3 포인터, N 포인터 확장은? → K개의 정렬된 배열을 병합할 때 최소 힙을 사용합니다. O(n log K), n은 총 원소 수. 외부 정렬의 K-way merge와 동일한 원리입니다.",
+    "seniorTip": "EXPLAIN에서 Join Type이 'merge'이면 정렬 인덱스를 잘 활용하는 것입니다. 'hash'는 메모리를 많이 사용하고, 'nested_loop'은 작은 테이블에만 적합합니다. 조인 성능 튜닝 시 Join Type을 먼저 확인하세요.",
+    "tags": [
+      "two-pointers",
+      "merge-join",
+      "database",
+      "join",
+      "algorithm"
+    ]
+  },
+  {
+    "id": "algo-025",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "투 포인터를 활용한 중복 제거 및 정렬된 배열 병합을 in-place로 구현하고, 시간/공간 복잡도를 분석해주세요.",
+    "answer": "정렬된 배열의 in-place 중복 제거: 빠른 포인터(fast)로 순회하며 느린 포인터(slow) 위치에 유일한 값을 덮어씁니다. O(n) 시간, O(1) 추가 공간.",
+    "explanation": "구현: let slow = 0; for (let fast = 1; fast < arr.length; fast++) { if (arr[fast] !== arr[slow]) arr[++slow] = arr[fast]; } return slow + 1; 정렬된 두 배열 병합(in-place는 O(n+m) 공간 필요): 두 배열의 포인터를 각각 끝에서 시작해 결과 배열의 끝부터 채웁니다.",
+    "deepDive": "in-place 병합 정렬이 실제로 O(1) 추가 공간으로 가능한가요? → 이론적으로 O(1) 추가 공간 in-place 병합이 존재하지만, 구현이 매우 복잡하고 상수 인수가 커서 실용적이지 않습니다. 실제로는 O(n) 공간을 사용하는 표준 병합이 선호됩니다. 두 정렬된 DB 결과를 애플리케이션에서 병합하는 실용적 방법은? → 두 커서를 유지하며 작은 값을 선택하는 투 포인터 방식이 O(n+m) 시간, O(1) 추가 공간(결과 제외)으로 최적입니다. 스트리밍 형태로 구현하면 메모리에 전체 결과를 올리지 않아도 됩니다. 정렬 보장 없는 두 쿼리 결과 병합은? → 정렬 후 투 포인터를 적용하거나, 해시 조인 방식으로 하나를 해시 테이블에 올린 뒤 다른 것으로 프로브합니다.",
+    "seniorTip": "여러 DB 샤드의 결과를 애플리케이션에서 병합할 때 투 포인터 K-way 병합이 핵심입니다. 각 샤드 결과가 정렬되어 있다면 최소 힙으로 O(total * log(shards)) 시간에 병합 가능합니다. 페이지네이션과 함께 사용 시 커서 기반 페이지네이션이 오프셋 기반보다 훨씬 효율적입니다.",
+    "tags": [
+      "two-pointers",
+      "in-place",
+      "merge",
+      "deduplication",
+      "pagination"
+    ]
+  },
+  {
+    "id": "algo-026",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "블룸 필터의 원리와 Redis에서 캐시 회피(Cache Bypass) 방지에 어떻게 활용하는지 설명해주세요.",
+    "answer": "블룸 필터는 원소가 집합에 존재하는지 확률적으로 확인하는 자료구조입니다. '없다'는 확실하고, '있다'는 확률적(false positive 존재)입니다. 존재하지 않는 키의 DB 조회를 사전에 차단해 캐시 미스와 불필요한 DB 부하를 줄입니다.",
+    "explanation": "Cache Bypass(캐시 뚫기) 공격: 존재하지 않는 키로 대량 요청 → 캐시 미스 → DB 부하 폭증. 블룸 필터 대응: (1) DB의 모든 유효 키를 블룸 필터에 추가, (2) 요청 시 블룸 필터 확인, (3) 필터가 '없음'을 반환하면 즉시 거부. Redis 4.0+의 RedisBloom 모듈이나 BF.ADD/BF.EXISTS 명령 활용.",
+    "deepDive": "블룸 필터의 false positive 확률 공식은? → p = (1 - e^(-kn/m))^k. k: 해시 함수 수, n: 원소 수, m: 비트 수. 원하는 false positive 비율 p에 맞는 최적 m = -n*ln(p)/(ln2)², k = (m/n)*ln2. 블룸 필터의 false negative가 없는 이유는? → 원소 추가 시 k개의 해시 위치를 모두 1로 설정합니다. 조회 시 k개 위치가 모두 1이면 존재 가능, 하나라도 0이면 확실히 없습니다. 삽입한 원소의 k개 위치는 항상 1이므로 false negative가 불가능합니다. 블룸 필터의 한계와 대안은? → 삭제 불가능(counting bloom filter로 해결), 원소 수 증가 시 false positive 증가. Cuckoo Filter는 삭제를 지원하고 공간 효율이 더 좋습니다.",
+    "seniorTip": "Redis의 HyperLogLog도 비슷한 확률적 자료구조로, 카디널리티(고유값 수) 추정에 사용됩니다. 정확도 ±0.81%로 최대 12KB 메모리로 수십억 개의 유니크 카운트가 가능합니다. UV(Unique Visitor) 집계에 매우 유용합니다.",
+    "tags": [
+      "bloom-filter",
+      "redis",
+      "cache",
+      "probabilistic",
+      "security"
+    ]
+  },
+  {
+    "id": "algo-027",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "application",
+    "question": "캐시 스탬피드(Cache Stampede) 문제를 설명하고 블룸 필터와 뮤텍스를 활용한 해결 방법을 설명해주세요.",
+    "answer": "캐시 스탬피드는 캐시 만료 시 다수의 동시 요청이 DB에 몰려 부하를 급증시키는 현상입니다. 블룸 필터로 비존재 키를 걸러내고, 분산 뮤텍스(Redis SETNX)로 첫 번째 요청만 DB를 조회하게 합니다.",
+    "explanation": "해결 방법: (1) Cache-Aside + Mutex: Redis SETNX로 잠금 획득, 캐시 재생성 후 잠금 해제, 나머지 요청은 잠금 해제 후 캐시 조회. (2) Early Expiration: 만료 전에 백그라운드에서 캐시를 미리 갱신. (3) Probabilistic Early Expiration: 만료에 가까울수록 확률적으로 조기 갱신. (4) Cache-Warming: 배포 시 사전에 캐시 준비.",
+    "deepDive": "Redis SETNX의 원자성은 어떻게 보장되나요? → Redis는 단일 스레드이므로 모든 명령이 순차적으로 실행됩니다. SETNX(SET if Not eXists)는 원자적 연산으로, 동시에 여러 클라이언트가 시도해도 하나만 성공합니다. SET key value NX EX 초로 만료 시간과 함께 원자적 설정이 가능합니다. 뮤텍스 보유 중 프로세스가 죽으면? → EX(만료 시간)를 설정해 데드락을 방지합니다. Redlock 알고리즘은 Redis 클러스터에서 분산 뮤텍스를 구현하지만 논란이 있습니다. NTP 시간 드리프트와 네트워크 파티션 상황에서의 안전성 보장이 어렵습니다. Early Expiration 전략 구현 방법은? → 실제 TTL 외에 내부 만료 시간을 10-20% 일찍 설정하고, 내부 만료가 된 경우 확률적으로(예: 1/10 요청만) 캐시를 갱신합니다.",
+    "seniorTip": "캐시 스탬피드는 트래픽이 갑자기 증가할 때(마케팅 이벤트, 자정 배치 후) 자주 발생합니다. 사전에 캐시 워밍 전략을 배포 파이프라인에 포함시키고, 임계값 기반 자동 캐시 갱신을 구현하는 것이 근본 해결책입니다.",
+    "tags": [
+      "bloom-filter",
+      "cache-stampede",
+      "redis",
+      "mutex",
+      "distributed-lock"
+    ]
+  },
+  {
+    "id": "algo-028",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "일관성 해싱(Consistent Hashing)의 원리와 Redis Cluster에서의 적용을 설명해주세요.",
+    "answer": "일관성 해싱은 해시 공간을 링(ring)으로 표현하고 서버와 키를 같은 링에 배치합니다. 서버 추가/제거 시 전체 키의 1/N만 재배치되어 기존 해싱의 대규모 재배치 문제를 해결합니다.",
+    "explanation": "동작: (1) 0~2³²-1 링에 서버를 배치(해시 함수 적용), (2) 키를 링에 배치 후 시계 방향으로 가장 가까운 서버에 할당. 서버 추가 시 영향받는 키는 새 서버와 이전 서버 사이의 것만. Redis Cluster는 일관성 해싱 대신 16384개의 슬롯을 사용하지만 동일한 원리입니다.",
+    "deepDive": "가상 노드(Virtual Node)가 필요한 이유는? → 서버가 적을 때 링에서 균등 분포를 보장하기 어렵습니다. 각 서버를 N개의 가상 노드로 확장하면 균등 분포에 가까워집니다. 서버 스펙이 다를 때 가상 노드 수를 조정해 부하를 비례 배분할 수 있습니다. Redis Cluster의 16384 슬롯 설계는? → 슬롯 수가 너무 작으면 노드 수 제한, 너무 크면 클러스터 상태 메시지가 커집니다. 16384는 CRC16을 사용했을 때 좋은 분포를 보이는 값이며, 최대 1000개 노드를 지원합니다. 해시 태그({})란? → Redis Cluster에서 {user:123}:session처럼 중괄호 안의 부분만 해싱합니다. 같은 해시 태그를 가진 키는 같은 슬롯에 배치되어 멀티 키 명령(MGET, 트랜잭션)이 가능합니다.",
+    "seniorTip": "Redis Cluster 설계 시 핫 슬롯(hot slot) 문제를 주의하세요. 모든 요청이 특정 키에 집중되면 해당 노드만 과부하가 걸립니다. 해시 태그를 너무 광범위하게 사용하면 오히려 불균형을 초래합니다. 슬롯 분포를 주기적으로 모니터링하세요.",
+    "tags": [
+      "consistent-hashing",
+      "redis-cluster",
+      "distributed",
+      "sharding",
+      "virtual-node"
+    ]
+  },
+  {
+    "id": "algo-029",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "LRU와 LFU 캐시 교체 정책의 차이와 Redis의 maxmemory-policy 설정을 설명해주세요.",
+    "answer": "LRU(Least Recently Used)는 가장 오래전에 사용된 항목을 제거하고, LFU(Least Frequently Used)는 사용 빈도가 가장 낮은 항목을 제거합니다. Redis는 maxmemory-policy로 둘 다 지원합니다.",
+    "explanation": "Redis maxmemory-policy 옵션: noeviction(거부), allkeys-lru(전체 LRU), volatile-lru(TTL 있는 키 LRU), allkeys-lfu(전체 LFU), volatile-lfu(TTL 있는 키 LFU), allkeys-random, volatile-random, volatile-ttl. LRU 구현: 해시 맵 + 이중 연결 리스트로 O(1) 조회, O(1) 이동. LFU 구현: 해시 맵 + 빈도별 이중 연결 리스트.",
+    "deepDive": "O(1) LRU 구현의 핵심은? → 해시 맵으로 O(1) 조회, 이중 연결 리스트로 O(1) 순서 변경. 조회/삽입 시 노드를 리스트 앞으로 이동(O(1)), 제거 시 리스트 뒤를 삭제(O(1)). JavaScript Map은 삽입 순서를 보장하므로 Map 하나로 간단히 구현 가능합니다. LRU vs LFU 선택 기준은? → LRU는 최근성(temporal locality) 기반, 구현 단순. LFU는 빈도(frequency) 기반, 핫 아이템 보호에 유리. 데이터 접근 패턴이 skewed(특정 항목에 집중)되면 LFU가, 균등하면 LRU가 적합. Redis의 LRU 근사 알고리즘은? → Redis는 정확한 LRU 대신 무작위 샘플링 기반 근사 LRU를 사용합니다. maxmemory-samples 설정으로 샘플 수를 늘리면 정확도가 올라가지만 CPU 비용도 증가합니다.",
+    "seniorTip": "캐시 히트율(hit rate)을 주기적으로 측정하세요. INFO stats의 keyspace_hits와 keyspace_misses로 계산합니다. 히트율이 낮으면 TTL 조정, 교체 정책 변경, 캐시 크기 증가를 검토하세요. 목표 히트율은 워크로드에 따라 다르지만 80% 이상이 일반적입니다.",
+    "tags": [
+      "lru",
+      "lfu",
+      "cache-eviction",
+      "redis",
+      "memory"
+    ]
+  },
+  {
+    "id": "algo-030",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "트라이(Trie) 자료구조의 원리와 자동완성 기능 구현에 활용하는 방법을 설명해주세요.",
+    "answer": "트라이는 문자열을 저장하는 트리 구조로, 각 노드가 한 문자를 나타냅니다. 루트에서 리프까지의 경로가 하나의 문자열을 표현합니다. 공통 접두사를 공유해 공간을 절약하고, O(L) 탐색(L=검색어 길이)이 가능합니다.",
+    "explanation": "자동완성 구현: (1) 모든 가능한 검색어를 트라이에 삽입, (2) 입력 접두사로 트라이를 순회해 해당 노드 도달, (3) 그 노드의 서브트리를 DFS/BFS로 순회해 모든 가능한 완성어 수집, (4) 빈도 기반 정렬. 검색어 수가 n, 최대 길이 L이면 O(L + 결과 수)에 자동완성 가능합니다.",
+    "deepDive": "트라이의 공간 복잡도는? → 최악의 경우 O(n*L), n=문자열 수, L=평균 길이. 하지만 공통 접두사 공유로 실제로는 훨씬 적습니다. 압축 트라이(Radix Tree/Patricia Tree)는 단일 자식 노드를 병합해 공간을 추가 절약합니다. Redis에서 트라이를 구현하는 방법은? → Redis는 네이티브 트라이를 지원하지 않습니다. (1) Sorted Set으로 근사: 모든 접두사를 ZADD하고 ZRANGEBYLEX로 범위 조회, (2) RediSearch 모듈의 FT.SUGADD/FT.SUGGET으로 네이티브 자동완성 지원. 트라이 vs 해시 맵 검색어 자동완성 비교는? → 해시 맵으로 모든 접두사를 저장하면 O(1) 조회이지만 공간이 O(n*L²). 트라이는 O(L) 조회, O(n*L) 공간. Elasticsearch의 prefix query, completion suggester가 트라이 기반입니다.",
+    "seniorTip": "대규모 자동완성은 트라이를 직접 구현하기보다 Elasticsearch의 completion suggester나 Redis의 FT.SUGADD를 활용하세요. 검색어 추천에 단순 접두사 매칭 외에 오타 허용(fuzzy), 형태소 분석, 개인화 랭킹이 필요해지면 전문 검색 엔진이 필수입니다.",
+    "tags": [
+      "trie",
+      "autocomplete",
+      "search",
+      "redis",
+      "elasticsearch"
+    ]
+  }
+]
