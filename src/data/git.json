@@ -502,5 +502,311 @@
       "adr",
       "culture"
     ]
+  },
+  {
+    "id": "git-026",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "git worktree를 사용하여 여러 브랜치를 동시에 작업하는 방법과 실무 활용 시나리오를 설명하라.",
+    "answer": "git worktree add ../hotfix-dir hotfix/urgent-fix로 별도 디렉토리에 다른 브랜치를 체크아웃. 현재 작업을 stash하거나 커밋하지 않고도 다른 브랜치에서 작업 가능. 작업 완료 후 git worktree remove로 정리.",
+    "explanation": "git worktree는 하나의 Git 저장소에서 여러 working directory를 생성하여 각각 다른 브랜치를 체크아웃할 수 있게 한다. 내부적으로 .git 디렉토리를 공유하므로 디스크 사용이 효율적이다.",
+    "deepDive": "worktree가 stash보다 나은 상황은? → 긴급 핫픽스가 들어왔는데 현재 feature 브랜치에서 복잡한 작업 중이라면, stash는 작업 상태를 완벽히 보존하지 못할 수 있음(untracked 파일, 부분 스테이징). worktree는 현재 디렉토리를 그대로 두고 별도 디렉토리에서 작업하므로 충돌 위험이 없음. → worktree의 내부 동작은? → .git/worktrees/ 디렉토리에 각 worktree의 HEAD, index 등을 별도 관리. 같은 브랜치를 두 worktree에서 동시에 체크아웃할 수 없음(데이터 무결성 보호). → Claude Code와 worktree를 조합하면? → worktree A에서 Claude Code로 리팩토링 작업, worktree B에서 직접 핫픽스. 두 터미널을 나란히 열고 병렬 작업. → worktree 관리 명령어는? → git worktree list: 모든 worktree 확인. git worktree prune: 삭제된 디렉토리의 worktree 메타데이터 정리. 사용 후 반드시 remove하는 습관이 중요 — 방치하면 브랜치 체크아웃이 안 되는 혼란 발생.",
+    "seniorTip": "니콘내콘에서 릴리즈 브랜치 관리와 feature 개발을 동시에 해야 할 때: 메인 디렉토리에서 feature 개발, worktree로 release 브랜치를 별도 디렉토리에 두고 cherry-pick/hotfix 적용. IDE를 두 개 열면 완전한 병렬 작업이 가능하다.",
+    "tags": [
+      "worktree",
+      "parallel-development",
+      "branching",
+      "productivity",
+      "workflow"
+    ]
+  },
+  {
+    "id": "git-027",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "git sparse-checkout이 monorepo에서 성능을 개선하는 원리는?",
+    "options": [
+      "저장소의 히스토리를 삭제하여 크기를 줄인다",
+      "working directory에 필요한 디렉토리/파일만 체크아웃하여 clone/checkout 속도를 높이고 디스크 사용량을 줄인다",
+      "Git의 내부 객체를 압축한다",
+      "원격 저장소의 브랜치 수를 제한한다"
+    ],
+    "answer": 1,
+    "explanation": "sparse-checkout은 전체 저장소를 clone하되 working directory에는 지정한 경로만 표시한다. Turborepo monorepo에서 특정 패키지만 작업할 때 유용하다. git sparse-checkout init --cone → git sparse-checkout set packages/payment로 결제 패키지만 체크아웃.",
+    "deepDive": "sparse-checkout과 partial clone의 차이는? → partial clone(--filter=blob:none): 원격에서 blob 데이터를 필요할 때만 다운로드. 네트워크 비용 절감. sparse-checkout: 로컬에 모든 데이터가 있지만 working directory에 일부만 표시. 디스크 비용 절감. 최적의 조합: partial clone + sparse-checkout → 필요한 파일만 다운로드하고 필요한 파일만 표시. → CI에서 sparse-checkout을 쓰면? → GitHub Actions에서 actions/checkout에 sparse-checkout 옵션 설정. packages/payment만 체크아웃하면 checkout 시간이 수 분에서 수 초로 단축. → cone 모드와 non-cone 모드의 차이는? → cone 모드(권장): 디렉토리 단위로 지정. 성능이 좋음. non-cone: 파일 패턴으로 지정. 유연하지만 느림. → sparse-checkout이 git status에 미치는 영향은? → 체크아웃되지 않은 파일은 git status에서 보이지 않음. 팀원이 다른 패키지를 수정해도 내 working directory에는 영향 없음.",
+    "seniorTip": "니콘내콘 Turborepo monorepo에서 결제 팀 개발자라면: git clone --filter=blob:none + git sparse-checkout set packages/payment packages/common으로 결제 패키지와 공통 패키지만 로컬에 유지. 전체 monorepo가 10GB여도 로컬은 수백 MB로 유지 가능.",
+    "tags": [
+      "sparse-checkout",
+      "monorepo",
+      "performance",
+      "ci-optimization",
+      "clone"
+    ]
+  },
+  {
+    "id": "git-028",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Git LFS(Large File Storage)가 필요한 이유와 설정 방법, 그리고 주의사항을 설명하라.",
+    "answer": "Git은 바이너리 파일(이미지, ML 모델, 영상)의 버전 관리에 비효율적이다. Git LFS는 대용량 파일을 별도 서버에 저장하고, Git 저장소에는 포인터 파일만 유지하여 clone/fetch 속도를 유지한다.",
+    "explanation": "설정: git lfs install → git lfs track '*.psd' '*.model' → .gitattributes 커밋. 이후 해당 패턴의 파일을 git add/commit하면 자동으로 LFS에 저장. git lfs ls-files로 LFS 추적 파일 확인.",
+    "deepDive": "Git LFS 없이 대용량 파일을 커밋하면 어떤 문제가 발생하나? → Git은 모든 버전의 전체 파일을 .git/objects에 저장. 100MB 모델 파일을 10번 수정하면 1GB의 Git 히스토리. clone 시 전체 히스토리를 다운로드하므로 clone이 수십 분 걸림. → LFS의 비용 구조는? → GitHub LFS: 무료 1GB 저장 + 1GB 대역폭/월. 초과 시 데이터 팩 구매 필요($5/50GB). CI에서 LFS 파일을 매번 다운로드하면 대역폭이 빠르게 소진 → CI에서는 GIT_LFS_SKIP_SMUDGE=1로 LFS 파일 다운로드 스킵 가능. → AI 프로젝트에서 ML 모델 파일을 어떻게 관리하나? → 작은 모델(수백 MB): Git LFS. 큰 모델(수 GB+): LFS 대신 S3/GCS에 저장하고 DVC(Data Version Control)로 버전 관리. → .gitattributes를 먼저 커밋해야 하는 이유는? → LFS 설정 전에 이미 커밋된 파일은 LFS로 전환되지 않음. git lfs migrate로 히스토리를 재작성해야 하며 force push가 필요.",
+    "seniorTip": "AI 자동매매 봇이나 AI MBTI 테스트에서 모델 파일을 관리할 때: 모델 파일은 Git LFS 또는 S3에 저장하고, 코드에서는 환경 변수로 모델 경로/URL을 참조. 모델 파일을 일반 Git 커밋에 포함시키면 팀 전체의 clone 시간이 폭발적으로 증가한다.",
+    "tags": [
+      "git-lfs",
+      "large-files",
+      "binary",
+      "ml-models",
+      "storage"
+    ]
+  },
+  {
+    "id": "git-029",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Git의 Signed Commits(서명된 커밋)이 중요한 이유와 구현 방법은?",
+    "options": [
+      "커밋 메시지를 암호화하기 위해",
+      "커밋의 작성자가 실제 해당 인물임을 암호학적으로 증명하여 위조/사칭을 방지하고, GitHub에서 'Verified' 뱃지로 신뢰를 표시한다",
+      "커밋 속도를 높이기 위해",
+      "병합 충돌을 자동으로 해결하기 위해"
+    ],
+    "answer": 1,
+    "explanation": "GPG 또는 SSH 키로 커밋에 서명하면, 커밋이 해당 키의 소유자에 의해 생성되었음을 증명한다. git config --global commit.gpgsign true로 자동 서명을 활성화하고, GitHub에 공개 키를 등록하면 'Verified' 뱃지가 표시된다.",
+    "deepDive": "왜 서명이 중요한가? → git config user.email은 누구나 아무 이메일로 설정 가능. 악의적 공격자가 CTO의 이메일로 커밋을 위조하여 백도어를 포함한 코드를 main에 push할 수 있음. 서명된 커밋은 이를 방지. → GPG vs SSH 서명 중 어떤 것을 선택하나? → SSH 서명(Git 2.34+): 설정이 간단. 이미 SSH 키가 있다면 추가 설치 없이 사용 가능. git config --global gpg.format ssh + git config --global user.signingkey ~/.ssh/id_ed25519.pub. GPG 서명: 더 전통적이고 키 만료/폐기 관리가 유연. → Branch Protection에서 서명을 강제하면? → 'Require signed commits' 활성화 시 서명되지 않은 커밋은 push 거부. 팀 전체가 서명을 사용하도록 온보딩 필요. → CI/CD에서 서명은? → GitHub Actions의 기본 커밋은 서명되지 않음. GitHub App 토큰으로 서명된 커밋 생성 가능.",
+    "seniorTip": "결제/금융 시스템의 코드베이스에서는 서명된 커밋을 필수로 적용하자. 감사(audit) 시 '이 코드 변경을 누가 했는지 증명할 수 있는가?'라는 질문에 서명된 커밋이 답이 된다. SSH 서명이 GPG보다 설정이 쉬우므로 팀 도입 장벽이 낮다.",
+    "tags": [
+      "signed-commits",
+      "gpg",
+      "ssh-signing",
+      "security",
+      "verification"
+    ]
+  },
+  {
+    "id": "git-030",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "git notes는 커밋의 해시를 변경하지 않고 메타데이터(코드 리뷰 결과, 배포 이력 등)를 추가할 수 있다.",
+    "answer": "O",
+    "explanation": "git notes는 기존 커밋을 수정하지 않고 별도의 refs/notes/ 네임스페이스에 메타데이터를 저장한다. git notes add -m 'Deployed to production 2024-03-15' HEAD로 현재 커밋에 노트를 추가하면 git log에 함께 표시된다.",
+    "deepDive": "git notes가 일반 커밋 메시지와 다른 점은? → 커밋 메시지는 커밋의 일부이므로 수정하면 해시가 변경됨(amend). notes는 커밋 외부에 저장되므로 해시 불변. 이미 push된 커밋에도 안전하게 추가 가능. → 실무 활용 사례는? → 1) CI/CD에서 배포 시 해당 커밋에 '배포 환경, 시간, 배포자' 노트 추가. 2) 코드 리뷰 결과를 노트로 기록. 3) 성능 테스트 결과를 커밋에 첨부. → notes를 팀과 공유하려면? → 기본적으로 git push는 notes를 전송하지 않음. git push origin refs/notes/*로 명시적 push 필요. git fetch origin refs/notes/*:refs/notes/*로 가져오기. → notes의 한계는? → GitHub/GitLab UI에서 notes를 표시하지 않는 경우가 많음. 팀 간 공유가 번거로움. 대안: 커밋 메시지 footer에 메타데이터를 포함하거나, 별도 DB에 커밋 해시와 메타데이터를 연결.",
+    "seniorTip": "ArgoCD로 배포할 때 배포된 커밋에 자동으로 note를 추가하는 스크립트를 CI에 포함하면, git log --notes로 '이 커밋이 언제 어디에 배포되었는지'를 히스토리에서 바로 확인할 수 있다.",
+    "tags": [
+      "git-notes",
+      "metadata",
+      "deployment-tracking",
+      "history",
+      "annotation"
+    ]
+  },
+  {
+    "id": "git-031",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Interactive Rebase(git rebase -i)의 fixup, squash, reorder, edit 명령을 실무에서 활용하는 방법을 설명하라.",
+    "answer": "squash: 여러 커밋을 하나로 합치되 메시지를 편집. fixup: 합치되 이전 커밋의 메시지만 유지. reorder: 커밋 순서 변경. edit: 특정 커밋에서 멈춰 수정 후 계속. PR 전에 커밋 히스토리를 정리하는 핵심 도구.",
+    "explanation": "git rebase -i HEAD~5로 최근 5개 커밋을 대화형으로 편집. 각 커밋 앞의 명령어를 변경: pick(유지), squash(합치기+메시지 편집), fixup(합치기+메시지 버리기), edit(수정), drop(삭제), reword(메시지만 수정).",
+    "deepDive": "fixup commit을 미리 만드는 패턴은? → git commit --fixup=<hash>로 특정 커밋의 수정 사항을 fixup 커밋으로 생성. 나중에 git rebase -i --autosquash하면 fixup 커밋이 자동으로 해당 커밋 아래로 이동하고 fixup 명령이 설정됨. 코드 리뷰 피드백 반영 시 매우 유용. → edit으로 중간 커밋을 수정하면? → rebase가 해당 커밋에서 멈춤. 파일을 수정하고 git add + git rebase --continue. 이후 커밋에서 충돌이 발생할 수 있으므로 주의. → 커밋 순서를 바꾸면? → 에디터에서 라인 순서를 변경. 의존성이 있는 커밋의 순서를 바꾸면 충돌 발생. 독립적인 커밋만 순서 변경. → rebase 중 실수했을 때 복구는? → git rebase --abort로 rebase 전 상태로 원복. 이미 완료된 rebase는 git reflog에서 rebase 전 HEAD를 찾아 git reset --hard로 복구.",
+    "seniorTip": "PR 제출 전 워크플로우: 1) WIP 커밋으로 자유롭게 작업. 2) git rebase -i로 커밋을 논리적 단위로 정리. 3) 리뷰 피드백은 --fixup으로 반영. 4) 최종적으로 --autosquash로 정리. 이 습관이 깔끔한 Git 히스토리의 핵심이다.",
+    "tags": [
+      "interactive-rebase",
+      "squash",
+      "fixup",
+      "commit-hygiene",
+      "workflow"
+    ]
+  },
+  {
+    "id": "git-032",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "git filter-repo로 Git 히스토리에서 시크릿(API 키, .env 파일)을 영구적으로 제거하는 방법은?",
+    "options": [
+      "해당 파일을 삭제하는 새 커밋을 만들면 히스토리에서도 제거된다",
+      "git filter-repo --path .env --invert-paths로 모든 히스토리에서 해당 파일을 완전히 제거하고, 팀 전체에 force push를 알린 후 키를 즉시 폐기/교체한다",
+      ".gitignore에 추가하면 히스토리에서 자동으로 삭제된다",
+      "git reset으로 해당 커밋을 제거하면 된다"
+    ],
+    "answer": 1,
+    "explanation": "git filter-repo는 git filter-branch의 현대적 대안으로, Git 히스토리를 고속으로 재작성한다. 단순히 파일을 삭제해도 과거 커밋에는 남아있으므로, filter-repo로 모든 커밋에서 완전히 제거해야 한다. 히스토리 재작성이므로 모든 커밋 해시가 변경된다.",
+    "deepDive": "왜 git filter-branch 대신 filter-repo를 쓰나? → filter-branch는 느리고 edge case에서 문제가 많음. filter-repo는 Python 기반으로 10-100배 빠르고 안전. Git 공식 문서에서도 filter-repo를 권장. → 히스토리 재작성 후 팀에 미치는 영향은? → 모든 커밋 해시가 변경되므로 팀원의 로컬 브랜치와 원격이 완전히 달라짐. 팀원은 로컬 저장소를 삭제하고 다시 clone하는 것이 가장 안전. → 시크릿이 노출된 것을 발견하면 어떤 순서로 대응하나? → 1) 해당 시크릿을 즉시 폐기/교체 (가장 중요 — 히스토리 정리보다 먼저). 2) filter-repo로 히스토리에서 제거. 3) force push. 4) 팀에 알림. 5) GitHub의 경우 Support에 캐시된 데이터 삭제 요청. → 예방이 최선이 아닌가? → git-secrets, trufflehog, pre-commit hook으로 시크릿이 커밋되는 것을 원천 차단. GitHub의 secret scanning도 활성화.",
+    "seniorTip": "filter-repo 사용 전에 반드시 git clone --mirror로 전체 백업을 만들자. 히스토리 재작성은 되돌릴 수 없다. 또한 GitHub의 Pull Request에 이미 시크릿이 표시되었다면 PR도 삭제해야 한다(GitHub Support 요청).",
+    "tags": [
+      "filter-repo",
+      "security",
+      "secret-removal",
+      "history-rewriting",
+      "incident-response"
+    ]
+  },
+  {
+    "id": "git-033",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "GitHub Actions에서 semantic-release를 사용한 자동 릴리즈 파이프라인을 설계하는 방법을 설명하라.",
+    "answer": "Conventional Commits 형식의 커밋 메시지를 분석하여 자동으로 버전을 결정(feat→minor, fix→patch, BREAKING CHANGE→major), CHANGELOG를 생성하고, git tag를 생성하고, npm publish/Docker push까지 자동화한다.",
+    "explanation": "semantic-release 흐름: 1) main에 push/merge 시 GitHub Actions 트리거. 2) 마지막 릴리즈 이후 커밋 메시지 분석. 3) 버전 결정(semver). 4) CHANGELOG.md 업데이트. 5) package.json 버전 업데이트. 6) git tag + GitHub Release 생성. 7) npm publish 또는 Docker build/push.",
+    "deepDive": "semantic-release가 버전을 어떻게 결정하나? → 마지막 git tag(v1.2.3) 이후의 커밋을 분석. feat: → v1.3.0 (minor). fix: → v1.2.4 (patch). feat!: 또는 BREAKING CHANGE: → v2.0.0 (major). 여러 feat과 fix가 섞이면 가장 높은 등급 적용. → monorepo에서의 설정은? → 각 패키지별로 독립적인 버전 관리가 필요. @semantic-release/monorepo 플러그인 또는 changeset을 사용. 패키지 A에만 변경이 있으면 A만 버전 업. → Changeset과의 차이는? → semantic-release: 커밋 메시지 기반, 완전 자동. Changeset: 개발자가 수동으로 changeset 파일을 생성, PR에서 미리 변경 사항을 확인 가능. monorepo에서는 Changeset이 더 유연한 경우가 많음. → 릴리즈 후 ArgoCD 자동 배포와 연결하려면? → semantic-release가 Docker 이미지를 태그와 함께 push → ArgoCD가 이미지 태그 변경을 감지 → 자동 배포.",
+    "seniorTip": "semantic-release + Conventional Commits + commitlint + husky의 조합이 현대적 릴리즈 자동화의 표준이다. 한 번 설정하면 '버전 뭘로 올리지?', 'CHANGELOG 작성해야 하는데...'라는 고민이 사라진다.",
+    "tags": [
+      "semantic-release",
+      "automated-release",
+      "conventional-commits",
+      "changelog",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "git-034",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Conventional Commits와 자동 CHANGELOG 생성의 관계를 설명하고, 팀에 도입하는 방법을 설명하라.",
+    "answer": "Conventional Commits(feat:, fix:, docs: 등)를 일관되게 사용하면, 도구가 커밋 메시지를 파싱하여 CHANGELOG를 자동 생성할 수 있다. commitlint + husky로 커밋 시 형식을 강제하여 팀 전체의 일관성을 보장한다.",
+    "explanation": "CHANGELOG 자동 생성 흐름: 커밋 메시지를 카테고리별로 분류(Features, Bug Fixes, Breaking Changes) → 마크다운 형식으로 CHANGELOG.md 생성. conventional-changelog-cli, semantic-release, changeset 등의 도구가 이를 수행한다.",
+    "deepDive": "commitlint를 어떻게 설정하나? → npm install -D @commitlint/cli @commitlint/config-conventional. commitlint.config.js에 extends: ['@commitlint/config-conventional']. husky에서 commit-msg hook으로 npx --no -- commitlint --edit $1 실행. → 팀 도입 시 저항을 줄이는 방법은? → 1) 처음에는 경고만(commitlint의 severity를 warning으로). 2) PR 제목만 Conventional Commits 형식 강제(squash merge 시 PR 제목이 커밋 메시지가 되므로). 3) VS Code의 Conventional Commits 확장으로 자동 완성 제공. → scope를 어떻게 정의하나? → 팀에서 허용하는 scope 목록을 commitlint에 등록. 예: feat(payment):, fix(auth):, refactor(settlement):. 모듈/도메인 단위로 scope를 정하면 CHANGELOG에서 영역별 변경사항을 한눈에 파악. → CHANGELOG와 GitHub Release의 관계는? → GitHub Release에 CHANGELOG 내용을 자동으로 포함하면 사용자/팀원이 릴리즈 노트를 별도로 작성할 필요가 없음.",
+    "seniorTip": "Conventional Commits를 PR 레벨에서만 강제하는 것이 현실적이다. 개발 중에는 자유롭게 커밋하고, PR의 squash merge 제목만 형식을 맞추면 main 브랜치의 히스토리는 깔끔하게 유지된다.",
+    "tags": [
+      "conventional-commits",
+      "changelog",
+      "commitlint",
+      "automation",
+      "team-workflow"
+    ]
+  },
+  {
+    "id": "git-035",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "PR 리뷰 자동화에서 CODEOWNERS, required reviewers, auto-assign의 역할과 설정 방법은?",
+    "options": [
+      "모두 커밋 메시지를 자동으로 작성해주는 기능이다",
+      "CODEOWNERS는 파일/디렉토리별 리뷰어를 자동 지정하고, required reviewers는 최소 승인 수를 강제하며, auto-assign은 PR 생성 시 팀에서 랜덤으로 리뷰어를 배정한다",
+      "세 기능 모두 GitHub Enterprise에서만 사용 가능하다",
+      "CODEOWNERS는 파일 소유권을 변경하는 Linux 명령어다"
+    ],
+    "answer": 1,
+    "explanation": "CODEOWNERS 파일(.github/CODEOWNERS)에 /src/payment/ @payment-team을 설정하면 결제 코드 변경 시 payment-team이 자동으로 리뷰어로 지정된다. Branch Protection에서 'Require review from Code Owners'를 활성화하면 해당 팀의 승인이 필수가 된다.",
+    "deepDive": "CODEOWNERS 파일의 패턴 문법은? → 디렉토리: /src/payment/ @payment-team. 파일 패턴: *.tf @infra-team. 전체: * @tech-leads. 우선순위: 마지막 매칭 규칙이 적용됨. → auto-assign과 CODEOWNERS의 차이는? → CODEOWNERS: 파일 변경 기반으로 특정 팀/사람을 지정. 결제 코드를 수정하면 결제팀이 리뷰. auto-assign(GitHub Actions 또는 앱): 팀 멤버 중 랜덤으로 N명을 배정. 리뷰 부하를 균등 분배. → 리뷰어 피로(Review Fatigue)를 줄이려면? → 1) CODEOWNERS를 너무 넓게 설정하지 않기 (* @all-devs는 최악). 2) auto-assign으로 2명씩 로테이션. 3) PR 크기를 작게 유지(300줄 이하). 4) 리뷰 SLA 설정(4시간 이내). → Branch Protection에서 dismiss stale reviews는? → PR에 새 커밋이 push되면 기존 승인을 취소. 승인 후 코드가 변경되어 리뷰 내용이 무효화되는 것을 방지.",
+    "seniorTip": "CODEOWNERS 전략: 핵심 코드(결제, 인증, 인프라)에만 특정 시니어를 지정하고, 일반 코드는 팀 단위로 지정. 모든 파일에 리뷰어를 지정하면 리뷰가 병목이 된다.",
+    "tags": [
+      "codeowners",
+      "code-review",
+      "auto-assign",
+      "branch-protection",
+      "pr-automation"
+    ]
+  },
+  {
+    "id": "git-036",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Git hooks 생태계에서 husky v9, lint-staged, commitlint의 각 역할과 조합 패턴은?",
+    "options": [
+      "세 도구 모두 같은 기능을 수행한다",
+      "husky는 Git hooks를 팀에서 공유 가능하게 관리하고, lint-staged는 스테이징된 파일에만 린트/포매팅을 실행하며, commitlint는 커밋 메시지 형식을 검증한다",
+      "husky는 Node.js 없이도 동작한다",
+      "lint-staged는 모든 파일을 검사한다"
+    ],
+    "answer": 1,
+    "explanation": "조합: husky가 pre-commit hook에서 lint-staged를 실행(변경 파일만 ESLint/Prettier). commit-msg hook에서 commitlint를 실행(커밋 메시지 형식 검증). 이 삼총사가 현대 JavaScript/TypeScript 프로젝트의 코드 품질 자동화 표준이다.",
+    "deepDive": "husky v9의 변경점은? → v9에서는 .husky/ 디렉토리에 셸 스크립트 파일로 hook을 정의. package.json의 prepare 스크립트에 husky를 넣어 npm install 시 자동 설정. → lint-staged가 전체 파일이 아닌 스테이징된 파일만 검사하는 이유는? → 전체 프로젝트를 린트하면 수 분이 걸릴 수 있음. 변경된 파일만 검사하면 수 초. 개발 흐름을 방해하지 않으면서 품질을 유지하는 균형점. → --no-verify로 우회하면? → 급한 상황에서 git commit --no-verify로 hook을 건너뛸 수 있음. 하지만 CI에서 동일한 검사를 수행하므로 push 후 실패함. --no-verify는 '나중에 CI에서 잡힐 것을 알면서 임시로 건너뛰는 것'. → NestJS 프로젝트의 lint-staged 설정 예시는? → '*.ts': ['eslint --fix', 'prettier --write']. TypeScript 파일이 스테이징되면 ESLint 자동 수정 → Prettier 포매팅 → 다시 스테이징.",
+    "seniorTip": "팀에 처음 도입할 때: 1) Prettier만 먼저 적용(코드 스타일 논쟁 제거). 2) ESLint는 error만 체크(warning은 무시). 3) commitlint는 warning으로 시작. 점진적으로 강도를 높이면 팀의 저항이 적다.",
+    "tags": [
+      "husky",
+      "lint-staged",
+      "commitlint",
+      "git-hooks",
+      "code-quality"
+    ]
+  },
+  {
+    "id": "git-037",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "GitHub Merge Queue가 CI 병목을 해결하는 원리와 설정 방법을 설명하라.",
+    "answer": "Merge Queue는 PR들을 큐에 넣고, main 브랜치에 순차적으로 merge하기 전에 각 PR이 최신 main 위에서 CI를 통과하는지 자동으로 검증한다. 여러 PR을 배치로 묶어 테스트할 수도 있어 CI 실행 횟수를 줄인다.",
+    "explanation": "문제: 5개의 PR이 모두 CI를 통과했지만, PR1이 merge된 후 PR2가 main과 충돌하거나 CI가 깨질 수 있다. Merge Queue는 PR2를 main+PR1 위에서 재검증하여 '머지 후 깨지는' 문제를 방지한다.",
+    "deepDive": "Merge Queue 없이 이 문제를 어떻게 해결하나? → Branch Protection의 'Require branches to be up to date' 설정으로 해결 가능하지만, 각 PR이 merge될 때마다 나머지 PR들이 main을 rebase하고 CI를 다시 돌려야 함. 5개 PR이면 10-15번의 CI 실행 필요. Merge Queue는 이를 자동화하고 배치 처리. → 배치 모드란? → Merge Queue가 여러 PR을 하나의 임시 브랜치에 합쳐서 CI를 한 번만 실행. 10개 PR을 개별 검증하면 10번의 CI, 배치로 2-3번. 단, 배치 중 하나가 실패하면 이진 탐색으로 실패한 PR을 찾음. → 설정 방법은? → Repository Settings → Rules → Branch ruleset에서 Merge Queue 활성화. merge method, 배치 크기, 타임아웃 등을 설정. PR에서 'Merge when ready'를 클릭하면 큐에 추가. → 어떤 프로젝트에 적합한가? → PR이 하루 5개 이상, CI가 10분 이상 걸리는 프로젝트에서 효과적. 소규모 팀이면 오버헤드가 더 클 수 있음.",
+    "seniorTip": "니콘내콘처럼 여러 팀이 하나의 main 브랜치에 merge하는 환경에서 Merge Queue는 '아까 CI 통과했는데 merge하니까 깨졌다'는 상황을 원천 방지한다. 특히 Turborepo monorepo에서 패키지 간 의존성으로 인한 예기치 못한 실패를 방지하는 데 효과적이다.",
+    "tags": [
+      "merge-queue",
+      "ci-optimization",
+      "github",
+      "branch-protection",
+      "automation"
+    ]
+  },
+  {
+    "id": "git-038",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Dependabot을 활용한 자동 의존성 업데이트 전략과 보안 업데이트 관리 방법을 설명하라.",
+    "answer": "Dependabot은 package.json, Dockerfile 등의 의존성을 모니터링하여 업데이트 PR을 자동 생성한다. 보안 취약점이 발견되면 즉시 PR을 생성하고, 정기 업데이트는 주간/월간으로 스케줄링한다.",
+    "explanation": ".github/dependabot.yml에 패키지 매니저(npm, docker, github-actions), 업데이트 주기(weekly), 대상 브랜치(main)를 설정. Dependabot이 자동으로 버전 업데이트 PR을 생성하며, CI가 통과하면 auto-merge할 수 있다.",
+    "deepDive": "Dependabot PR이 너무 많아지면? → 그룹화: dependabot.yml에서 groups를 설정하여 관련 패키지를 하나의 PR로 묶음. 예: devDependencies를 하나의 PR로, production dependencies를 별도 PR로. → 보안 업데이트와 버전 업데이트의 차이는? → 보안 업데이트(Security Updates): 알려진 취약점(CVE)이 있는 패키지를 즉시 업데이트. 자동으로 활성화됨. 버전 업데이트(Version Updates): 최신 버전으로의 정기적 업데이트. dependabot.yml로 설정. → auto-merge를 안전하게 설정하려면? → 1) patch/minor 업데이트만 auto-merge(major는 수동 검토). 2) CI(테스트, 빌드)가 통과해야 merge. 3) GitHub Actions에서 dependabot PR을 감지하여 자동 approve + merge. → 대안 도구는? → Renovate Bot: Dependabot보다 설정이 유연. 그룹화, 스케줄링, auto-merge 규칙이 더 세밀. monorepo 지원이 더 좋음. 셀프 호스팅 가능.",
+    "seniorTip": "의존성 업데이트를 무시하면 보안 취약점이 누적되고, 나중에 한꺼번에 업데이트하면 breaking change 지옥이 된다. 주간 자동 업데이트 + CI 자동 검증 + patch/minor auto-merge가 가장 현실적인 전략이다.",
+    "tags": [
+      "dependabot",
+      "dependency-management",
+      "security",
+      "automation",
+      "renovate"
+    ]
+  },
+  {
+    "id": "git-039",
+    "category": "git",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "대규모 Git 저장소의 성능을 향상시키는 commit-graph와 multi-pack-index의 역할은?",
+    "options": [
+      "커밋 메시지를 압축하여 저장 용량을 줄인다",
+      "commit-graph는 커밋 간의 관계를 사전 계산하여 log/blame/merge-base 연산을 가속하고, multi-pack-index는 여러 packfile의 인덱스를 통합하여 객체 검색을 가속한다",
+      "두 기능 모두 원격 저장소에서만 동작한다",
+      "Git GUI 도구의 렌더링 속도를 높인다"
+    ],
+    "answer": 1,
+    "explanation": "commit-graph: .git/objects/info/commit-graph 파일에 커밋의 부모, 세대(generation number), 트리 해시를 캐시. git log --graph, merge-base 계산 등이 O(n)에서 O(log n)으로 개선. git commit-graph write로 생성. multi-pack-index: 여러 packfile을 하나의 인덱스로 통합하여 객체 조회 속도 향상.",
+    "deepDive": "commit-graph가 필요한 시점은? → 저장소에 수만~수십만 커밋이 있을 때 git log, git merge-base, git blame이 느려짐. Linux 커널(100만+ 커밋)에서 commit-graph로 log 속도가 10배 이상 향상. → 자동으로 유지되나? → Git 2.34+에서 git config --global fetch.writeCommitGraph true를 설정하면 fetch 시 자동 갱신. gc 실행 시에도 자동 갱신. → multi-pack-index란? → Git은 gc 시 packfile로 객체를 묶지만, 대규모 저장소에서는 여러 packfile이 존재. 각 packfile을 개별 검색하면 느림. MIDX(multi-pack-index)가 모든 packfile의 인덱스를 하나로 통합. git multi-pack-index write로 생성. → 개발자가 직접 관리해야 하나? → 대부분의 경우 Git이 gc를 통해 자동 관리. GitHub/GitLab 서버에서는 이미 최적화되어 있음. 로컬에서 대규모 저장소가 느리면 git gc + commit-graph write로 개선 가능.",
+    "seniorTip": "monorepo가 커지면서 git log나 git blame이 느려진다면, git maintenance start를 실행하여 백그라운드에서 자동으로 commit-graph, loose-objects, incremental-repack을 최적화하게 하자. Git 2.31+에서 지원.",
+    "tags": [
+      "commit-graph",
+      "multi-pack-index",
+      "performance",
+      "git-internals",
+      "optimization"
+    ]
+  },
+  {
+    "id": "git-040",
+    "category": "git",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "GitHub CLI(gh)를 사용한 생산성 향상 패턴을 설명하라. PR 생성, 이슈 관리, 워크플로우 실행을 터미널에서 수행하는 방법은?",
+    "answer": "gh pr create로 터미널에서 PR 생성, gh pr checkout으로 리뷰할 PR을 로컬에 체크아웃, gh issue create/list로 이슈 관리, gh workflow run으로 GitHub Actions 수동 트리거. 브라우저를 열지 않고 Git 워크플로우를 완결한다.",
+    "explanation": "주요 명령어: gh pr create --fill (커밋 메시지로 PR 자동 작성). gh pr list --author @me (내 PR 목록). gh pr merge --squash (squash merge). gh run list (CI 실행 상태 확인). gh run watch (CI 실시간 모니터링). gh issue create --label bug --assignee @me.",
+    "deepDive": "Claude Code와 gh를 조합하면? → Claude Code에서 코드 변경 → git add/commit → gh pr create까지 한 흐름으로 처리. CLAUDE.md에 'PR 생성은 gh pr create --fill --reviewer team-lead를 사용'을 명시하면 Claude Code가 자동으로 PR을 생성할 수 있음. → gh api로 GitHub REST API를 직접 호출하면? → gh api repos/owner/repo/pulls/123/comments로 PR 코멘트 조회. gh api --method POST로 데이터 생성. jq와 조합하면 GitHub 데이터를 커맨드라인에서 자유롭게 분석. → alias로 자주 쓰는 명령을 줄이려면? → gh alias set prc 'pr create --fill'로 gh prc만 입력하면 PR 생성. gh alias set prl 'pr list --author @me --state open'으로 내 PR 목록 빠르게 확인. → gh extension이란? → 커뮤니티가 만든 확장. gh dash(대시보드), gh copilot(AI 명령어 제안) 등. gh extension install dlvhdr/gh-dash로 설치. → CI 디버깅에 활용하면? → gh run view --log-failed로 실패한 step의 로그만 빠르게 확인. 브라우저에서 Actions 탭을 뒤지는 것보다 훨씬 빠름.",
+    "seniorTip": "gh를 일상 워크플로우에 통합하면 브라우저 전환 횟수가 크게 줄어든다. 특히 Cursor + Claude Code + gh 조합으로 코드 작성 → 테스트 → PR 생성 → CI 확인까지 터미널에서 완결하는 것이 가장 빠른 개발 사이클이다.",
+    "tags": [
+      "github-cli",
+      "gh",
+      "productivity",
+      "workflow",
+      "automation"
+    ]
   }
 ]
