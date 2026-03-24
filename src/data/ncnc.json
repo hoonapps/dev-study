@@ -288,5 +288,306 @@
       "biometric",
       "ghostpass"
     ]
+  },
+  {
+    "id": "ncnc-016",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "PreventDoubleRequestInterceptor는 중복 요청 방지를 위해 UUID를 DB에 저장한다. 왜 Redis가 아닌 DB를 선택했으며, DB가 느려지면 어떤 문제가 발생하는가?",
+    "answer": "DB를 선택한 이유는 트랜잭션과 함께 원자적으로 멱등성 키를 저장하기 위해서다. Redis는 트랜잭션 롤백 시 키가 남아 유효한 재요청까지 차단한다. DB가 느려지면 모든 API 요청의 latency가 증가하고, 커넥션 풀이 고갈될 수 있다.",
+    "explanation": "멱등성 키를 비즈니스 트랜잭션과 같은 DB 트랜잭션에 넣으면, 비즈니스 로직 실패 시 멱등성 키도 롤백되어 재시도가 가능하다. Redis에 저장하면 DB 트랜잭션 롤백과 무관하게 키가 남는다.",
+    "deepDive": "실제 시나리오로 파보자. 사용자가 기프티콘 구매 버튼을 더블클릭한다. 첫 번째 요청이 Interceptor에서 UUID를 DB에 INSERT하고 비즈니스 로직을 실행한다. 두 번째 요청은 같은 UUID로 INSERT를 시도하다가 UNIQUE 제약 조건에 걸려 차단된다. 여기까지는 완벽하다. → 그런데 첫 번째 요청의 결제가 실패해서 트랜잭션이 롤백되면? DB에 저장했으니 UUID도 함께 롤백된다. 사용자가 다시 시도할 수 있다. Redis였다면? UUID가 Redis에 남아있어서 재시도가 차단된다. → 그러면 DB가 느려지면? Interceptor의 INSERT 쿼리가 모든 API 요청의 앞단에서 실행되므로, DB latency가 곧 전체 API latency가 된다. 해결: 별도의 경량 테이블 + 인덱스 최적화, 또는 TTL 기반 파티션으로 오래된 키 자동 정리. → 더 근본적으로, DB INSERT가 병목이면? 쓰기 부하가 높은 시간대에 멱등성 체크 자체가 서비스 장애를 유발할 수 있다. 이때는 Redis + Lua 스크립트로 전환하되, 비즈니스 트랜잭션 실패 시 Redis 키를 삭제하는 보상 로직이 필요하다.",
+    "seniorTip": "멱등성 키 저장소 선택은 trade-off다. DB: 트랜잭션 원자성 보장, 느림. Redis: 빠름, 트랜잭션 롤백 시 정합성 문제. 니콘내콘처럼 금융 거래에서는 DB가 안전하지만, 성능 임계치를 반드시 모니터링해야 한다.",
+    "tags": [
+      "idempotency",
+      "interceptor",
+      "double-request",
+      "redis",
+      "transaction",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-017",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "@RetryOnError 데코레이터와 @Transactional 데코레이터의 적용 순서가 왜 중요한가? 순서가 잘못되면 데드락 재시도가 어떻게 실패하는가?",
+    "answer": "@RetryOnError가 @Transactional 바깥에 있어야 한다. 안쪽에 있으면 같은 트랜잭션 내에서 재시도하므로 이미 롤백된 트랜잭션에서 쿼리가 실행되어 실패한다.",
+    "explanation": "NestJS 데코레이터는 아래에서 위로 적용된다. @RetryOnError가 위, @Transactional이 아래면 재시도 시 새 트랜잭션이 생성된다. 반대면 같은 깨진 트랜잭션에서 재시도한다.",
+    "deepDive": "구체적인 데드락 시나리오를 보자. 두 개의 주문이 동시에 같은 기프티콘의 재고를 차감하려 한다. InnoDB가 데드락을 감지하고 한쪽을 롤백한다. @RetryOnError가 이를 감지하고 재시도해야 한다. → @RetryOnError가 @Transactional 바깥에 있으면? 재시도 시 새 트랜잭션이 시작되고, 이전에 데드락을 일으킨 다른 트랜잭션은 이미 커밋되었으므로 성공한다. → @RetryOnError가 @Transactional 안쪽에 있으면? 이미 롤백된 트랜잭션의 queryRunner에서 쿼리를 실행하려 하므로 'Transaction already released' 에러가 난다. 재시도가 무의미해진다. → TypeScript 데코레이터 실행 순서를 정확히 이해해야 한다. 메서드 데코레이터는 선언 순서의 역순으로 평가되지만, 반환된 descriptor는 위에서 아래로 적용된다. 즉 @A @B method()는 B(A(method))가 아니라 A(B(method))다. 이걸 모르면 데코레이터 조합에서 반드시 버그가 난다.",
+    "seniorTip": "데코레이터 순서 버그는 테스트에서 잡기 어렵다. 단일 요청에서는 데드락이 안 나니까. 부하 테스트에서 동시 요청을 보내야 발견된다. 데코레이터 순서 규칙을 팀 컨벤션으로 문서화하자.",
+    "tags": [
+      "decorator",
+      "retry",
+      "transactional",
+      "deadlock",
+      "typescript",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-018",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "PublisherStrategyService가 8개 이상의 퍼블리셔를 처리한다. 새 퍼블리셔를 추가할 때 기존 코드를 수정하지 않으려면 어떻게 설계해야 하는가? (OCP)",
+    "answer": "Strategy 패턴 + NestJS DiscoveryService로 @Publisher() 데코레이터가 붙은 클래스를 자동 등록. 새 퍼블리셔는 클래스만 추가하면 자동으로 전략 맵에 등록된다.",
+    "explanation": "Open-Closed Principle: 확장에는 열려있고 수정에는 닫혀있어야 한다. if-else나 switch로 퍼블리셔를 분기하면 매번 기존 코드를 수정해야 한다. 전략 맵(Map<PublisherType, IPublisherStrategy>)을 사용하면 새 전략을 추가만 하면 된다.",
+    "deepDive": "현재 코드가 switch문이라면 어떤 문제가 있을까? switch(publisherType) { case 'KT': ... case 'SKT': ... case 'LG': ... }가 8개. 새 퍼블리셔를 추가하려면 이 switch에 case를 추가해야 한다. → 그런데 switch문을 수정하면 기존 퍼블리셔에 영향을 줄 수 있지 않나? 맞다. 테스트 범위가 전체 switch에 걸린다. → Strategy 패턴으로 리팩토링하면? 1) IPublisherStrategy 인터페이스 정의 (publish, validate, getStatus 메서드). 2) 각 퍼블리셔별 클래스: KtPublisherStrategy implements IPublisherStrategy. 3) NestJS의 ModuleRef 또는 DiscoveryService로 런타임에 모든 IPublisherStrategy 구현체를 수집. 4) Map<string, IPublisherStrategy>에 등록. 5) 새 퍼블리셔 추가 = 새 클래스 파일 1개 생성. → 하지만 각 퍼블리셔의 API 스펙이 전혀 다르면? 인터페이스가 너무 추상적이 되거나, 어댑터 레이어가 필요하다. Anti-Corruption Layer를 각 Strategy 내부에 구현하여 외부 API의 차이를 흡수한다.",
+    "seniorTip": "8개 이상의 분기가 있는 코드는 반드시 Strategy/Factory 패턴을 검토하라. NestJS에서는 커스텀 데코레이터 + DiscoveryService 조합이 강력하다. @SqsMessageHandler가 바로 이 패턴이다.",
+    "tags": [
+      "strategy-pattern",
+      "ocp",
+      "publisher",
+      "design-pattern",
+      "nestjs",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-019",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MysqlLeaderElectionService가 GET_LOCK()으로 리더를 선출한다. RDS Multi-AZ failover가 발생하면 리더 선출에 무슨 일이 일어나는가?",
+    "answer": "GET_LOCK() 상태는 메모리에만 존재하므로 failover 시 새 Primary에는 락 정보가 없다. 모든 Pod가 동시에 락을 획득하려 시도하여 일시적으로 여러 리더가 존재할 수 있다.",
+    "explanation": "RDS Multi-AZ failover 시 Standby가 새 Primary로 승격된다. GET_LOCK()은 MySQL 인스턴스의 메모리 구조체이므로 복제되지 않는다. failover 후 기존 리더는 커넥션이 끊겨 락을 잃고, 모든 Pod가 새 Primary에서 경쟁한다.",
+    "deepDive": "이 문제를 단계별로 분석해보자. 1) 정상 상태: Pod-A가 GET_LOCK('daily_settlement', 0)으로 리더. Pod-B, Pod-C는 락 획득 실패로 대기. 2) RDS failover 발생 (약 30-60초). 3) Pod-A의 DB 커넥션이 끊긴다. GET_LOCK은 커넥션 종료 시 자동 해제. 4) 새 Primary에는 락이 없다. Pod-A, B, C 모두 재연결 후 GET_LOCK 시도. 5) 누가 먼저 연결하느냐에 따라 리더가 바뀐다. → 진짜 문제는? Pod-A가 정산 배치를 실행 중이었다면? 커넥션이 끊기면서 트랜잭션이 롤백된다. 새 리더 Pod-B가 같은 배치를 처음부터 다시 실행. 멱등하지 않으면 이중 정산. → failover 감지는 어떻게? NestJS TypeORM에서 커넥션 에러 이벤트를 감지하고, reconnect 후 GET_LOCK을 재시도. 하지만 reconnect까지 30초 동안 리더가 없는 상태. → 대안은? Redis Redlock은 Redis 클러스터에 의존. etcd/Consul은 Raft 합의 프로토콜로 더 안정적이지만 인프라 추가 부담. K8s Lease API를 활용한 리더 선출은 K8s 자체에 의존하므로 추가 인프라 불필요.",
+    "seniorTip": "GET_LOCK() 리더 선출은 단순하지만 failover에 취약하다. 미션 크리티컬한 배치에는 K8s Lease API 또는 CronJob concurrencyPolicy: Forbid가 더 안전하다. GET_LOCK을 유지하려면 반드시 배치 작업의 멱등성을 보장해야 한다.",
+    "tags": [
+      "leader-election",
+      "get-lock",
+      "rds-failover",
+      "mysql",
+      "distributed-system",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-020",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "니콘내콘의 주문은 4개의 독립적인 상태 축(주문상태/예약상태/결제상태/배송상태)으로 관리된다. 단일 status 필드 대신 이렇게 분리한 핵심 이유는?",
+    "options": [
+      "DB 정규화를 위해",
+      "상태 조합의 폭발을 방지하고, 각 축이 독립적인 생명주기를 가지므로 하나의 상태 머신으로는 표현할 수 없다",
+      "쿼리 성능을 위해",
+      "마이크로서비스 아키텍처 때문에"
+    ],
+    "answer": 1,
+    "explanation": "단일 status로 표현하면 '결제완료+배송중', '결제완료+배송취소', '환불진행+배송완료' 등 조합이 기하급수적으로 늘어난다. 4축 x 각 3-5상태 = 수백 개의 조합을 하나의 enum으로 관리하는 것은 불가능하다.",
+    "deepDive": "실제 상태 조합의 복잡도를 보자. 주문상태: 생성/확인/취소/완료(4개). 예약상태: 없음/예약중/예약완료/예약취소(4개). 결제상태: 대기/완료/환불진행/환불완료/실패(5개). 배송상태: 없음/발송중/도착/실패(4개). 조합 = 4×4×5×4 = 320가지. → 단일 enum이면 320개의 상수가 필요하다. 'CONFIRMED_BOOKED_PAID_DELIVERING' 같은 이름이 된다. 상태 전이 규칙도 320×320 매트릭스가 된다. → 4축 분리하면? 각 축의 상태 전이만 관리하면 된다. 주문상태는 4×4=16개 전이 규칙, 결제상태는 5×5=25개. 합계 약 80개. → 하지만 축 간 의존성은? 결제상태가 '환불완료'인데 배송상태가 '발송중'이면? 이런 불가능한 조합을 비즈니스 로직에서 검증해야 한다. 도메인 이벤트로 축 간 상태를 동기화: 결제 환불 이벤트 → 배송 취소 트리거. 이것이 이벤트 기반 상태 관리다.",
+    "seniorTip": "상태 설계 원칙: 독립적인 생명주기를 가진 상태는 분리하라. 하나의 상태가 바뀔 때 다른 상태가 반드시 따라 바뀌면 하나로 합치는 것이 맞다. 분리 후에는 불가능한 조합에 대한 invariant 검증이 필수다.",
+    "tags": [
+      "state-machine",
+      "order-status",
+      "domain-modeling",
+      "event-driven",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-021",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "patchDataSourceWithStackComment가 SQL 쿼리에 주석을 주입한다. 이것이 Datadog APM 트레이스와 어떻게 연결되는가?",
+    "answer": "SQL 주석에 호출 스택 정보(서비스명, 파일명, 메서드명)를 포함시키면, Datadog의 DBM(Database Monitoring)이 이 주석을 파싱하여 느린 쿼리를 발생시킨 코드 위치까지 추적할 수 있다.",
+    "explanation": "Datadog DBM은 SQL 주석에서 dd-service, dd-env 같은 태그를 읽어 APM 트레이스와 DB 쿼리를 연결한다. 코드에서 주입하는 스택 코멘트는 이 태그를 자동으로 추가하는 역할을 한다.",
+    "deepDive": "왜 이게 필요한 걸까? 179개 서비스가 8개 이상의 PostgreSQL DB에 쿼리를 보낸다. DBA가 느린 쿼리를 발견했을 때 pg_stat_statements에는 쿼리 텍스트만 보인다. 어떤 서비스의 어떤 코드에서 이 쿼리가 발생했는지 알 수 없다. → SQL 주석이 이 간극을 메운다. /* service:ncnc-backend,file:order.service.ts,method:createOrder */ SELECT ... 형태로 쿼리 앞에 주석이 붙으면, DBA는 즉시 원인 코드를 찾는다. → Datadog APM과의 연결: APM 트레이스에 trace_id가 있고, SQL 주석에도 같은 trace_id를 넣으면 APM에서 클릭 한 번으로 해당 트레이스의 모든 DB 쿼리를 볼 수 있다. → 성능 영향은? SQL 주석은 MySQL/PostgreSQL 옵티마이저가 무시하므로 쿼리 실행 계획에 영향 없다. 네트워크 전송량이 미세하게 증가하지만 무시 가능. → 주의: 주석에 사용자 데이터를 넣으면 보안 위험. 코드 위치 정보만 넣어야 한다.",
+    "seniorTip": "Datadog의 DBM + APM 연동은 sqlcommenter 표준(https://google.github.io/sqlcommenter/)을 따른다. TypeORM에서는 query runner를 래핑하여 모든 쿼리에 자동 주입. 이 설정 하나로 디버깅 시간이 극적으로 줄어든다.",
+    "tags": [
+      "datadog",
+      "apm",
+      "sql-comment",
+      "observability",
+      "dbm",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-022",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "@Cacheable 데코레이터가 Redis에서 캐시를 읽는다. Redis가 재연결되는 순간 thundering herd가 발생하는 이유와 방어 방법은?",
+    "answer": "Redis 다운 시 모든 요청이 DB로 가고, Redis 복구 시 캐시가 비어있어 모든 요청이 동시에 DB 조회 + 캐시 쓰기를 시도한다. 방어: 캐시 갱신에 분산 락을 걸어 하나의 요청만 DB를 조회하고 나머지는 대기하는 mutex 패턴.",
+    "explanation": "Thundering herd: 캐시 미스 시 다수의 요청이 동시에 원본 데이터 소스를 호출하는 현상. 캐시가 전면 만료되는 Redis 재시작 시 가장 심각하다.",
+    "deepDive": "니콘내콘에서 이 시나리오를 그려보자. Redis가 OOM으로 재시작된다. 모든 캐시 키가 사라진다. 300K MAU의 요청이 동시에 들어온다. → 기프티콘 목록 API: 캐시 미스 → DB SELECT. 100개 Pod가 동시에 같은 쿼리를 DB에 보낸다. DB 커넥션 풀 고갈 → DB 응답 지연 → API 타임아웃 → 전체 서비스 다운. → 방어 전략 1) Mutex Lock: 캐시 미스 시 Redis SETNX로 락 획득. 성공하면 DB 조회 + 캐시 저장. 실패하면 짧은 대기 후 캐시 재조회. 2) Stale-While-Revalidate: 만료된 캐시를 임시로 반환하면서 백그라운드에서 갱신. 3) 캐시 워밍: Redis 재시작 후 인기 데이터를 배치로 미리 로드. 4) Redis 다운 시 로컬 메모리 캐시(node-cache)로 폴백. TTL을 짧게(10초) 잡아 데이터 신선도를 유지하면서 DB 부하를 분산. → @Cacheable 데코레이터가 이 모든 것을 내장해야 하는가? 최소한 Redis 연결 실패 시 에러를 던지지 않고 DB 직접 조회로 폴백하는 로직은 필수다.",
+    "seniorTip": "캐시 장애 대비 체크리스트: 1) Redis 다운 시 에러 전파 차단 (try-catch + 폴백). 2) 캐시 워밍 스크립트 준비. 3) 로컬 캐시 2차 방어선. 4) DB 커넥션 풀 여유분 확보. 5) 캐시 히트율 모니터링 + 급락 시 알림.",
+    "tags": [
+      "cache",
+      "thundering-herd",
+      "redis",
+      "cacheable",
+      "resilience",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-023",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AsyncLocalStorage 기반 RequestContext가 깨지는 경우를 설명하라. EventEmitter, setTimeout, native addon에서 각각 어떤 문제가 발생하는가?",
+    "answer": "AsyncLocalStorage는 async context를 추적하지만, EventEmitter의 리스너가 다른 async context에서 등록되었거나, native addon이 V8 외부에서 콜백을 호출하면 context가 유실된다. setTimeout은 Node.js 12+에서는 정상 전파된다.",
+    "explanation": "AsyncLocalStorage는 Node.js의 async_hooks를 기반으로 비동기 실행 체인을 추적한다. 하지만 async context 전파 체인이 끊기는 특정 상황이 있다.",
+    "deepDive": "NestJS에서 RequestContext에 userId, traceId를 저장한다고 하자. HTTP 요청 → 미들웨어에서 AsyncLocalStorage.run()으로 context 생성 → 서비스 레이어에서 context.get('userId') 사용. 잘 동작한다. → EventEmitter 문제: 만약 서비스에서 eventEmitter.emit('orderCreated', order)를 호출하고, 리스너가 앱 부팅 시(다른 async context)에 등록되었다면? 리스너 내부에서 context.get('userId')는 undefined다. 왜? emit()은 동기적으로 리스너를 호출하지만, 리스너의 async context는 등록 시점의 것이다. 해결: 리스너 호출 시 현재 context를 명시적으로 전달하거나, AsyncLocalStorage.run() 안에서 emit()을 실행. → native addon 문제: Sharp(이미지 처리), bcrypt 같은 C++ addon이 libuv 스레드풀에서 콜백을 실행할 때 async context가 전파되지 않을 수 있다. Node.js의 AsyncResource.bind()로 래핑해야 한다. → 실무 영향: 로그에 traceId가 누락되어 Datadog에서 요청 추적이 끊긴다. 디버깅이 극도로 어려워진다.",
+    "seniorTip": "AsyncLocalStorage 사용 시 반드시 테스트: 1) 일반 async/await 체인. 2) EventEmitter 경유. 3) Worker threads. 4) native addon 콜백. 5) Promise.all() 병렬 실행. 특히 NestJS의 @OnEvent() 데코레이터는 EventEmitter 기반이므로 context 전파를 직접 검증해야 한다.",
+    "tags": [
+      "async-local-storage",
+      "request-context",
+      "event-emitter",
+      "nodejs",
+      "tracing",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-024",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "CommonSqsService가 @SqsMessageHandler 데코레이터를 자동으로 발견하여 핸들러를 등록한다. NestJS의 DiscoveryService는 내부적으로 어떻게 동작하는가?",
+    "answer": "NestJS의 DiscoveryService는 IoC 컨테이너에 등록된 모든 provider를 순회하며, Reflect.getMetadata()로 특정 데코레이터의 메타데이터가 있는 클래스/메서드를 필터링한다.",
+    "explanation": "@SqsMessageHandler('queue-name') 데코레이터는 SetMetadata()로 메서드에 큐 이름을 저장한다. CommonSqsService는 OnModuleInit에서 DiscoveryService로 이 메타데이터를 가진 메서드를 찾아 SQS 폴링과 연결한다.",
+    "deepDive": "이 패턴의 내부 동작을 단계별로 파보자. 1) @SqsMessageHandler('order-queue') 데코레이터가 메서드에 메타데이터를 저장: Reflect.defineMetadata('SQS_HANDLER', { queue: 'order-queue' }, target, propertyKey). 2) CommonSqsService가 OnModuleInit에서 실행: const providers = this.discoveryService.getProviders(). 3) 각 provider의 메서드를 순회하며 Reflect.getMetadata('SQS_HANDLER', instance, methodName)를 확인. 4) 메타데이터가 있으면 { queue: 'order-queue', handler: instance.methodName.bind(instance) }를 맵에 등록. 5) 큐별로 SQS 폴링을 시작하고 메시지가 오면 등록된 핸들러를 호출. → 이 패턴의 장점: 새 SQS 핸들러를 추가할 때 CommonSqsService를 수정할 필요 없다. 데코레이터만 붙이면 자동 등록. → 주의할 점: 핸들러가 Lazy 로드되는 모듈에 있으면 OnModuleInit 시점에 아직 등록되지 않아 발견되지 않는다. 또한 핸들러에서 에러가 나면 메시지가 재처리되도록 SQS visibility timeout과 DLQ를 올바르게 설정해야 한다.",
+    "seniorTip": "NestJS DiscoveryService 패턴은 플러그인 아키텍처의 핵심이다. @Cron(), @EventPattern(), @MessagePattern() 등 NestJS의 많은 데코레이터가 이 패턴을 사용한다. 직접 만들 때는 메타데이터 키를 Symbol()로 정의하여 충돌을 방지하라.",
+    "tags": [
+      "nestjs",
+      "discovery-service",
+      "decorator",
+      "metadata",
+      "sqs",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-025",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "니콘내콘이 ncnc_pro, payment, published_coupon 등 별도의 데이터베이스를 사용한다. 이 DB들 간에 JOIN이 가능한가?",
+    "options": [
+      "같은 MySQL 서버에 있으면 database.table 형태로 JOIN 가능",
+      "절대 불가능하다. 반드시 애플리케이션 레벨에서 조합해야 한다",
+      "VIEW를 만들면 가능하다",
+      "Federated Storage Engine으로만 가능하다"
+    ],
+    "answer": 0,
+    "explanation": "같은 MySQL 인스턴스의 다른 데이터베이스라면 SELECT * FROM ncnc_pro.orders o JOIN payment.transactions t ON o.id = t.order_id 형태로 크로스 데이터베이스 JOIN이 가능하다. 하지만 다른 인스턴스(다른 RDS)라면 불가능하다.",
+    "deepDive": "같은 인스턴스에서 JOIN이 가능한데 왜 DB를 분리한 걸까? 1) 논리적 격리: 각 도메인의 테이블이 섞이지 않아 관리가 명확하다. 2) 권한 격리: 서비스별로 자기 DB에만 접근 권한 부여. payment 서비스가 published_coupon DB에 직접 접근하면 안 된다. 3) 향후 물리적 분리 대비: 서비스가 성장하면 각 DB를 별도 RDS로 분리할 수 있다. 처음부터 크로스 DB JOIN에 의존하면 분리가 불가능하다. → 그런데 현실적으로 JOIN이 필요한 경우는? 어드민 대시보드에서 주문+결제+쿠폰 정보를 한 화면에 보여줘야 할 때. 이때 3번의 API 호출 또는 3번의 DB 쿼리를 애플리케이션에서 조합하면 N+1 문제와 비슷한 성능 이슈가 생긴다. → 해결: 읽기 전용 레플리카에서 크로스 DB JOIN을 허용하되, 쓰기는 각 서비스의 API를 통해서만. 또는 통계/어드민용 데이터 웨어하우스에 ETL로 통합.",
+    "seniorTip": "DB 분리의 원칙: 쓰기는 반드시 해당 도메인 서비스의 API를 통해. 읽기는 레플리카에서 크로스 JOIN 허용 가능 (단, 성능 영향 모니터링). 향후 물리적 분리 가능성을 항상 염두에 두고 크로스 DB JOIN 의존도를 최소화하라.",
+    "tags": [
+      "database-separation",
+      "cross-join",
+      "domain-isolation",
+      "rds",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-026",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Socket 서버가 Redis Adapter(@socket.io/redis-adapter)를 사용한다. Redis Pub/Sub에서 메시지가 유실되면 어떤 문제가 발생하고, 이를 감지할 수 있는가?",
+    "answer": "Redis Pub/Sub은 fire-and-forget이므로 구독자가 없거나 네트워크 순간 끊김 시 메시지가 영구 유실된다. Socket.IO 서버 간 이벤트 동기화가 깨져 일부 클라이언트가 이벤트를 받지 못한다. 감지가 어려워 사용자 불만으로만 알게 된다.",
+    "explanation": "Redis Pub/Sub은 메시지를 저장하지 않는다. publish 시점에 구독 중인 클라이언트에만 전달한다. 구독자가 일시적으로 연결이 끊기면 그 동안의 메시지는 사라진다.",
+    "deepDive": "니콘내콘 실시간 알림 시나리오를 보자. Socket 서버가 3대(A, B, C). 사용자가 서버 A에 연결되어 있고, 주문 완료 이벤트가 서버 B에서 발생한다. Redis Adapter가 Redis Pub/Sub으로 이벤트를 전파한다. → 서버 A와 Redis 사이에 순간적인 네트워크 끊김이 있으면? 서버 A의 모든 클라이언트가 이 이벤트를 받지 못한다. → 왜 감지가 어려운가? Redis Pub/Sub에는 ACK 메커니즘이 없다. 메시지가 몇 개 유실되었는지 알 수 없다. 서버 A가 재연결되어도 과거 메시지는 복구 불가. → 대안: 1) Redis Streams(@socket.io/redis-streams-adapter): 메시지가 영속적으로 저장되고 consumer group으로 at-least-once 전달 보장. 재연결 시 놓친 메시지를 읽을 수 있다. 2) 클라이언트 측 보상: 클라이언트가 reconnect 시 REST API로 최신 상태를 폴링. 3) 중요 이벤트(결제 완료, 배송 상태)는 Socket에만 의존하지 않고 Push Notification도 함께 발송.",
+    "seniorTip": "Redis Pub/Sub 기반 Socket.IO는 '최선 노력(best-effort)' 전달이다. 비즈니스 크리티컬한 이벤트는 반드시 보조 채널(Push, SMS, polling)을 함께 사용하라. Socket.IO 5.x부터 Redis Streams adapter를 공식 지원한다.",
+    "tags": [
+      "socket-io",
+      "redis-adapter",
+      "pub-sub",
+      "message-loss",
+      "real-time",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-027",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ncnc-sqs-v2는 Sequelize를 사용하고 ncnc-backend-v1은 TypeORM을 사용한다. 이것은 의도적인 설계인가 기술 부채인가? 통일해야 하는가?",
+    "answer": "기술 부채다. ncnc-sqs-v2가 먼저 개발되었을 때 Sequelize를 선택했고, ncnc-backend-v1으로 리팩토링하면서 TypeORM으로 전환했지만 SQS 소비자는 마이그레이션하지 못한 것이다. 통일하는 것이 이상적이지만 비용 대비 효과를 따져야 한다.",
+    "explanation": "두 ORM을 병행하면: 엔티티 정의 중복, 마이그레이션 도구 이중 관리, 개발자의 학습 부담 증가, 공유 코드에서 ORM 의존성 충돌 위험이 있다.",
+    "deepDive": "이 상황을 현실적으로 분석해보자. 1) 왜 방치되었나? SQS 소비자는 '동작하고 있는' 코드다. 리팩토링 우선순위에서 밀린다. 새 기능 개발이 우선이니까. → 이것이 기술 부채가 복리로 불어나는 이유다. 2) 실제 고통: Sequelize의 엔티티(Model)와 TypeORM의 엔티티(@Entity)가 같은 테이블을 가리킨다. 스키마 변경 시 양쪽을 모두 수정해야 한다. Sequelize 마이그레이션과 TypeORM 마이그레이션이 충돌할 수 있다. 3) 통일 비용: SQS 소비자의 모든 DB 접근 코드를 TypeORM으로 교체. 테스트 전면 재작성. 2-4주 소요. 비즈니스 가치 = 0(사용자에게 보이는 변화 없음). → 4) 현실적 전략: 새 SQS 핸들러는 TypeORM으로만 작성. 기존 Sequelize 핸들러는 수정이 필요할 때 TypeORM으로 전환. 점진적으로 Sequelize 의존성을 제거. 완전히 제거되면 Sequelize 패키지를 삭제. 이것이 Strangler Fig 패턴의 코드 레벨 적용이다.",
+    "seniorTip": "기술 부채를 '지금 당장 고치자'가 아니라 '언제 고치면 ROI가 가장 높은가'를 판단하는 것이 시니어의 역할이다. 기술 부채 레지스터를 만들어 각 항목의 비용(유지보수 추가 시간)과 해소 비용(리팩토링 시간)을 기록하라.",
+    "tags": [
+      "technical-debt",
+      "sequelize",
+      "typeorm",
+      "orm-migration",
+      "strangler-fig",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-028",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "SQS FIFO 큐에서 messageGroupId를 모든 메시지에 동일한 값으로 설정하면 어떤 문제가 발생하는가?",
+    "answer": "같은 messageGroupId의 메시지는 순서대로 하나씩만 처리되므로, 모든 메시지가 직렬화되어 동시 처리가 불가능하다. FIFO 큐의 300 TPS 제한이 사실상 1 TPS가 된다.",
+    "explanation": "FIFO 큐는 messageGroupId 단위로 순서를 보장한다. 같은 그룹의 메시지는 이전 메시지가 처리(삭제)될 때까지 다음 메시지가 보이지 않는다. 그룹이 1개면 전체 큐가 단일 스트림이 된다.",
+    "deepDive": "니콘내콘의 주문 처리를 예로 들어보자. 주문 A(사용자 1), 주문 B(사용자 2), 주문 C(사용자 3)가 거의 동시에 들어온다. → messageGroupId = 'orders' (동일값)이면? A 처리 완료까지 B, C는 대기. 처리 시간이 각 1초면 3초에 3건. 블랙 프라이데이에 1000건이 들어오면 처리에 1000초. → messageGroupId = orderId (주문별)이면? A, B, C가 동시에 처리된다. 같은 주문의 후속 메시지(결제확인, 배송시작)만 순서 보장. 병렬성이 극대화된다. → messageGroupId = userId (사용자별)이면? 같은 사용자의 주문은 순서대로, 다른 사용자는 병렬. 이것이 대부분의 경우 최적이다. → 주의: messageGroupId의 cardinality가 높을수록 병렬성이 좋다. 하지만 너무 세분화하면 순서 보장의 의미가 약해진다. → FIFO 큐의 실제 제한: messageGroupId당 300 TPS, 큐 전체로는 최대 20,000 TPS(높은 처리량 모드). 그룹이 1개면 300 TPS가 상한이다.",
+    "seniorTip": "messageGroupId 설계 원칙: '순서가 보장되어야 하는 최소 단위'를 기준으로 정하라. 주문 상태 변경은 orderId, 사용자 잔액 변경은 userId, 독립적인 이벤트는 각각 고유 ID. 이것만 바꿔도 처리량이 수십 배 차이난다.",
+    "tags": [
+      "sqs-fifo",
+      "message-group-id",
+      "throughput",
+      "ordering",
+      "concurrency",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-029",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "K8s CronJob의 concurrencyPolicy: Forbid 설정에서 Job이 스케줄 간격보다 오래 걸리면 어떻게 되는가?",
+    "options": [
+      "실행 중인 Job을 강제 종료하고 새 Job을 시작한다",
+      "새로 스케줄된 Job을 건너뛴다(skip). 현재 실행 중인 Job이 완료된 후 다음 스케줄에 실행된다",
+      "두 Job이 동시에 실행된다",
+      "CronJob 자체가 에러 상태가 된다"
+    ],
+    "answer": 1,
+    "explanation": "concurrencyPolicy: Forbid는 이전 Job이 아직 실행 중이면 새 Job 생성을 건너뛴다. 이전 Job이 완료된 후 다음 스케줄 시각에 정상적으로 새 Job이 생성된다.",
+    "deepDive": "니콘내콘의 일일 정산 배치를 생각해보자. 매일 새벽 3시 실행, 보통 30분 소요. concurrencyPolicy: Forbid 설정. → 어느 날 데이터가 많아서 정산이 2시간 걸린다면? 새벽 3시 Job 시작 → 5시 완료. 다음 날 3시까지 새 Job 없음. → 만약 'Allow'였다면? 내일 3시에 어제 Job이 아직 돌고 있으면 새 Job이 함께 실행된다. 같은 정산을 두 번 실행 → 이중 정산 재앙. → 'Replace'였다면? 실행 중인 Job을 종료하고 새 Job을 시작. 어제 정산이 미완료 상태로 남는다. → startingDeadlineSeconds: Job이 스케줄된 시각으로부터 이 시간 이내에 시작하지 못하면 실패로 처리. Forbid로 건너뛴 Job이 이 기한을 초과하면 기록에 missed로 남는다. → 실무 대응: activeDeadlineSeconds로 Job 최대 실행 시간 제한 + 모니터링으로 실행 시간 추세 추적. 점점 느려지면 원인 분석(데이터 증가, 쿼리 성능 저하).",
+    "seniorTip": "CronJob 설정 체크리스트: 1) concurrencyPolicy: Forbid (중복 실행 방지). 2) activeDeadlineSeconds: 최대 실행 시간 제한. 3) backoffLimit: 실패 시 재시도 횟수. 4) successfulJobsHistoryLimit/failedJobsHistoryLimit: 히스토리 보관. 5) Job 완료/실패 시 Slack 알림.",
+    "tags": [
+      "cronjob",
+      "kubernetes",
+      "concurrency-policy",
+      "batch",
+      "scheduling",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-030",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘은 140개 이상의 ECR 리포지토리를 운영한다. 왜 단일 모노레포 이미지에 다른 entrypoint를 사용하지 않는가?",
+    "answer": "단일 이미지는 모든 서비스의 의존성을 포함하여 이미지가 거대해지고, 한 서비스의 의존성 변경이 전체 이미지 재빌드를 유발하며, 보안 취약점 범위가 전체 서비스로 확대된다. 독립 이미지는 각 서비스가 필요한 것만 포함하여 빌드/배포/롤백이 독립적이다.",
+    "explanation": "마이크로서비스의 핵심 원칙은 독립 배포(independent deployability)다. 단일 이미지에서는 결제 서비스 수정 때문에 알림 서비스까지 재배포해야 하므로 이 원칙이 깨진다.",
+    "deepDive": "140개 이미지의 운영 현실을 파보자. 1) 이미지 크기: 서비스별 이미지가 각 80-150MB. 단일 이미지면 모든 node_modules를 합쳐 2-3GB. ECR 저장 비용, 풀 시간, 노드 디스크 사용량이 폭증. 2) 빌드 시간: Turborepo의 affected 감지로 변경된 서비스만 빌드. 단일 이미지면 어떤 변경이든 전체 빌드. CI 시간이 5분에서 30분으로. 3) 보안: 결제 서비스에 필요 없는 이미지 처리 라이브러리(Sharp)의 CVE가 발견되면? 독립 이미지면 관련 서비스만 패치. 단일 이미지면 전체 재배포. 4) 리소스 효율: 결제 서비스는 메모리가 많이 필요하고, 알림 서비스는 CPU가 필요하다. 독립 이미지면 K8s resource request/limit을 서비스별로 최적화. → 그런데 140개 Dockerfile 관리가 부담 아닌가? Turborepo의 공유 Dockerfile 템플릿 + build args로 서비스명만 바꿔 빌드. 또는 docker-bake.hcl로 멀티 이미지 빌드를 선언적으로 관리.",
+    "seniorTip": "ECR 리포지토리 관리 자동화: 1) Terraform으로 ECR 리포지토리 생성. 2) lifecycle_policy로 untagged 이미지 7일 후 삭제, 태그된 이미지는 최근 10개만 보관. 3) ECR 이미지 스캔 활성화로 CVE 자동 감지. 140개 리포지토리의 lifecycle policy가 없으면 매월 수백 달러의 불필요한 저장 비용이 발생한다.",
+    "tags": [
+      "ecr",
+      "docker",
+      "monorepo",
+      "microservices",
+      "image-management",
+      "ncnc"
+    ]
   }
 ]
