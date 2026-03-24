@@ -16,7 +16,8 @@ export type Category =
   | "aws"
   | "ncnc"
   | "monitoring"
-  | "argocd";
+  | "argocd"
+  | "opensearch";
 
 export interface Question {
   id: string;
@@ -62,6 +63,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   ncnc: "My Work/Resume",
   monitoring: "Monitoring",
   argocd: "ArgoCD/GitOps",
+  opensearch: "OpenSearch",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -81,6 +83,7 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   ncnc: "#14b8a6",
   monitoring: "#a855f7",
   argocd: "#ef6c35",
+  opensearch: "#005eb8",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
