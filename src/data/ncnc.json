@@ -1,0 +1,292 @@
+[
+  {
+    "id": "ncnc-001",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Express.js에서 NestJS로 마이그레이션할 때, 기존 서비스를 중단하지 않고 점진적으로 전환하는 전략을 설명하라. 니콘내콘에서 실제로 어떻게 했어야 하는가?",
+    "answer": "Strangler Fig 패턴으로 엔드포인트 단위로 점진적 전환. 프록시/라우터에서 마이그레이션된 엔드포인트를 NestJS로 라우팅하고, 나머지는 Express로 유지",
+    "explanation": "한번에 전체를 바꾸는 Big Bang은 위험하다. 엔드포인트 하나씩 NestJS로 이전하면서, 동시에 두 시스템이 공존하는 기간을 최소화해야 한다.",
+    "deepDive": "구체적으로 어떤 순서로 전환할까? 1) 의존성이 적고 독립적인 API부터 (예: 공지사항, FAQ). 2) 핵심 비즈니스 로직(주문, 결제)은 마지막에. 왜? 핵심 로직을 먼저 전환하면 버그 시 비즈니스 영향이 크니까. 그런데 Express와 NestJS가 공존하는 동안 세션/인증은 어떻게 공유할까? → JWT를 사용하면 stateless이므로 양쪽에서 같은 시크릿으로 검증 가능. 세션 기반이면 Redis 세션 스토어를 공유해야 한다. 또 하나 — TypeORM 엔티티를 Express(Sequelize?)에서 TypeORM으로 전환할 때 마이그레이션은? → 같은 DB를 바라보되, ORM만 교체. 스키마 변경 없이 ORM 레이어만 바꾸면 안전하다.",
+    "seniorTip": "마이그레이션 진행도를 측정하자: 전체 엔드포인트 수 대비 전환 완료 비율. CI에서 두 시스템의 테스트를 모두 실행. 전환 완료된 Express 엔드포인트는 즉시 제거하여 유지보수 부담을 줄이자.",
+    "tags": [
+      "migration",
+      "express",
+      "nestjs",
+      "strangler-fig",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-002",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": ".NET에서 NestJS로 전환하여 AWS 비용을 40% 절감했다. 비용 절감의 기술적 원인을 분석하라.",
+    "answer": ".NET은 메모리 사용량이 크고 컨테이너 오버헤드가 높아 더 큰 인스턴스가 필요. Node.js는 경량이고 이벤트 루프 기반으로 적은 리소스로 동일 트래픽 처리 가능",
+    "explanation": ".NET(ASP.NET)은 요청당 스레드 모델로 메모리 사용량이 높고, CLR 런타임 자체가 무겁다. Node.js는 싱글 스레드 이벤트 루프로 메모리 효율이 좋고, I/O 바운드 작업에 최적화되어 있다.",
+    "deepDive": "40% 절감을 더 구체적으로 파보자. 1) 컨테이너 사이즈: .NET Docker 이미지는 200-500MB, Node.js alpine은 50-100MB → ECR 저장 비용 + 배포 속도 개선. 2) 메모리: .NET 앱이 512MB-1GB 필요하던 것이 Node.js에서 256-512MB로 → ECS/EKS에서 더 작은 인스턴스 사용 가능. 3) Cold start: .NET의 JIT 컴파일 때문에 cold start가 느려 Fargate에서 더 많은 task를 상시 유지해야 했음 → Node.js는 빠른 시작으로 스케일링이 민첩. 4) 라이선스: .NET이 오픈소스로 전환했지만, Windows 기반 컨테이너를 쓰고 있었다면 Linux 전환으로 추가 절감. 이 분석을 비용 보고서로 정리할 수 있어야 시니어다.",
+    "seniorTip": "기술 전환의 비용 효과를 정량화하는 것이 시니어의 역할이다. Before/After 비교: 월 AWS 청구서, 인스턴스 수, 평균 CPU/메모리 사용률, 응답 시간. 이런 데이터가 다음 기술 의사결정의 근거가 된다.",
+    "tags": [
+      "cost-optimization",
+      "dotnet",
+      "nodejs",
+      "migration",
+      "ghostpass"
+    ]
+  },
+  {
+    "id": "ncnc-003",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS SQS를 사용하여 비동기 주문/결제/환불 파이프라인을 설계할 때, 메시지 유실 방지와 순서 보장을 어떻게 처리하는가?",
+    "answer": "Standard Queue + 멱등성 키로 중복 처리 방지, 또는 FIFO Queue로 순서 보장. DLQ(Dead Letter Queue)로 실패 메시지 격리. visibility timeout으로 중복 소비 방지",
+    "explanation": "SQS Standard Queue는 at-least-once 전달이므로 같은 메시지가 2번 올 수 있다. 소비자(Consumer)에서 멱등성을 보장해야 한다. FIFO Queue는 exactly-once + 순서 보장이지만 처리량이 제한적(300 TPS).",
+    "deepDive": "니콘내콘의 주문 파이프라인을 설계한다면? 1) 주문 생성 → SQS로 메시지 전송 → Consumer가 결제 처리 → 성공 시 상태 업데이트. 여기서 Consumer가 결제 API를 호출하고 성공 응답을 받았는데, SQS ACK 전에 Pod가 죽으면? → visibility timeout이 지난 후 메시지가 다시 나타나고 결제가 중복 실행될 수 있다. 해결: 결제 전에 Redis에 orderId로 처리 중 플래그를 설정하고, 이미 처리된 주문이면 스킵. 그런데 Redis도 죽으면? → DB의 orders 테이블에 payment_status로 최종 판단. 이것이 '방어적 프로그래밍'이다. DLQ는 3번 실패한 메시지를 격리하는데, DLQ를 모니터링하지 않으면 의미 없다 → CloudWatch 알림 + Slack 연동 필수.",
+    "seniorTip": "SQS Consumer의 핵심 패턴: 1) 멱등성 (같은 메시지 2번 와도 안전). 2) 가시성 타임아웃 (처리 시간보다 길게 설정). 3) DLQ 모니터링. 4) 배치 처리 (한번에 최대 10개). 5) Graceful shutdown (처리 중인 메시지 완료 후 종료).",
+    "tags": [
+      "sqs",
+      "async",
+      "pipeline",
+      "idempotency",
+      "dlq",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-004",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "C2C 기프티콘 거래에서 취소/환불 시스템을 설계할 때, '판매자가 이미 돈을 받았는데 구매자가 환불을 요청하는' 상황을 어떻게 처리하는가?",
+    "answer": "정산 주기를 두어 즉시 지급하지 않고, 환불 가능 기간 동안 보류. 이미 정산된 경우 판매자 잔액에서 차감하거나 다음 정산에서 상계",
+    "explanation": "C2C 플랫폼에서 환불은 양쪽(구매자/판매자) 모두 영향을 미친다. 판매자에게 즉시 정산하면 환불 시 회수가 어렵다. 정산 대기 기간(예: 7일)을 두는 것이 일반적이다.",
+    "deepDive": "더 복잡한 시나리오를 파보자. 1) 구매자가 기프티콘을 사용한 후 환불 요청? → 사용 여부를 실시간으로 확인해야 한다. 기프티콘 상태 머신: 등록됨 → 판매중 → 결제완료 → 발송완료 → 사용완료. 사용완료 이후에는 환불 불가. 2) 부분 환불은? → 기프티콘은 분할 사용이 안 되므로 전액 환불만 가능. 하지만 쿠폰이나 적립금이 사용된 경우? 각각 원복해야 한다. 3) 결제 수단별 환불 프로세스가 다르다: 카드 취소(PG사 API 호출), 계좌 환불(은행 API), 포인트 환원. 각각 실패할 수 있고 부분 성공 상태를 관리해야 한다. 이것이 결제/환불 시스템이 복잡한 이유다. 4) 환불 트랜잭션은 반드시 로그를 남기고, 금액 정합성을 매일 검증하는 배치가 필요하다.",
+    "seniorTip": "결제/환불은 '돈'이 걸린 시스템이므로: 1) 모든 상태 변경을 이벤트로 기록 (audit trail). 2) 일일 정산 검증 배치로 불일치 감지. 3) 환불 실패 시 재시도 + 수동 처리 프로세스. 4) 고객 CS 대응을 위한 어드민 도구.",
+    "tags": [
+      "settlement",
+      "refund",
+      "c2c",
+      "payment",
+      "state-machine",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-005",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘에서 Redis 캐싱 전략을 설계할 때, 기프티콘 목록/상세/검색 각각에 어떤 캐시 패턴을 적용해야 하고 무효화는 어떻게 처리하는가?",
+    "answer": "목록: Cache-Aside + 짧은 TTL. 상세: Cache-Aside + 변경 시 즉시 삭제. 검색: OpenSearch에 위임. 무효화는 이벤트 기반(상품 변경 시 캐시 삭제)",
+    "explanation": "데이터 특성에 따라 캐시 전략이 다르다. 자주 변경되는 데이터(가격, 재고)는 짧은 TTL, 거의 변하지 않는 데이터(카테고리)는 긴 TTL. 검색은 캐시보다 OpenSearch가 적합.",
+    "deepDive": "구체적으로 설계해보자. 1) 상품 목록 API: /products?category=카페&sort=price → 캐시 키: products:category:카페:sort:price:page:1. 문제: 조합이 너무 많아 캐시 히트율이 낮을 수 있다. 해결: 인기 조합만 캐시하거나, 카테고리 단위로 캐시하고 정렬은 애플리케이션에서. 2) 상품 상세 API: product:{id} → 단순하고 히트율 높음. 하지만 가격이 변경되면? 이벤트 기반으로 즉시 del. 3) 인기 상품이 Cache Stampede를 일으키면? Mutex Lock 패턴. 4) 캐시 워밍: 배포 후 인기 상품을 미리 캐시에 로드. 5) 캐시 모니터링: Datadog에서 히트율, eviction 수, 메모리 사용량 추적. 히트율이 70% 이하면 캐시 전략 재검토 신호.",
+    "seniorTip": "캐시 키 설계 규칙: 1) 네이밍 컨벤션 통일 (service:entity:id 또는 service:entity:query-hash). 2) TTL은 데이터 특성에 맞게 (가격: 30초, 카테고리: 1시간). 3) 캐시 삭제는 쓰기 서비스에서 책임. 4) 캐시 장애 시 DB로 폴백하는 방어 로직 필수.",
+    "tags": [
+      "redis",
+      "caching",
+      "cache-aside",
+      "invalidation",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-006",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s 모니터링 봇을 만들어서 Pod 장애를 감지했다고 했는데, Pod 장애를 감지하는 방법과 알림 시스템을 어떻게 설계하는가?",
+    "answer": "K8s API(Watch)로 Pod 이벤트 감시, CrashLoopBackOff/OOMKilled/ImagePullBackOff 등 감지. Slack Webhook으로 알림. 중복 알림 방지 로직 포함",
+    "explanation": "kubectl get events --watch를 프로그래밍적으로 구현. K8s API의 Watch 엔드포인트로 실시간 이벤트 스트림을 받아 비정상 상태를 필터링한다.",
+    "deepDive": "이 봇을 제대로 만들려면 어떤 것들을 고려해야 할까? 1) K8s Client 라이브러리(@kubernetes/client-node)로 Watch API 사용. 2) 감지 대상: Pod phase(Failed, Unknown), container state(CrashLoopBackOff, OOMKilled, Error), restart count 급증. 3) 알림 피로도 방지: 같은 Pod에 대해 5분 이내 중복 알림 제거. 상태가 복구되면 '복구됨' 알림. 4) 하지만 이미 Datadog이 있다면? Datadog Monitor로 Pod 상태 감시 + Slack 연동이 더 운영 효율적. 직접 만든 봇의 장점: 커스터마이징 자유도, 회사 특화 로직 (특정 namespace만, 특정 label만). 단점: 봇 자체의 안정성 관리 부담. 5) 더 나은 접근: Prometheus + AlertManager → 규칙 기반 알림. 이것이 K8s 모니터링의 표준이다.",
+    "seniorTip": "모니터링 봇보다 Datadog/Prometheus의 알림 시스템을 사용하는 것이 장기적으로 유리하다. 직접 만든 봇은 해당 봇이 죽으면 모니터링도 죽으니까. '모니터링을 모니터링하는' 문제가 생긴다.",
+    "tags": [
+      "monitoring",
+      "kubernetes",
+      "alerting",
+      "slack",
+      "datadog",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-007",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MQTT로 Firebase RTDB를 대체하여 인증 서버 CPU 사용률을 90% 줄였다. MQTT가 Firebase RTDB보다 효율적인 기술적 이유를 설명하라.",
+    "answer": "MQTT는 경량 바이너리 프로토콜로 오버헤드가 극히 적고, 직접 제어 가능. Firebase RTDB는 WebSocket + JSON 동기화로 불필요한 데이터 전송과 SDK 오버헤드가 크다",
+    "explanation": "Firebase RTDB는 클라이언트-서버 간 전체 JSON 트리를 실시간 동기화한다. 인증처럼 작은 데이터를 빠르게 주고받는 용도에는 과도한 오버헤드다. MQTT는 토픽 기반 pub/sub으로 필요한 데이터만 최소한으로 전달한다.",
+    "deepDive": "90%라는 수치를 기술적으로 분석해보자. 1) Firebase RTDB의 문제: 데이터 변경 시 리스너에게 전체 노드를 JSON으로 전송. ESP32 디바이스가 100대이면 하나의 인증 이벤트에 100번의 JSON 직렬화/역직렬화. 2) MQTT의 장점: 최소 2바이트 헤더, 바이너리 페이로드, QoS 레벨 선택 가능. 인증 결과를 device/{device_id}/auth 토픽에 publish하면 해당 디바이스만 수신. 3) 서버 부하 차이: Firebase SDK가 WebSocket 연결 유지 + 데이터 동기화 로직을 서버에서 처리 vs MQTT 브로커(Mosquitto/EMQX)가 메시지 라우팅을 전담하고 NestJS는 비즈니스 로직만 처리. 4) 그런데 MQTT 브로커의 가용성은? → 클러스터링(EMQX 클러스터) 또는 AWS IoT Core(관리형) 사용.",
+    "seniorTip": "프로토콜 선택 기준: IoT 디바이스 통신 → MQTT (경량, 불안정 네트워크 대응). 웹 실시간 → WebSocket/SSE. 범용 실시간 동기화 → Firebase. 서비스 간 이벤트 → SQS/Kafka. 용도에 맞는 프로토콜 선택이 시니어의 역량.",
+    "tags": [
+      "mqtt",
+      "firebase",
+      "iot",
+      "protocol",
+      "cpu-optimization",
+      "ghostpass"
+    ]
+  },
+  {
+    "id": "ncnc-008",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Socket.IO + Redis로 실시간 주식 데이터를 처리하여 속도 30% 향상, 부하 40% 감소를 달성했다. 어떤 최적화를 적용한 것인가?",
+    "answer": "Redis Pub/Sub으로 서버 간 이벤트 브로드캐스트 + 데이터 캐싱으로 DB 호출 제거 + Socket.IO 룸(room) 기반 타겟 전송으로 불필요한 브로드캐스트 제거",
+    "explanation": "Socket.IO 다중 서버 구성에서 Redis Adapter로 서버 간 메시지를 동기화하고, 자주 요청되는 주식 데이터를 Redis에 캐시하여 매번 외부 API를 호출하지 않는다.",
+    "deepDive": "각 최적화의 원리를 파보자. 1) 속도 30% 향상: 주식 데이터를 매번 증권사 API에서 가져오면 100-300ms. Redis에 캐시하면 1-5ms. 실시간 데이터는 1초마다 갱신하면 충분하므로 TTL 1초 캐시. 2) 부하 40% 감소: Socket.IO의 기본 broadcast는 모든 연결된 클라이언트에 전송. 삼성전자를 보는 유저에게 현대차 데이터를 보낼 필요 없다. room 기반으로 종목별 구독을 하면 전송량이 드라마틱하게 줄어든다. socket.join('stock:005930') → io.to('stock:005930').emit('price', data). 3) Redis Pub/Sub으로 서버 간 동기화: Socket.IO @socket.io/redis-adapter를 사용하면 서버 A에 연결된 유저도 서버 B에서 발생한 이벤트를 받는다. 4) 바이너리 전송: JSON 대신 MessagePack으로 직렬화하면 페이로드가 30-50% 줄어든다.",
+    "seniorTip": "실시간 시스템의 성능 측정: 1) 메시지 지연시간 (서버 → 클라이언트 도달 시간). 2) 초당 메시지 수 (TPS). 3) 동시 접속자 수. 4) 서버 CPU/메모리. socket.io-prometheus-exporter로 메트릭을 수집하여 Grafana에서 시각화.",
+    "tags": [
+      "socket-io",
+      "redis",
+      "real-time",
+      "optimization",
+      "stock",
+      "social-investing"
+    ]
+  },
+  {
+    "id": "ncnc-009",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Lambda cold start를 600ms에서 100ms로 개선했다. cold start의 원인과 해결 방법을 설명하라.",
+    "answer": "cold start는 새 실행 환경 생성 시 발생. 해결: Provisioned Concurrency, 런타임 경량화, 패키지 크기 축소, VPC 제거 또는 VPC 개선(Hyperplane ENI)",
+    "explanation": "Lambda는 요청이 오면 실행 환경을 생성(cold start)하고, 이후 일정 시간 재사용(warm). cold start 시 컨테이너 생성 + 런타임 초기화 + 코드 로드 + VPC ENI 연결이 발생한다.",
+    "deepDive": "600ms에서 100ms로 줄인 구체적 방법을 파보자. 1) 패키지 크기 축소: node_modules에서 불필요한 의존성 제거 (webpack/esbuild로 번들링하면 50MB→5MB). Lambda는 코드를 S3에서 다운받으므로 크기가 곧 시간. 2) VPC 제거: 예전 Lambda는 VPC에 연결하면 ENI 생성에 수 초가 걸렸다. AWS가 2019년에 Hyperplane ENI로 개선했지만, VPC가 불필요하면 제거하는 것이 최선. DynamoDB, S3 등은 VPC 없이 접근 가능. 3) 런타임 선택: Python/Node.js는 Java보다 cold start가 빠름. Node.js는 50-200ms, Java는 1-10초. 4) Provisioned Concurrency: 미리 warm 인스턴스를 유지. 비용이 추가되지만 cold start를 완전히 제거. 5) Lambda SnapStart (Java용): JVM 스냅샷으로 cold start 90% 감소. 6) 코드 최적화: 모듈을 핸들러 밖에서 import(전역 초기화)하면 warm 요청에서 재사용.",
+    "seniorTip": "Lambda + API Gateway 패턴에서 cold start가 UX에 영향을 준다면: 1) CloudFront에서 캐싱으로 Lambda 호출 자체를 줄이기. 2) EventBridge로 5분마다 warm-up 요청. 3) 정말 중요하면 Provisioned Concurrency. 4) cold start가 근본적으로 문제라면 ECS/EKS로 전환 고려.",
+    "tags": [
+      "lambda",
+      "cold-start",
+      "serverless",
+      "optimization",
+      "dk-lab"
+    ]
+  },
+  {
+    "id": "ncnc-010",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "통계 페이지 응답 시간을 10초에서 1초로 개선했다. 이런 극적인 성능 개선이 가능한 주요 원인과 해결 방법을 설명하라.",
+    "answer": "원인: 대용량 테이블 풀스캔, 집계 쿼리 실시간 실행, 인덱스 부재. 해결: 사전 집계 테이블, 적절한 인덱스, 쿼리 최적화, 필요 시 캐싱",
+    "explanation": "10초→1초는 10배 개선이다. 이 정도 차이는 보통 풀스캔→인덱스 스캔 전환, 또는 실시간 집계→사전 집계 전환에서 나온다.",
+    "deepDive": "구체적인 최적화 시나리오를 구성해보자. 기존: SELECT seller_id, SUM(amount), COUNT(*) FROM orders WHERE created_at BETWEEN '2024-01-01' AND '2024-01-31' GROUP BY seller_id. 100만 건의 orders 테이블에서 이 쿼리는 created_at 인덱스가 없으면 풀스캔. 있어도 GROUP BY에서 Using temporary + Using filesort. 최적화 단계: 1) 인덱스 추가: (created_at, seller_id, amount) 커버링 인덱스 → 테이블 접근 없이 인덱스만으로 처리. 이것만으로도 10초→2초 가능. 2) 사전 집계 테이블: daily_stats(date, seller_id, total_amount, order_count). 매일 새벽 배치로 또는 이벤트 드리븐으로 갱신. 통계 API는 이 테이블에서 조회 → 0.1초. 3) Redis 캐싱: 변하지 않는 과거 데이터 캐시 + 오늘 데이터만 실시간. 4) 페이지네이션: 전체 판매자 통계를 한번에 반환하지 않고 페이지 단위로. 이 최적화 과정을 EXPLAIN 결과와 함께 설명할 수 있어야 시니어다.",
+    "seniorTip": "통계/대시보드 최적화 패턴: 1) Materialized View 또는 사전 집계 테이블. 2) 과거 데이터는 불변이므로 공격적 캐싱. 3) 실시간이 꼭 필요한지 확인 — 대부분의 통계는 1시간 전 데이터도 괜찮다. 4) 쿼리가 복잡하면 읽기 전용 레플리카에서 실행.",
+    "tags": [
+      "query-optimization",
+      "statistics",
+      "materialized-view",
+      "index",
+      "mipark"
+    ]
+  },
+  {
+    "id": "ncnc-011",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ArgoCD로 GitOps 배포를 구축하여 무중단 배포를 달성했다. ArgoCD + K8s에서 진정한 무중단 배포를 위해 필요한 모든 설정을 설명하라.",
+    "answer": "Rolling Update (maxSurge/maxUnavailable) + readinessProbe + preStop hook + terminationGracePeriodSeconds + PDB(Pod Disruption Budget)",
+    "explanation": "ArgoCD가 Git 변경을 감지 → K8s에 새 Deployment 적용 → Rolling Update로 점진적 교체. 하지만 이것만으로는 부족하다. readinessProbe가 없으면 준비 안 된 Pod에 트래픽이 간다.",
+    "deepDive": "무중단 배포의 모든 퍼즐 조각을 맞춰보자. 1) Deployment: maxSurge: 1, maxUnavailable: 0 → 새 Pod가 Ready 된 후에만 기존 Pod 제거. 2) readinessProbe: NestJS의 /health 엔드포인트가 200을 반환해야 트래픽 수신. 3) 문제: Pod가 Terminating 상태가 되면 Service Endpoints에서 제거되는데, iptables 업데이트가 전파되기까지 1-5초 동안 죽는 Pod에 요청이 갈 수 있다. 해결: preStop hook에 sleep 5. 4) NestJS에서 app.enableShutdownHooks() → SIGTERM 수신 시 진행 중인 요청 완료 + DB 커넥션 정리. 5) terminationGracePeriodSeconds를 preStop + 요청 처리 시간보다 크게. 6) ArgoCD Sync Wave로 ConfigMap → Deployment → Service 순서 제어. 이 6가지를 모두 설정해야 '진정한' 무중단이다.",
+    "seniorTip": "무중단 배포를 검증하는 방법: 배포 중에 k6나 artillery로 지속적 트래픽을 보내면서 에러율 모니터링. 에러율 0%가 목표. 간헐적 502/503이 발생하면 위 설정 중 하나가 빠진 것이다.",
+    "tags": [
+      "argocd",
+      "zero-downtime",
+      "rolling-update",
+      "graceful-shutdown",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-012",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "외부 파트너(뱅크샐러드, 웰컴페이먼츠, 네이버 가격비교)와 API 연동 시 가장 중요한 설계 원칙은?",
+    "options": [
+      "가장 빠른 응답 속도",
+      "장애 격리(Circuit Breaker), 타임아웃 설정, 재시도 전략, 폴백 처리",
+      "모든 파트너의 API 스펙을 통일",
+      "파트너 API를 직접 DB에 저장"
+    ],
+    "answer": 1,
+    "explanation": "외부 API는 언제든 느려지거나 장애가 날 수 있다. 하나의 파트너 장애가 우리 서비스 전체를 다운시키면 안 된다. 장애 격리가 핵심이다.",
+    "deepDive": "3개의 외부 파트너를 연동한다고 하자. 각각의 방어 전략: 1) 타임아웃: 각 파트너별로 다른 타임아웃 설정. 뱅크샐러드 3초, 웰컴페이먼츠 5초(결제라 여유있게), 네이버 2초. 타임아웃 없으면 느린 파트너가 커넥션을 고갈시킴. 2) 서킷 브레이커: 30초 내 5번 실패하면 Open → 30초 후 Half-Open → 1건 성공하면 Close. 파트너별 독립 서킷. 3) 재시도: 멱등한 요청(GET, 가격 조회)만 재시도. 결제 같은 비멱등 요청은 재시도 금지(이중 결제 위험). 지수 백오프로 재시도 간격 증가. 4) 폴백: 네이버 가격비교 API 장애 시 → 캐시된 이전 데이터 반환. 결제 API 장애 시 → 사용자에게 '잠시 후 재시도' 안내. 5) 파트너별 NestJS HttpModule 인스턴스를 분리하여 커넥션 풀 격리.",
+    "seniorTip": "외부 연동 체크리스트: 1) 타임아웃 필수. 2) 재시도 + 멱등성 확인. 3) 서킷 브레이커. 4) 폴백 전략. 5) 요청/응답 로깅 (디버깅용). 6) 파트너 API 스펙 변경 감지 (응답 스키마 검증). 7) 파트너별 SLA 문서화.",
+    "tags": [
+      "external-api",
+      "circuit-breaker",
+      "timeout",
+      "retry",
+      "partner",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-013",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Lambda + EventBridge로 EC2 자동 종료를 설정하여 비용 30%를 절감했다. 이 패턴의 핵심 동작은?",
+    "options": [
+      "EC2가 자동으로 Lambda를 호출한다",
+      "EventBridge가 cron 스케줄로 Lambda를 트리거하고, Lambda가 EC2 상태를 확인하여 불필요한 인스턴스를 종료한다",
+      "Lambda가 EC2를 모니터링하는 데몬으로 실행된다",
+      "CloudWatch가 직접 EC2를 종료한다"
+    ],
+    "answer": 1,
+    "explanation": "EventBridge (구 CloudWatch Events)에서 cron 표현식으로 Lambda를 주기적으로 실행. Lambda에서 EC2 API로 인스턴스 상태를 확인하고, 업무 시간 외에 사용하지 않는 인스턴스를 자동 종료한다.",
+    "deepDive": "이 패턴을 확장해보자. 1) 단순 시간 기반: rate(5 minutes)로 Lambda 실행 → 태그(Environment=dev)가 있는 인스턴스를 밤 10시~아침 8시에 자동 종료. 2) 사용률 기반: CloudWatch 메트릭에서 CPU 5% 이하가 1시간 지속되면 종료. 더 지능적이지만 false positive 위험. 3) 스케줄 기반: 개발 환경은 평일 9시~18시만 운영. 이것만으로도 14/24 * 5/7 = 약 58% 절감. 4) Auto Scaling Group의 scheduled scaling과 조합하면 더 정교한 제어 가능. 5) Terraform에서 EventBridge + Lambda + IAM Role을 모듈로 만들어두면 재사용 가능. 비용 최적화는 '한번 설정하고 잊는' 것이 아니라 지속적으로 모니터링하고 조정해야 한다.",
+    "seniorTip": "AWS 비용 최적화 우선순위: 1) 미사용 리소스 제거 (가장 쉬움). 2) Right-sizing (CloudWatch 사용률 기반). 3) Reserved Instances / Savings Plans (1년 약정 30-60% 할인). 4) Spot Instances (개발/배치 워크로드). 5) 아키텍처 최적화 (서버리스 전환 등).",
+    "tags": [
+      "lambda",
+      "eventbridge",
+      "cost-optimization",
+      "ec2",
+      "social-investing"
+    ]
+  },
+  {
+    "id": "ncnc-014",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘의 Turborepo 모노레포에서 API, Consumer(SQS), Cron 서비스를 분리한 이유와 장단점을 설명하라.",
+    "answer": "관심사 분리: API는 HTTP 요청 처리, Consumer는 비동기 메시지 처리, Cron은 스케줄 작업. 독립 배포/스케일링 가능. 단점: 공유 코드 관리 복잡도",
+    "explanation": "하나의 앱에 API + SQS Consumer + Cron을 모두 넣으면 SQS 처리가 느려져도 API까지 영향받고, Cron 작업이 CPU를 잡아먹으면 모든 기능이 느려진다.",
+    "deepDive": "이 구조를 K8s 관점에서 보자. 1) API Pod: HPA로 트래픽에 따라 오토스케일링. readinessProbe는 HTTP /health. 2) Consumer Pod: SQS 메시지 수에 따라 KEDA로 스케일링. readinessProbe는 SQS 연결 확인. 3) Cron Pod: K8s CronJob으로 실행. 또는 단일 Pod에서 NestJS @Cron()으로 실행하되 리더 선출로 중복 방지. 공유 코드는 Turborepo의 packages/에: @ncnc/entities (TypeORM 엔티티), @ncnc/common (유틸, DTO), @ncnc/config (설정). 이렇게 분리하면 엔티티 변경 시 3개 서비스가 모두 영향받지만, Turborepo의 dependency graph가 이를 자동 감지하여 affected 서비스만 빌드/테스트. 주의: Consumer에서 트랜잭션 실패 시 메시지가 DLQ로 가는데, API와 Consumer가 같은 DB를 사용하면 데이터 정합성 이슈를 공유한다.",
+    "seniorTip": "모노레포 서비스 분리 기준: 1) 스케일링 단위가 다르면 분리. 2) 장애 격리가 필요하면 분리. 3) 배포 주기가 다르면 분리. 너무 잘게 쪼개면 오버헤드가 커지고, 너무 합치면 결합도가 높아진다.",
+    "tags": [
+      "monorepo",
+      "turborepo",
+      "service-separation",
+      "consumer",
+      "cron",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-015",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "CES Innovation Award를 수상한 생체인증 기술의 백엔드를 설계했다. IoT 디바이스(ESP32)와 서버 간 실시간 양방향 통신 아키텍처를 설명하라.",
+    "answer": "MQTT 브로커를 중심으로, ESP32가 publish/subscribe하고, NestJS 서버도 같은 브로커에 연결. 토픽 구조로 디바이스별 격리. QoS 레벨로 신뢰성 보장",
+    "explanation": "ESP32 → MQTT Broker(Mosquitto/EMQX) ← NestJS 서버. 디바이스가 인증 요청을 publish하면 서버가 구독하여 처리하고, 결과를 다시 publish하면 디바이스가 수신.",
+    "deepDive": "이 아키텍처의 도전 과제를 파보자. 1) 토픽 설계: device/{device_id}/auth/request, device/{device_id}/auth/response. 와일드카드: device/+/auth/# 로 서버가 모든 디바이스의 인증 요청을 구독. 2) QoS 선택: QoS 0(최대 1번) → 빠르지만 유실 가능. QoS 1(최소 1번) → 중복 가능하지만 유실 없음. 인증은 QoS 1이 적합. 출입문 잠금 해제 같은 중요 명령은 QoS 2(정확히 1번)도 고려. 3) 보안: MQTT over TLS. 클라이언트 인증서 또는 username/password. ESP32는 리소스 제약이 있어 TLS가 부담 → PSK(Pre-Shared Key) 방식 고려. 4) 오프라인 처리: ESP32가 네트워크 끊겼다가 복구되면? MQTT의 retained message와 clean session 설정으로 마지막 상태를 보장. 5) 디바이스 수천 대 스케일링: EMQX 클러스터 또는 AWS IoT Core(수백만 디바이스 지원).",
+    "seniorTip": "IoT 백엔드 설계 시 일반 웹 서비스와 다른 점: 1) 디바이스는 항상 온라인이 아니다. 2) 네트워크가 불안정하다. 3) 디바이스 펌웨어 업데이트가 서버 배포보다 어렵다 (하위 호환성 필수). 4) 디바이스 수가 폭발적으로 늘어날 수 있다.",
+    "tags": [
+      "mqtt",
+      "iot",
+      "esp32",
+      "real-time",
+      "biometric",
+      "ghostpass"
+    ]
+  }
+]

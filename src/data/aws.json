@@ -1,0 +1,522 @@
+[
+  {
+    "id": "aws-001",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "EKS에서 Control Plane과 Data Plane의 책임 분리를 가장 정확하게 설명한 것은?",
+    "options": [
+      "Control Plane은 사용자가 직접 EC2로 관리하고, Data Plane은 AWS가 관리한다",
+      "Control Plane(kube-apiserver, etcd, scheduler 등)은 AWS가 완전 관리하고, Data Plane(Worker Node)은 사용자가 관리한다",
+      "Control Plane과 Data Plane 모두 사용자 VPC 안에 존재한다",
+      "Fargate를 사용하면 Control Plane도 사용자가 관리해야 한다"
+    ],
+    "answer": 1,
+    "explanation": "EKS는 관리형 Kubernetes다. AWS가 kube-apiserver, etcd, kube-scheduler, kube-controller-manager 등 Control Plane 컴포넌트를 멀티 AZ로 운영하고 가용성을 보장한다. Worker Node(EC2 또는 Fargate)는 사용자 VPC에 속하며 사용자가 관리 책임을 진다. Managed Node Group을 쓰면 노드 프로비저닝/업그레이드 자동화가 가능하다.",
+    "seniorTip": "EKS Control Plane 비용($0.10/hr)이 별도로 청구된다. etcd는 사용자가 직접 접근할 수 없다. Control Plane 로그(api, audit, authenticator, controllerManager, scheduler)를 CloudWatch Logs로 활성화해두면 보안 감사 및 장애 분석에 필수다. 니콘내콘처럼 EKS를 프로덕션으로 쓴다면 audit 로그는 반드시 켜두자.",
+    "tags": [
+      "eks",
+      "control-plane",
+      "data-plane",
+      "managed-kubernetes"
+    ],
+    "deepDive": "AWS가 Control Plane을 관리한다면 etcd 백업은 어떻게 되는가? → etcd 장애 시 클러스터 복구 절차는 무엇인가? → EKS Control Plane 업그레이드 시 kube-apiserver 버전 스큐(skew) 정책은 무엇이며, 워커노드 업그레이드 순서는 왜 Control Plane 이후여야 하는가?"
+  },
+  {
+    "id": "aws-002",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "EKS Managed Node Group과 Self-Managed Node Group의 차이로 올바른 것은?",
+    "options": [
+      "Managed Node Group은 Control Plane을 포함한다",
+      "Managed Node Group은 노드 프로비저닝, 업데이트, AMI 교체를 AWS가 자동화해주며 드레인(drain) 절차를 자동으로 처리한다",
+      "Self-Managed Node Group은 Spot Instance를 사용할 수 없다",
+      "Managed Node Group은 모든 인스턴스 타입을 지원한다"
+    ],
+    "answer": 1,
+    "explanation": "Managed Node Group은 AWS가 EC2 Auto Scaling Group을 관리하며, 업그레이드 시 자동으로 노드를 drain → cordon → 새 노드 생성 → 구 노드 삭제 순서로 처리한다. Self-Managed는 이 프로세스를 직접 구현해야 한다. Managed Node Group도 Spot Instance를 지원하며, capacity type을 ON_DEMAND 또는 SPOT으로 지정할 수 있다.",
+    "seniorTip": "Managed Node Group의 제약: 1) launch template 커스터마이징 범위가 제한적. 2) Windows 노드는 Self-Managed만 지원하는 경우가 있음. 3) 특수한 커널 모듈이나 GPU 드라이버 커스터마이징이 필요하면 Self-Managed 또는 Karpenter로 전환. 니콘내콘 같은 서비스는 Managed Node Group + Karpenter 조합으로 비용과 운영 효율을 동시에 잡는 경우가 많다.",
+    "tags": [
+      "eks",
+      "node-group",
+      "managed-node-group",
+      "karpenter"
+    ],
+    "deepDive": "Managed Node Group 업그레이드 중 PodDisruptionBudget(PDB)이 설정된 Pod가 drain을 막으면 어떻게 되는가? → maxUnavailable을 0으로 설정하면 업그레이드가 영원히 멈출 수 있는데, 이 문제를 어떻게 해결하는가? → Karpenter가 Managed Node Group과 비교해 비용 최적화에서 유리한 이유는 무엇인가?"
+  },
+  {
+    "id": "aws-003",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "IRSA(IAM Roles for Service Accounts)의 동작 원리를 설명하고, 기존 EC2 Instance Profile 방식과의 차이점을 말하라.",
+    "answer": "OIDC Provider를 통해 Kubernetes ServiceAccount에 IAM Role을 매핑, Pod 단위로 세분화된 AWS 권한 부여 가능",
+    "explanation": "IRSA 동작 원리: 1) EKS 클러스터에 OIDC Identity Provider를 연결. 2) IAM Role의 Trust Policy에 OIDC Provider와 ServiceAccount를 조건으로 설정. 3) Pod에 ServiceAccount를 부여하면 AWS SDK가 자동으로 OIDC 토큰으로 AssumeRoleWithWebIdentity 호출. 4) 임시 자격증명(STS)을 발급받아 AWS API 호출. EC2 Instance Profile 방식은 노드 전체에 동일한 권한이 부여되므로, 한 노드의 모든 Pod가 같은 AWS 권한을 가지는 문제가 있다.",
+    "seniorTip": "니콘내콘 실무 시나리오: S3 업로드 권한이 필요한 서비스만 해당 S3 버킷에 접근하는 IAM Role을 가진 ServiceAccount를 사용하고, SQS consumer Pod는 SQS 관련 Role만 부여. Terraform으로 구현 시 aws_iam_openid_connect_provider 리소스로 OIDC Provider를 등록하고 aws_iam_role의 assume_role_policy에 조건을 명시. node의 IMDSv2를 hop limit=1로 설정하면 Pod가 노드 Role을 탈취하는 것도 방지 가능.",
+    "tags": [
+      "eks",
+      "irsa",
+      "iam",
+      "oidc",
+      "security"
+    ],
+    "deepDive": "IRSA에서 ServiceAccount 토큰은 어디에 마운트되고, 만료는 어떻게 처리되는가? → STS AssumeRoleWithWebIdentity 호출 시 발급되는 임시 자격증명의 유효시간과 갱신 주기는? → IMDSv2 hop limit=1 설정과 IRSA를 함께 써야 하는 이유, 그리고 네트워크 정책과의 관계는?"
+  },
+  {
+    "id": "aws-004",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "EKS에서 VPC CNI(Amazon VPC CNI plugin)를 사용할 때 Pod 네트워킹의 특징으로 올바른 것은?",
+    "options": [
+      "Pod IP는 별도의 오버레이 네트워크에서 할당되며 VPC CIDR과 무관하다",
+      "각 Pod에 VPC의 실제 ENI secondary IP가 할당되어 Pod IP가 VPC에서 직접 라우팅 가능하다",
+      "노드당 Pod 수에 제한이 없다",
+      "VPC CNI는 IPv6를 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Amazon VPC CNI는 각 Pod에 VPC 서브넷의 실제 IP를 할당한다(ENI secondary IP). 이로 인해 Pod IP가 VPC 내에서 직접 라우팅 가능하다. 단, 노드당 ENI 수와 ENI당 IP 수에 제한이 있어 인스턴스 타입별 최대 Pod 수가 정해진다(예: m5.large는 최대 29 Pod). Calico, Cilium 같은 오버레이 CNI와 다르다.",
+    "seniorTip": "VPC CNI의 한계: 1) VPC CIDR 소진 문제 - Pod 수가 많으면 IP 고갈 위험. 해결책: Custom networking(별도 서브넷에서 Pod IP 할당) 또는 /16 서브넷 사용. 2) 인스턴스 타입별 Pod 수 제한 → 고밀도 Pod 배치 시 c5.xlarge보다 m5.4xlarge처럼 ENI가 많은 타입 선택. 3) 니콘내콘처럼 2.1M 사용자를 처리하려면 subnet 설계 단계부터 Pod IP 풀을 고려해야 한다.",
+    "tags": [
+      "eks",
+      "vpc-cni",
+      "networking",
+      "eni",
+      "pod-ip"
+    ],
+    "deepDive": "VPC CNI에서 WARM_ENI_TARGET과 WARM_IP_TARGET 환경변수가 Pod 기동 시간에 어떤 영향을 주는가? → ENI가 부족할 때 Pod가 Pending 상태가 되는데, 이를 사전에 모니터링하는 방법은? → Cilium으로 CNI를 교체할 때 EKS에서 고려해야 할 사항은?"
+  },
+  {
+    "id": "aws-005",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "EKS Fargate를 사용하면 노드 보안 패치, OS 업데이트를 사용자가 직접 관리할 필요가 없다.",
+    "answer": "O",
+    "explanation": "EKS Fargate는 Pod 단위로 격리된 마이크로 VM을 AWS가 완전 관리한다. OS, 런타임, 커널 패치를 AWS가 담당하며 사용자는 컨테이너 이미지만 관리하면 된다. 노드가 없으므로 노드 그룹 업그레이드, AMI 교체 작업이 필요 없다. 단 Fargate 프로필(namespace/label 기반 selector)을 통해 어떤 Pod를 Fargate에 배치할지 정의해야 한다.",
+    "seniorTip": "Fargate의 제약: 1) DaemonSet 미지원 (각 Fargate Pod가 독립 VM이라 노드 공유 개념 없음). 2) 특권(privileged) 컨테이너 미지원. 3) EBS 볼륨 직접 마운트 불가 (EFS는 가능). 4) 최대 4vCPU/30GB 메모리 제한. 5) EC2 대비 가격이 비쌀 수 있음. ECS/Fargate 경험이 있다면 EKS/Fargate는 쉽게 적응 가능하지만, 데몬셋 기반 모니터링 에이전트(Datadog agent)가 필요하면 EC2 노드 그룹과 혼용해야 한다.",
+    "tags": [
+      "eks",
+      "fargate",
+      "managed-infrastructure",
+      "daemonset"
+    ],
+    "deepDive": "Fargate에서 Datadog 에이전트를 운용하려면 어떤 방식을 사용하는가? → Fargate의 Pod 격리 모델(microVM)은 gVisor, Firecracker 중 어느 것을 사용하며, 이것이 보안에 어떤 의미를 갖는가? → Fargate Pod의 네트워킹 모델은 EC2 노드와 어떻게 다른가?"
+  },
+  {
+    "id": "aws-006",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Load Balancer Controller(ALB Ingress Controller)가 Kubernetes Ingress 리소스를 어떻게 ALB로 프로비저닝하는지 흐름을 설명하라.",
+    "answer": "Ingress 리소스 생성 감지 → ALB 프로비저닝 → Target Group 생성 → 리스너/규칙 설정 → Pod IP를 Target으로 등록",
+    "explanation": "AWS Load Balancer Controller는 Kubernetes Controller로 동작한다. 1) Ingress 리소스(또는 Service type=LoadBalancer)를 Watch. 2) 어노테이션(kubernetes.io/ingress.class: alb)을 확인하여 ALB를 AWS API로 생성. 3) Ingress rules에 따라 Listener(80/443)와 Rules(path/host 기반) 설정. 4) 각 Service에 대해 Target Group 생성. 5) Pod IP를 Target으로 직접 등록(IP mode) 또는 노드 포트를 Target으로 등록(Instance mode). 6) SSL 인증서는 ACM에서 가져와 자동 연결.",
+    "seniorTip": "IP Target mode vs Instance mode: IP mode는 Pod IP를 직접 등록(VPC CNI 필수), kube-proxy를 우회하여 레이턴시 감소. Instance mode는 NodePort를 통해 라우팅. 니콘내콘에서 300K MAU 트래픽을 처리한다면 IP mode를 권장. 어노테이션으로 세부 설정: alb.ingress.kubernetes.io/target-type: ip, alb.ingress.kubernetes.io/scheme: internet-facing. Terraform에서 Helm으로 컨트롤러 배포 시 IRSA 설정이 필수다.",
+    "tags": [
+      "eks",
+      "alb",
+      "ingress",
+      "aws-load-balancer-controller",
+      "target-group"
+    ],
+    "deepDive": "ALB의 Target Group deregistration delay가 Pod 롤링 업데이트 중 502 에러를 유발하는 원인과 해결책은? → ALB WAF 연동 시 어노테이션 설정과 WAF WebACL 연결 방법은? → ALB access log를 S3에 저장 후 Athena로 쿼리하는 패턴에서 어떤 인사이트를 얻을 수 있는가?"
+  },
+  {
+    "id": "aws-007",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "EKS 클러스터 업그레이드 시 올바른 순서는?",
+    "options": [
+      "워커 노드 → Control Plane → 애드온(CoreDNS, kube-proxy, VPC CNI)",
+      "Control Plane → 워커 노드 → 애드온(CoreDNS, kube-proxy, VPC CNI)",
+      "애드온 → Control Plane → 워커 노드",
+      "순서 무관, 동시에 업그레이드해도 된다"
+    ],
+    "answer": 1,
+    "explanation": "Kubernetes 버전 스큐 정책: kube-apiserver는 kubelet보다 항상 최신이어야 한다. Control Plane을 먼저 업그레이드한 후 워커 노드를 업그레이드해야 한다. 애드온(CoreDNS, kube-proxy, VPC CNI)은 새 Control Plane 버전에 맞게 업데이트해야 하며, 워커 노드 업그레이드 전후로 처리 가능하다. EKS는 한 번에 한 단계(minor version)씩만 업그레이드 가능하다.",
+    "seniorTip": "업그레이드 전 체크리스트: 1) kubectl get nodes로 현재 버전 확인. 2) 애드온 호환성 매트릭스 확인(EKS docs). 3) PodDisruptionBudget 설정 확인. 4) ArgoCD, Datadog agent 등 클러스터 내 도구의 호환성 확인. 5) staging 클러스터에서 먼저 테스트. 니콘내콘에서 ArgoCD를 사용한다면 ArgoCD 버전도 새 K8s API와 호환되는지 확인 필수. Terraform으로 EKS를 관리한다면 aws_eks_cluster.version 변경 후 plan 결과를 면밀히 검토.",
+    "tags": [
+      "eks",
+      "upgrade",
+      "version-skew",
+      "cluster-management"
+    ],
+    "deepDive": "EKS 1.24에서 dockershim이 제거되었는데, containerd로 마이그레이션 시 주의해야 할 컨테이너 이미지 레이어 캐시 차이는? → 업그레이드 중 kube-apiserver가 두 개의 minor version을 지원하는 동안 deprecated된 API(예: extensions/v1beta1)를 사용하는 리소스는 어떻게 처리해야 하는가? → Blue/Green 클러스터 업그레이드 전략과 In-place 업그레이드 전략의 트레이드오프는?"
+  },
+  {
+    "id": "aws-008",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "ECR(Elastic Container Registry) 이미지 라이프사이클 정책의 주요 목적은?",
+    "options": [
+      "이미지 취약점을 자동으로 패치한다",
+      "오래된 이미지나 태그되지 않은 이미지를 자동으로 삭제하여 스토리지 비용을 절감한다",
+      "이미지를 다른 리전으로 자동 복제한다",
+      "이미지 빌드를 자동화한다"
+    ],
+    "answer": 1,
+    "explanation": "ECR 라이프사이클 정책(Lifecycle Policy)은 규칙 기반으로 이미지를 자동 삭제하는 기능이다. 예: '태그되지 않은 이미지가 1개를 초과하면 오래된 것부터 삭제', '특정 prefix의 태그 이미지를 최신 10개만 유지'. ECR 저장 비용($0.10/GB/월)을 절감하고, 이미지 목록을 깔끔하게 유지하는 데 사용된다.",
+    "seniorTip": "실무 라이프사이클 정책 설계: 1) untagged 이미지는 1~3일 후 삭제. 2) 개발 브랜치 이미지(prefix: dev-)는 최신 5개만 유지. 3) 프로덕션 태그(prefix: v, release-)는 30개 유지. ECR Enhanced Scanning(Inspector 연동)을 활성화하면 이미지 push 시 CVE 취약점을 자동 스캔하고 결과를 ECR 콘솔과 CloudWatch에서 확인 가능. ArgoCD image updater와 연동하면 새 이미지 push 시 자동 배포도 가능.",
+    "tags": [
+      "ecr",
+      "lifecycle-policy",
+      "container-registry",
+      "cost-optimization"
+    ],
+    "deepDive": "ECR 라이프사이클 정책에서 규칙 우선순위(rulePriority)가 충돌할 때 어떻게 처리되는가? → ECR 이미지를 여러 리전에서 사용할 때 Cross-Region Replication 설정과 비용은? → ArgoCD image updater가 ECR에서 최신 이미지 태그를 감지하는 방식과 ECR 인증 갱신 문제는 어떻게 해결하는가?"
+  },
+  {
+    "id": "aws-009",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "RDS Multi-AZ 배포와 Read Replica의 차이를 설명하고, 각각의 사용 목적을 말하라.",
+    "answer": "Multi-AZ는 고가용성(HA) 목적의 동기 복제, Read Replica는 읽기 성능 향상 목적의 비동기 복제",
+    "explanation": "Multi-AZ: Standby 인스턴스에 동기 복제. Primary 장애 시 자동 Failover(60~120초). 읽기 트래픽을 Standby로 분산 불가(standby는 읽기 요청 처리 불가). RTO 단축이 목적. Read Replica: 비동기 복제. 읽기 쿼리를 분산하여 Primary 부하 감소. Aurora는 최대 15개 리플리카. 리플리카를 다른 리전에 생성 가능(Cross-Region Read Replica). 수동 승격 필요(자동 Failover 없음).",
+    "seniorTip": "니콘내콘 실무 시나리오(2.1M 사용자): 상품 조회처럼 읽기가 많은 쿼리는 Read Replica 엔드포인트로, 주문/결제 같은 쓰기 트랜잭션은 Primary로 라우팅. NestJS에서 TypeORM을 쓴다면 replication 옵션으로 master/slave 엔드포인트 분리 가능. Aurora 사용 시 Reader Endpoint가 자동으로 Read Replica 간 로드밸런싱을 처리한다. Multi-AZ Failover 시 DNS CNAME이 변경되므로 커넥션 풀이 오래된 IP를 캐시하지 않도록 DNS TTL을 짧게 유지.",
+    "tags": [
+      "rds",
+      "multi-az",
+      "read-replica",
+      "high-availability",
+      "mysql"
+    ],
+    "deepDive": "RDS Failover 중 진행 중이던 트랜잭션은 어떻게 되는가? → Aurora의 Failover가 RDS Multi-AZ보다 빠른 이유(스토리지 공유 아키텍처)는? → Read Replica 지연(replication lag)이 증가할 때 어떤 모니터링 지표를 보고 어떻게 대응하는가?"
+  },
+  {
+    "id": "aws-010",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Aurora와 일반 RDS MySQL의 차이로 올바른 것은?",
+    "options": [
+      "Aurora는 MySQL 코드를 그대로 사용하며 차이가 없다",
+      "Aurora는 스토리지를 3개 AZ에 6벌 복제하고, 최대 15개 Read Replica를 지원하며, Failover 속도가 훨씬 빠르다",
+      "RDS MySQL이 Aurora보다 성능이 우수하다",
+      "Aurora는 Multi-AZ를 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Aurora는 AWS가 MySQL/PostgreSQL 호환으로 설계한 클라우드 네이티브 DB다. 스토리지를 3 AZ에 걸쳐 6개 복사본으로 유지(쓰기 quorum: 4/6). 스토리지가 분리된 공유 아키텍처라 Read Replica는 스토리지를 공유하여 복제 지연이 거의 없다. Failover는 보통 30초 이내. 최대 15개 Read Replica 지원. 단, 일반 RDS MySQL보다 비용이 높다.",
+    "seniorTip": "Aurora Serverless v2: 0.5 ACU에서 128 ACU까지 초 단위로 스케일링. 트래픽이 불규칙한 서비스에 적합. Aurora Global Database: 다른 리전에 보조 클러스터를 두어 RPO < 1초, RTO < 1분의 재해복구 구현. 니콘내콘처럼 300K MAU에 트래픽 피크가 있다면 Aurora Serverless v2가 비용 효율적일 수 있다. 단, Aurora와 일반 MySQL 간 몇 가지 동작 차이(AUTO_INCREMENT 등)를 마이그레이션 전 반드시 검증.",
+    "tags": [
+      "aurora",
+      "rds",
+      "mysql",
+      "high-availability",
+      "serverless"
+    ],
+    "deepDive": "Aurora의 shared storage 아키텍처에서 쓰기 요청이 quorum(4/6)을 충족하지 못하면 어떻게 되는가? → Aurora Backtrack 기능은 어떤 원리로 동작하며 PITR(Point-In-Time Recovery)과의 차이는? → Aurora에서 connection pool 관리를 위해 RDS Proxy를 사용하는 것이 EKS 환경에서 어떤 이점을 주는가?"
+  },
+  {
+    "id": "aws-011",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ElastiCache Redis에서 클러스터 모드(Cluster Mode Enabled)와 비클러스터 모드의 차이를 설명하고, 각각 언제 선택해야 하는지 말하라.",
+    "answer": "클러스터 모드는 데이터를 16384 슬롯으로 샤딩하여 수평 확장 가능, 비클러스터는 단일 샤드로 수직 확장만 가능",
+    "explanation": "비클러스터 모드(Replication Group): Primary 1개 + Replica 최대 5개. 모든 데이터가 단일 Primary에. 읽기는 Replica로 분산. 최대 메모리 = 단일 노드 메모리. 클러스터 모드: 최대 500개 샤드(각 샤드 = Primary + Replica). 16384 슬롯을 샤드에 분산. 멀티 키 명령어(MGET, 파이프라인)에서 키가 다른 슬롯에 있으면 제약. 단, 수평 확장이 가능하여 테라바이트급 데이터 처리 가능.",
+    "seniorTip": "니콘내콘 실무(Redis 세션/캐시): 세션 데이터는 비클러스터 모드로도 충분할 수 있지만, 캐시 데이터가 수백 GB를 넘어간다면 클러스터 모드 필요. 클러스터 모드 사용 시 애플리케이션에서 CROSSSLOT 에러를 주의해야 한다. NestJS/ioredis는 클러스터 모드를 지원하지만 multi-key 명령어는 hash tag({})를 사용해 같은 슬롯에 배치해야 한다. Failover 시 Primary → Replica 승격은 수십 초 내로 자동 처리.",
+    "tags": [
+      "elasticache",
+      "redis",
+      "cluster-mode",
+      "sharding",
+      "failover"
+    ],
+    "deepDive": "ElastiCache Redis 클러스터 모드에서 리샤딩(resharding) 중 서비스 중단 없이 슬롯을 재배분하는 방법은? → Redis Sentinel과 ElastiCache Multi-AZ의 Failover 메커니즘 차이는? → ElastiCache의 connection 수가 급증할 때 maxmemory-policy와 timeout 파라미터 튜닝 전략은?"
+  },
+  {
+    "id": "aws-012",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "SQS Standard Queue와 FIFO Queue의 차이로 올바른 것은?",
+    "options": [
+      "Standard Queue는 메시지 순서를 보장하고 중복이 없다",
+      "FIFO Queue는 순서 보장과 정확히 1회 처리(exactly-once)를 제공하지만 처리량이 Standard보다 낮다",
+      "Standard Queue는 최대 10개 메시지만 처리할 수 있다",
+      "FIFO Queue는 Dead Letter Queue를 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Standard Queue: 거의 무제한 처리량(nearly unlimited TPS), 최소 1회 전달(at-least-once), 순서 미보장(best-effort ordering). FIFO Queue: 초당 300 TPS(배치 처리 시 3000 TPS), 정확히 1회 전달(exactly-once), 동일 MessageGroupId 내 순서 보장. FIFO는 .fifo 접미사 필수. 두 큐 모두 DLQ를 지원한다.",
+    "seniorTip": "니콘내콘 실무(선물권 발송): 결제 완료 후 선물권 발행은 중복 처리되면 안 되므로 FIFO Queue + MessageDeduplicationId 사용. 이메일/알림 발송처럼 순서가 중요하지 않고 처리량이 많은 경우는 Standard Queue. SQS FIFO의 300 TPS 제한이 문제가 된다면 MessageGroupId를 여러 개로 나눠 병렬 처리량 증가 가능. Visibility Timeout은 처리 시간보다 길게, Lambda timeout보다 길게 설정 필수.",
+    "tags": [
+      "sqs",
+      "fifo",
+      "standard-queue",
+      "exactly-once",
+      "messaging"
+    ],
+    "deepDive": "SQS FIFO에서 MessageGroupId를 너무 적게 설정하면 어떤 성능 병목이 발생하는가? → Visibility Timeout 내에 처리를 완료하지 못한 메시지가 다시 큐에 나타날 때 consumer가 멱등성(idempotency)을 보장하는 방법은? → SQS Extended Client Library를 사용해 256KB 이상의 페이로드를 처리하는 패턴과 S3와의 연동은?"
+  },
+  {
+    "id": "aws-013",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "SQS Dead Letter Queue(DLQ)의 역할을 설명하고, maxReceiveCount 설정 기준을 어떻게 정해야 하는지 말하라.",
+    "answer": "처리 실패한 메시지를 별도 큐에 격리하여 재처리 및 분석 가능, maxReceiveCount는 처리 로직의 재시도 가능 횟수를 고려해 설정",
+    "explanation": "DLQ는 메시지가 maxReceiveCount 이상 소비되어도 처리 완료(삭제)되지 않을 때 자동으로 이동되는 큐다. 역할: 1) 독성 메시지(poison pill)가 큐를 막는 것을 방지. 2) 실패 메시지를 분석하여 버그 발견. 3) 수정 후 DLQ에서 원본 큐로 메시지를 재전송(DLQ redrive). maxReceiveCount: 너무 작으면 일시적 오류로 DLQ에 이동, 너무 크면 재처리 지연. 보통 3~5 사이가 적당.",
+    "seniorTip": "실무 DLQ 운영: 1) DLQ에 메시지가 쌓이면 CloudWatch 알람 발생 → PagerDuty/Slack 알림. 2) DLQ 메시지의 MessageAttributes에 실패 원인을 기록하는 패턴. 3) DLQ redrive 시 Visibility Timeout 조정. 니콘내콘에서 선물권 발송 실패 메시지가 DLQ에 쌓인다면 수동 분석 후 코드 수정 → DLQ redrive로 재처리하는 SOP를 미리 정의해두는 것이 중요. Lambda DLQ는 SQS DLQ와 다르게 비동기 호출 실패 시 사용됨에 주의.",
+    "tags": [
+      "sqs",
+      "dlq",
+      "dead-letter-queue",
+      "error-handling",
+      "reliability"
+    ],
+    "deepDive": "SQS DLQ에 쌓인 메시지를 원본 큐로 일괄 재전송(redrive)할 때 순서와 중복 처리 문제를 어떻게 다루는가? → Lambda trigger로 SQS를 처리할 때 partial batch failure 처리 방법과 reportBatchItemFailures 설정은? → SQS 메시지 처리 중 downstream 서비스(RDS, ElastiCache)가 일시적으로 다운됐을 때 circuit breaker 패턴을 어떻게 적용하는가?"
+  },
+  {
+    "id": "aws-014",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "S3 Presigned URL의 주요 용도로 가장 적절한 것은?",
+    "options": [
+      "S3 버킷을 퍼블릭으로 만들어 누구나 접근할 수 있게 한다",
+      "특정 시간 동안만 유효한 임시 URL을 생성해 인증 없이도 특정 객체에 접근하거나 업로드할 수 있게 한다",
+      "S3 객체를 다른 버킷으로 자동 복사한다",
+      "S3 버킷의 IAM 정책을 우회한다"
+    ],
+    "answer": 1,
+    "explanation": "Presigned URL은 AWS 자격증명으로 서명된 임시 URL이다. URL을 가진 누구나 만료 시간 전까지 특정 객체를 GET(다운로드) 또는 PUT(업로드) 할 수 있다. 활용: 1) 클라이언트가 서버를 거치지 않고 S3에 직접 업로드(트래픽 절감). 2) 비공개 S3 객체의 임시 다운로드 링크 제공. 3) 만료 시간은 최대 7일(AWS SDK v2 기준).",
+    "seniorTip": "니콘내콘 실무: 모바일 앱에서 상품 이미지나 사용자 프로필 사진을 업로드할 때 서버에서 Presigned PUT URL을 발급하고 클라이언트가 직접 S3에 업로드하는 패턴이 일반적. NestJS에서 @aws-sdk/client-s3의 getSignedUrl로 구현. 업로드 후 S3 Event Notification → SQS → Lambda 패턴으로 이미지 처리(리사이징, 메타데이터 추출) 트리거 가능. 대용량 파일은 Multipart Upload Presigned URL을 사용.",
+    "tags": [
+      "s3",
+      "presigned-url",
+      "security",
+      "file-upload"
+    ],
+    "deepDive": "Presigned URL 생성 시 서명에 사용된 IAM 자격증명이 만료되면(IRSA 임시자격증명 등) URL이 만료 전에 무효화되는가? → S3 Transfer Acceleration과 Presigned URL을 함께 사용하는 방법과 이점은? → S3 Presigned POST(업로드)와 Presigned PUT의 차이와 각각의 사용 시나리오는?"
+  },
+  {
+    "id": "aws-015",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "S3와 CloudFront를 함께 사용하는 주요 이유는?",
+    "options": [
+      "S3 데이터를 CloudFront가 자동으로 암호화한다",
+      "CloudFront의 엣지 로케이션에서 콘텐츠를 캐시하여 레이턴시를 줄이고 S3 요청 비용을 절감한다",
+      "CloudFront를 통해서만 S3 객체를 수정할 수 있다",
+      "S3 버킷 용량 제한을 우회한다"
+    ],
+    "answer": 1,
+    "explanation": "CloudFront는 AWS의 CDN 서비스다. S3 + CloudFront 조합: 1) 전 세계 400+ 엣지 로케이션에서 캐시하여 사용자와 가까운 곳에서 콘텐츠 제공. 2) S3 직접 요청 대비 레이턴시 감소. 3) S3 GET 요청 수 감소 → 비용 절감. 4) OAC(Origin Access Control)로 S3를 퍼블릭으로 열지 않고 CloudFront를 통해서만 접근 가능하게 설정. 5) HTTPS 강제, Custom 도메인, WAF 연동 가능.",
+    "seniorTip": "OAI(Origin Access Identity) → OAC(Origin Access Control)로 마이그레이션 권장(OAC가 최신이며 SSE-KMS 지원). CloudFront에 WAF WebACL을 연결하면 DDoS 방어 및 봇 필터링 가능. 니콘내콘 모바일 앱의 상품 이미지를 CloudFront + S3로 제공하면 전국 사용자에게 일관된 빠른 응답 제공. Cache-Control 헤더로 TTL 제어 필수. CloudFront Function이나 Lambda@Edge로 이미지 리사이징을 엣지에서 처리하는 패턴도 효과적.",
+    "tags": [
+      "s3",
+      "cloudfront",
+      "cdn",
+      "performance",
+      "cost-optimization"
+    ],
+    "deepDive": "CloudFront의 캐시 무효화(invalidation) 비용과 대안으로 파일명에 해시를 붙이는 캐시 버스팅 전략의 차이는? → CloudFront + S3에서 SPA(Single Page Application) 배포 시 404를 index.html로 라우팅하는 설정은? → CloudFront 앞에 WAF를 붙일 때 IP Rate Limiting과 Geo-blocking을 동시에 설정하는 방법은?"
+  },
+  {
+    "id": "aws-016",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "CloudWatch와 Datadog의 역할 분담을 설명하고, 두 도구를 함께 사용할 때의 장단점을 말하라.",
+    "answer": "CloudWatch는 AWS 네이티브 메트릭/로그 수집, Datadog은 통합 모니터링/APM/알람으로 멀티 레이어 가시성 제공",
+    "explanation": "CloudWatch: AWS 서비스의 네이티브 메트릭(EC2, EKS, RDS, ALB 등), 로그 수집(CloudWatch Logs), Alarms, Dashboards, Container Insights, Log Insights. Datadog: APM(분산 추적), 인프라 메트릭, 로그 관리, 합성 모니터링, 알람, 커스텀 메트릭. 함께 사용 시 장점: AWS 네이티브 메트릭은 CloudWatch에서, 애플리케이션 레벨 모니터링은 Datadog에서. 단점: 비용 중복, 컨텍스트 전환.",
+    "seniorTip": "니콘내콘 스택(CloudWatch + Datadog) 실무 분담: 1) RDS 느린 쿼리 → CloudWatch RDS Enhanced Monitoring + Datadog 연동. 2) EKS 노드/Pod 메트릭 → Datadog agent가 CloudWatch Metrics API를 통해 수집. 3) APM/분산 트레이싱 → Datadog APM(NestJS dd-trace). 4) 알람 → Datadog Monitor가 Slack/PagerDuty 연동이 CloudWatch Alarm보다 편리. CloudWatch는 AWS 콘솔 접근 없이 audit log 확인에도 유용. Datadog 비용을 절감하려면 high-cardinality 메트릭 태그를 줄여야 한다.",
+    "tags": [
+      "cloudwatch",
+      "datadog",
+      "monitoring",
+      "observability",
+      "apm"
+    ],
+    "deepDive": "Datadog APM에서 분산 트레이싱이 SQS, Lambda, NestJS를 걸쳐서 동작하려면 어떻게 trace context를 전파하는가? → CloudWatch Container Insights와 Datadog Container Monitoring의 메트릭 수집 방식의 차이와 각각의 맹점은? → Datadog Log Management 비용이 급증할 때 Log Pipeline으로 불필요한 로그를 필터링하고 압축하는 전략은?"
+  },
+  {
+    "id": "aws-017",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS 비용 최적화 전략 중 EKS 환경에서 가장 효과적인 방법으로 올바른 것은?",
+    "options": [
+      "모든 노드를 온디맨드 인스턴스로 유지하고 큰 인스턴스를 사용한다",
+      "Spot Instance를 혼합하고, Karpenter로 bin packing을 최적화하며, Savings Plans를 구매한다",
+      "노드 수를 고정하여 Auto Scaling을 비활성화한다",
+      "모든 서비스를 Fargate로 이전한다"
+    ],
+    "answer": 1,
+    "explanation": "EKS 비용 최적화 핵심: 1) Spot Instance: 온디맨드 대비 최대 90% 절감. 스테이트리스 워크로드에 적합. 인터럽션 핸들러(AWS Node Termination Handler)와 함께 사용. 2) Karpenter: Pod 요청에 맞는 최적 인스턴스 타입 선택, bin packing으로 노드 활용도 극대화. 3) Savings Plans(Compute): 1~3년 약정으로 최대 66% 절감. 인스턴스 타입에 구애받지 않음. 4) 올바른 requests 설정으로 over-provisioning 방지.",
+    "seniorTip": "니콘내콘 비용 최적화 시나리오: 1) 배치 처리, 데이터 분석 → Spot + Karpenter. 2) 결제/주문 등 중요 서비스 → On-demand + Savings Plans. 3) 스테이징 환경 → Spot 비율 높임. 4) Kubecost로 네임스페이스/팀별 비용 분석. AWS Cost Explorer의 Rightsizing Recommendations로 EC2 인스턴스 크기 최적화. RDS Reserved Instances도 1년 예약 시 40% 절감 가능. 단, Spot Instance Interruption 대비로 PodDisruptionBudget과 graceful shutdown 필수.",
+    "tags": [
+      "cost-optimization",
+      "spot-instance",
+      "karpenter",
+      "savings-plans",
+      "eks"
+    ],
+    "deepDive": "Karpenter의 Provisioner에서 consolidation 정책이 활성화되면 노드를 언제 병합(merge)하는가? → Spot Instance 인터럽션 발생 2분 전에 AWS가 제공하는 인터럽션 통지를 EKS에서 어떻게 처리하는가? → 멀티 인스턴스 타입 Spot 전략에서 capacity pool 다양화가 인터럽션 빈도를 낮추는 원리는?"
+  },
+  {
+    "id": "aws-018",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "VPC에서 Private Subnet의 인스턴스가 인터넷에 나가려면 필요한 것은?",
+    "options": [
+      "Internet Gateway만 있으면 된다",
+      "NAT Gateway(또는 NAT Instance)가 Public Subnet에 있어야 하며, Private Subnet 라우팅 테이블에 0.0.0.0/0 → NAT Gateway가 설정되어야 한다",
+      "Private Subnet은 인터넷에 나갈 수 없다",
+      "VPN Gateway가 필요하다"
+    ],
+    "answer": 1,
+    "explanation": "Private Subnet 인스턴스의 인터넷 아웃바운드 경로: Private Subnet → NAT Gateway(Public Subnet에 위치) → Internet Gateway → Internet. NAT Gateway는 인스턴스의 Private IP를 공인 IP로 변환(SNAT). NAT Gateway는 AZ별로 생성하는 것이 고가용성 권장. 비용: $0.045/hr + 데이터 처리 비용. Internet Gateway 없이는 NAT Gateway도 동작하지 않는다.",
+    "seniorTip": "NAT Gateway 비용 절감: 1) AZ 간 데이터 전송 시 같은 AZ의 NAT Gateway를 사용하도록 서브넷 라우팅 설계. 2) S3, DynamoDB 등 AWS 서비스 접근은 VPC Endpoint(Gateway Type, 무료)를 사용하여 NAT Gateway 트래픽 우회. 3) ECR, SecretsManager, STS 등은 Interface VPC Endpoint로 NAT Gateway 없이 접근 가능. 니콘내콘 EKS 환경에서 ECR 이미지 풀이 NAT Gateway를 통한다면 상당한 데이터 비용 발생 → ECR VPC Endpoint 설정 권장.",
+    "tags": [
+      "vpc",
+      "nat-gateway",
+      "networking",
+      "private-subnet",
+      "internet-gateway"
+    ],
+    "deepDive": "NAT Gateway와 NAT Instance의 차이, 그리고 NAT Instance를 직접 운영해야 하는 시나리오가 아직 존재하는가? → VPC Endpoint(Gateway vs Interface)의 차이와 각각 어떤 AWS 서비스가 어느 타입을 지원하는가? → PrivateLink를 사용해 서비스를 다른 VPC의 consumer에게 제공하는 패턴과 DNS 해석은 어떻게 동작하는가?"
+  },
+  {
+    "id": "aws-019",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Security Group과 NACL(Network ACL)의 차이를 설명하고, 각각을 언제 사용하는지 말하라.",
+    "answer": "Security Group은 상태 기반(stateful) 인스턴스 레벨 방화벽, NACL은 무상태(stateless) 서브넷 레벨 방화벽",
+    "explanation": "Security Group: 인스턴스(ENI) 레벨. Stateful(인바운드 허용 시 아웃바운드 응답 자동 허용). Allow 규칙만 존재(Deny 없음). NACL: 서브넷 레벨. Stateless(인바운드/아웃바운드 각각 별도 규칙 필요). Allow/Deny 모두 가능. 규칙 번호 순서대로 평가(낮은 번호 우선). 기본 NACL은 모든 트래픽 허용.",
+    "seniorTip": "실무 사용: Security Group이 주요 방화벽 역할. NACL은 특정 IP 대역을 Deny하는 블랙리스트 용도로 주로 사용(악의적 IP 차단). NACL의 Stateless 특성으로 임시 포트(ephemeral port, 1024-65535) 아웃바운드도 명시적으로 허용해야 함을 잊으면 안 됨. EKS에서 Security Groups for Pods를 사용하면 Pod 단위로 Security Group을 적용 가능(VPC CNI의 ENIConfig 활용). RDS 접근은 애플리케이션 Security Group만 인바운드 허용하는 최소 권한 설계.",
+    "tags": [
+      "vpc",
+      "security-group",
+      "nacl",
+      "networking",
+      "security"
+    ],
+    "deepDive": "EKS Security Groups for Pods 기능을 활성화할 때 VPC CNI 설정 변경과 지원되는 인스턴스 타입 제약은? → Security Group 규칙 변경이 기존 연결(established TCP connections)에 즉시 반영되는가? → VPC Flow Logs를 Athena로 분석해 이상 트래픽을 탐지하는 쿼리 패턴은?"
+  },
+  {
+    "id": "aws-020",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "IAM 권한 경계(Permission Boundary)의 주요 사용 목적은?",
+    "options": [
+      "IAM 사용자의 비밀번호 정책을 설정한다",
+      "개발자에게 IAM Role 생성 권한을 부여하되, 생성된 Role이 사전 정의된 최대 권한을 초과하지 못하도록 제한한다",
+      "멀티 계정에서 SCP와 동일한 역할을 한다",
+      "IAM 역할의 세션 시간을 제한한다"
+    ],
+    "answer": 1,
+    "explanation": "Permission Boundary는 IAM 엔터티(User, Role)에 부여할 수 있는 최대 권한의 상한선을 설정한다. 실제 유효 권한 = Identity-based Policy ∩ Permission Boundary. 사용 사례: 개발자가 직접 IAM Role을 생성할 수 있도록 위임하되, 그 Role이 AdministratorAccess를 가지지 못하도록 Permission Boundary로 제한. AWS Organizations SCP는 계정 레벨 제한, Permission Boundary는 특정 엔터티 레벨 제한.",
+    "seniorTip": "실무 패턴: 1) 개발팀에 IAM Role/Policy 셀프서비스 권한 부여 시 Permission Boundary를 조건으로 attach 강제. 2) Terraform으로 서비스별 Role을 생성할 때 permissions_boundary ARN을 모듈 변수로 표준화. 3) AWS Organizations + SCP로 계정 레벨에서 특정 리전/서비스 사용을 제한하고, Permission Boundary로 개별 Role 레벨에서 추가 제한. 니콘내콘처럼 여러 마이크로서비스가 각자 IAM Role을 가진다면 Permission Boundary로 최소 권한 원칙을 강제하는 것이 보안에 중요.",
+    "tags": [
+      "iam",
+      "permission-boundary",
+      "security",
+      "least-privilege"
+    ],
+    "deepDive": "Permission Boundary가 설정된 Role이 다른 Role을 AssumeRole할 때 Permission Boundary가 어떻게 적용되는가? → SCP(Service Control Policy)와 Permission Boundary가 동시에 적용될 때 권한 평가 순서는? → Attribute-Based Access Control(ABAC)을 IAM 태그로 구현하는 패턴과 RBAC 대비 관리 부담 차이는?"
+  },
+  {
+    "id": "aws-021",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "AWS GuardDuty는 VPC Flow Logs, CloudTrail, DNS 로그를 분석하여 위협을 탐지하며, 별도로 에이전트를 설치할 필요가 없다.",
+    "answer": "O",
+    "explanation": "GuardDuty는 에이전트 없이 AWS 계정 레벨에서 활성화하면 자동으로 VPC Flow Logs, AWS CloudTrail Events, DNS Logs를 분석한다. 머신러닝과 위협 인텔리전스 피드를 사용하여 비정상적인 API 호출, 알려진 악의적 IP와의 통신, 포트 스캔 등을 탐지한다. 탐지 결과는 GuardDuty Findings로 나타나며 EventBridge → Lambda/SNS로 자동 대응 워크플로우 구성 가능.",
+    "seniorTip": "GuardDuty와 함께 사용하는 보안 서비스: 1) AWS Security Hub: 여러 보안 서비스의 결과를 통합 대시보드에서 관리. 2) AWS Config: 리소스 설정 변경 감사. 3) AWS WAF: HTTP 레이어 공격 방어. 4) Amazon Inspector: EC2/컨테이너 취약점 스캔. 니콘내콘처럼 카드결제 데이터를 다룬다면 GuardDuty + Security Hub + Config Rules로 PCI-DSS 컴플라이언스 증적 확보 가능. Findings를 Datadog Security 또는 Slack으로 전송하는 EventBridge 규칙을 설정해두는 것이 실용적.",
+    "tags": [
+      "guardduty",
+      "security",
+      "threat-detection",
+      "cloudtrail"
+    ],
+    "deepDive": "GuardDuty Finding의 심각도(severity) 분류 기준은 무엇이고, HIGH 등급 Finding에 자동 대응하는 아키텍처를 설계한다면 어떻게 구성하는가? → GuardDuty EKS Protection을 활성화하면 어떤 추가 위협 탐지가 가능한가? → AWS Organizations에서 GuardDuty를 모든 계정에 일괄 활성화하고 위임 관리자(delegated administrator)를 통해 중앙 관리하는 패턴은?"
+  },
+  {
+    "id": "aws-022",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ECS/Fargate와 EKS 중 어떤 것을 선택해야 하는지 결정 기준을 말하라.",
+    "answer": "운영 복잡도, 팀의 K8s 숙련도, 생태계(서비스 메시, 오퍼레이터) 필요성, 멀티클라우드 이식성 등을 고려",
+    "explanation": "ECS/Fargate 선택 시: 1) 소규모 팀, K8s 학습 비용 부담. 2) AWS 전용 환경, 이식성 불필요. 3) 단순한 마이크로서비스 아키텍처. 4) 빠른 온보딩. EKS 선택 시: 1) K8s 생태계 활용(서비스 메시, Operator, 커스텀 컨트롤러). 2) 멀티클라우드/하이브리드 전략. 3) 복잡한 배포 전략(ArgoCD, Flux). 4) 이미 K8s 숙련 팀. 5) 세밀한 스케줄링, 리소스 제어 필요.",
+    "seniorTip": "니콘내콘의 현재 스택(EKS + ArgoCD + Terraform)은 EKS가 맞는 선택이다. 이유: 1) ArgoCD GitOps가 K8s 네이티브. 2) 세밀한 HPA/KEDA 스케일링. 3) Karpenter 비용 최적화. ECS도 CodeDeploy Blue/Green, EventBridge, Fargate Spot 조합으로 충분히 프로덕션급 운영 가능. 최근 트렌드: Lambda(이벤트 드리븐 소규모) + ECS(중간 규모) + EKS(대규모, 복잡한 오케스트레이션) 조합으로 워크로드 특성에 따라 분리하는 하이브리드 아키텍처도 증가.",
+    "tags": [
+      "ecs",
+      "eks",
+      "fargate",
+      "architecture-decision",
+      "comparison"
+    ],
+    "deepDive": "ECS Service Connect와 EKS Service Mesh(Istio, AWS App Mesh)의 기능적 차이와 운영 복잡도 비교는? → ECS에서 EKS로 마이그레이션할 때 Task Definition을 K8s Deployment로 변환하는 과정에서 흔히 놓치는 항목은? → AWS App Runner가 ECS/EKS와 비교해서 선택할 만한 유스케이스는 무엇인가?"
+  },
+  {
+    "id": "aws-023",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "SQS Long Polling이 Short Polling보다 권장되는 이유는?",
+    "options": [
+      "Long Polling이 메시지를 더 빠르게 처리한다",
+      "Long Polling은 빈 응답을 줄여 API 호출 비용을 절감하고 레이턴시를 줄인다",
+      "Short Polling은 DLQ를 지원하지 않는다",
+      "Long Polling은 FIFO 큐에서만 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "Short Polling: SQS가 즉시 응답. 메시지가 없으면 빈 응답 반환. 메시지 확인을 위해 자주 API 호출 필요. Long Polling(WaitTimeSeconds: 1~20초): SQS가 메시지가 올 때까지 최대 WaitTimeSeconds 동안 대기 후 응답. 메시지 없으면 빈 응답이 줄어들어 API 호출 횟수 감소 → 비용 절감(SQS 요청 당 과금). 메시지 도착 레이턴시도 개선. 대부분의 경우 WaitTimeSeconds=20 권장.",
+    "seniorTip": "니콘내콘에서 SQS consumer를 NestJS로 구현한다면: WaitTimeSeconds=20 설정이 기본. ECS/EKS에서 SQS consumer를 Deployment로 운영할 때 KEDA(Kubernetes Event-driven Autoscaling)를 사용하면 SQS 큐 깊이(depth)를 기반으로 Pod 수를 자동 조절 가능. SQS ReceiveMessage API 비용: 1,000,000 요청당 $0.40이므로 Long Polling으로 요청 수를 줄이면 큰 비용 절감이 된다.",
+    "tags": [
+      "sqs",
+      "long-polling",
+      "short-polling",
+      "cost-optimization",
+      "messaging"
+    ],
+    "deepDive": "SQS Long Polling에서 WaitTimeSeconds=20으로 설정했을 때 메시지가 큐에 도달하면 즉시 응답하는가, 아니면 무조건 20초를 기다리는가? → KEDA의 SQS Scaler가 큐 깊이와 현재 consumer 수를 어떻게 계산해서 목표 replica 수를 결정하는가? → SQS consumer의 처리 속도가 produce 속도를 따라가지 못할 때 backpressure를 어떻게 적용하는가?"
+  },
+  {
+    "id": "aws-024",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "S3 버킷의 데이터 보호를 위한 핵심 설정들을 나열하고 각각의 목적을 설명하라.",
+    "answer": "버킷 퍼블릭 접근 차단, 버전 관리(Versioning), SSE-S3/SSE-KMS 암호화, MFA Delete, 객체 잠금(Object Lock), 액세스 로깅",
+    "explanation": "1) Block Public Access: 퍼블릭 접근 실수 방지(계정 레벨에서 강제 권장). 2) Versioning: 객체 덮어쓰기/삭제 시 이전 버전 보존. 3) SSE-KMS: KMS 키로 서버 측 암호화, 키 사용 감사 가능. 4) MFA Delete: 버전 삭제에 MFA 인증 요구. 5) Object Lock(WORM): 규정 준수용, 설정된 기간 동안 삭제/수정 불가. 6) S3 Access Logging: 버킷 접근 기록(감사 목적). 7) 수명 주기 정책: 오래된 버전 자동 삭제로 비용 관리.",
+    "seniorTip": "니콘내콘에서 선물권 거래 이력 등 규정 준수 데이터는 Object Lock Governance 모드로 보존. 이미지/파일 버킷은 Versioning + 수명 주기 정책(30일 후 이전 버전 삭제)으로 비용 관리. Terraform aws_s3_bucket_public_access_block으로 모든 신규 버킷에 퍼블릭 접근 차단을 표준화. KMS 키에 CloudTrail을 통한 사용 감사를 활성화하면 누가 언제 어떤 데이터에 접근했는지 증적 확보 가능.",
+    "tags": [
+      "s3",
+      "security",
+      "versioning",
+      "encryption",
+      "compliance"
+    ],
+    "deepDive": "S3 Object Lock의 Governance 모드와 Compliance 모드의 차이, 그리고 규제 요건(GDPR, PCI-DSS)에 따라 어느 것을 선택해야 하는가? → S3 버킷 정책과 IAM 정책이 동시에 적용될 때 권한 평가 로직(explicit deny 우선)은? → S3 Intelligent-Tiering이 비용 효율적인 시나리오와 그렇지 않은 시나리오(소용량 객체)의 기준은?"
+  },
+  {
+    "id": "aws-025",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘처럼 EKS + RDS + ElastiCache + SQS를 사용하는 서비스에서 장애 발생 시 재해복구(DR) 전략을 설명하라.",
+    "answer": "RTO/RPO 목표에 따라 Backup & Restore, Pilot Light, Warm Standby, Multi-Site 중 선택하며 각 컴포넌트별 복구 계획 수립",
+    "explanation": "DR 전략 스펙트럼: 1) Backup & Restore(가장 저렴, RTO 수 시간): S3 백업 + 인프라 재생성. 2) Pilot Light(핵심 컴포넌트만 최소 운영): RDS Read Replica를 다른 리전에 유지, 장애 시 승격. 3) Warm Standby(축소된 스케일로 복제 운영): 다른 리전에 소규모 EKS + RDS + ElastiCache 운영. 4) Multi-Site(Active-Active, 가장 비쌈, RPO≈0): Route53 가중치 기반 라우팅으로 두 리전에 트래픽 분산.",
+    "seniorTip": "니콘내콘 실무 권장(300K MAU): Warm Standby 수준. 1) RDS Aurora Global Database로 다른 리전에 리플리카(RPO < 1초). 2) ElastiCache Global Datastore로 Redis 복제. 3) S3 Cross-Region Replication으로 파일 동기화. 4) Terraform 코드로 인프라 재생성 자동화(IaC가 DR 속도를 결정). 5) 정기적인 DR 훈련(GameDay). SQS는 리전별 큐이므로 장애 리전에 쌓인 메시지를 어떻게 처리할지 정책 필요. ArgoCD를 보조 리전에도 구성하면 EKS 배포 복구 자동화 가능.",
+    "tags": [
+      "disaster-recovery",
+      "rto-rpo",
+      "multi-region",
+      "aurora-global",
+      "resilience"
+    ],
+    "deepDive": "Aurora Global Database의 Primary 리전 장애 시 Secondary 리전으로 failover하는 절차와 소요 시간은? → Terraform 상태 파일(S3 backend)이 장애 리전에 있을 때 DR 리전에서 인프라를 재생성하려면 어떻게 해야 하는가? → 카오스 엔지니어링(AWS Fault Injection Simulator)으로 DR 절차를 정기 검증하는 방법과 니콘내콘 같은 서비스에서 허용 가능한 테스트 범위는?"
+  }
+]

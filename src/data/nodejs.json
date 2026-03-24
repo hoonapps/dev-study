@@ -1,0 +1,501 @@
+[
+  {
+    "id": "nodejs-001",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Node.js의 이벤트 루프가 싱글 스레드임에도 높은 동시성을 처리할 수 있는 원리는?",
+    "options": [
+      "내부적으로 멀티스레드를 사용하기 때문에",
+      "비동기 I/O를 OS 커널(epoll/kqueue)에 위임하고, 완료 시 콜백을 실행하는 논블로킹 모델",
+      "요청마다 새로운 프로세스를 생성하기 때문에",
+      "JIT 컴파일이 매우 빠르기 때문에"
+    ],
+    "answer": 1,
+    "explanation": "Node.js는 I/O 작업(파일 읽기, 네트워크, DB 쿼리)을 OS 커널이나 libuv의 스레드 풀에 위임하고, 메인 스레드는 콜백 큐에서 완료된 작업을 처리한다. CPU가 아닌 I/O에 대기하는 시간이 대부분인 웹 서버에 최적화된 모델이다.",
+    "seniorTip": "이벤트 루프의 6단계: timers → pending callbacks → idle/prepare → poll → check → close callbacks. setImmediate()는 check 단계, setTimeout(fn, 0)은 timers 단계에서 실행된다. process.nextTick()은 어떤 단계와 단계 사이에 실행되므로 I/O starvation을 일으킬 수 있다. libuv의 스레드 풀(기본 4개)은 DNS 조회, 파일 시스템, crypto 등 OS가 비동기를 지원하지 않는 작업에 사용된다. UV_THREADPOOL_SIZE로 조정 가능.",
+    "tags": [
+      "event-loop",
+      "non-blocking",
+      "libuv",
+      "concurrency"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-002",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js에서 CPU 집약적인 작업(이미지 처리, 대용량 JSON 파싱 등)을 처리하면 왜 문제가 되고, 어떻게 해결하는가?",
+    "answer": "이벤트 루프를 블로킹하여 모든 요청 처리가 멈춤. Worker Threads, 별도 프로세스, 외부 서비스로 위임하여 해결",
+    "explanation": "CPU 작업은 이벤트 루프를 점유하므로, 그동안 다른 모든 요청이 대기한다. 100ms 이상 이벤트 루프를 점유하면 체감 성능이 급격히 나빠진다.",
+    "seniorTip": "해결 방법 우선순위: 1) Worker Threads (Node.js 12+) — CPU 작업을 별도 스레드에서 실행. 2) Child Process (fork) — 별도 프로세스로 분리. 3) 큐(Bull/BullMQ + Redis) — 무거운 작업을 비동기 작업 큐로 분리. 이것이 가장 실무적. 4) 외부 서비스로 위임 (이미지 처리 → Sharp + 별도 마이크로서비스). 실무에서 가장 흔한 실수: JSON.parse()에 수MB의 데이터를 넣어서 이벤트 루프를 수백ms 블로킹하는 것. 스트리밍 JSON 파서(jsonstream)를 사용하자.",
+    "tags": [
+      "cpu-bound",
+      "worker-threads",
+      "event-loop-blocking",
+      "bull"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-003",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Node.js에서 메모리 누수(Memory Leak)의 가장 흔한 원인은?",
+    "options": [
+      "let 대신 const를 사용해서",
+      "클로저, 이벤트 리스너 미해제, 전역 변수에 데이터 축적",
+      "async/await 사용",
+      "npm 패키지가 너무 많아서"
+    ],
+    "answer": 1,
+    "explanation": "1) 클로저가 외부 변수를 참조하여 GC가 해제하지 못함. 2) EventEmitter에서 리스너를 등록만 하고 removeListener하지 않음. 3) 전역 변수나 모듈 스코프 변수에 데이터를 계속 push. 4) 캐시를 Map/Object에 무한정 저장.",
+    "seniorTip": "메모리 누수 디버깅: 1) --inspect 플래그로 Chrome DevTools 연결 → Heap Snapshot 비교. 2) process.memoryUsage()로 heapUsed 모니터링. 3) clinic.js로 프로파일링. K8s에서는 memory limits에 의해 OOM Kill → 재시작이 반복되면 메모리 누수를 의심. NestJS에서 흔한 패턴: @Injectable() 서비스에 인스턴스 변수로 데이터를 축적하는 것 (싱글톤이므로 서버 생존 기간 동안 계속 증가).",
+    "tags": [
+      "memory-leak",
+      "garbage-collection",
+      "debugging",
+      "heap"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-004",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js의 Cluster 모듈과 PM2의 cluster mode가 하는 역할은? K8s 환경에서도 필요한가?",
+    "answer": "멀티코어 활용을 위해 여러 워커 프로세스를 생성. K8s에서는 Pod replica로 대체하므로 불필요한 경우가 많다",
+    "explanation": "Node.js는 싱글 스레드이므로 하나의 CPU 코어만 사용한다. Cluster/PM2는 코어 수만큼 워커 프로세스를 fork하여 부하를 분산한다. 하지만 K8s에서는 Pod를 여러 개 띄우면 동일한 효과를 얻을 수 있다.",
+    "seniorTip": "K8s + Node.js 조합에서의 판단: 1) Pod 1개에 CPU를 1코어만 할당하고 replica를 늘리는 것이 K8s 친화적 (HPA가 Pod 단위로 스케일링). 2) Pod 1개에 4코어 + cluster mode 4 워커는 리소스 효율은 좋지만 스케일링 단위가 굵어짐. 3) 일반적으로 전자가 권장. 4) PM2는 K8s 환경에서 불필요 — K8s 자체가 프로세스 관리자 역할. 컨테이너 내에서는 node 직접 실행이 낫다 (PM2가 SIGTERM을 가로채면 graceful shutdown이 꼬일 수 있음).",
+    "tags": [
+      "cluster",
+      "pm2",
+      "multi-core",
+      "kubernetes",
+      "scaling"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-005",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Promise.all()에서 하나의 Promise가 reject되면, 나머지 Promise들은 자동으로 취소된다.",
+    "answer": "X",
+    "explanation": "Promise.all()이 reject되더라도 나머지 Promise는 계속 실행된다. JavaScript에는 Promise 취소 메커니즘이 없다. 이미 실행 중인 비동기 작업은 완료될 때까지 실행되지만, 결과가 무시될 뿐이다.",
+    "seniorTip": "Promise.allSettled()를 사용하면 모든 Promise의 결과(fulfilled/rejected)를 받을 수 있다. 부분 실패를 허용하는 경우에 유용. AbortController와 AbortSignal을 사용하면 fetch나 다른 비동기 작업을 실제로 취소할 수 있다. Promise.race()는 가장 먼저 완료되는 것만 반환하지만 나머지도 실행은 계속됨. Promise.any()는 가장 먼저 성공하는 것을 반환.",
+    "tags": [
+      "promise",
+      "async",
+      "error-handling",
+      "abort-controller"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-006",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Node.js의 Stream이 대용량 파일 처리에서 중요한 이유는?",
+    "options": [
+      "파일을 압축하여 읽기 때문에",
+      "파일 전체를 메모리에 올리지 않고 chunk 단위로 처리하여 메모리 사용량을 일정하게 유지",
+      "멀티스레드로 파일을 분할 읽기하기 때문에",
+      "디스크 캐시를 활용하기 때문에"
+    ],
+    "answer": 1,
+    "explanation": "fs.readFile()은 파일 전체를 메모리에 로드한다. 1GB 파일이면 1GB 메모리 필요. Stream은 64KB chunk씩 읽으면서 처리하므로, 파일 크기와 관계없이 메모리 사용량이 일정하다.",
+    "seniorTip": "Stream 종류: Readable(읽기), Writable(쓰기), Duplex(양방향), Transform(변환). pipe()로 연결: readStream.pipe(transformStream).pipe(writeStream). NestJS에서 파일 업로드 시 multer의 storage를 커스터마이징하여 S3에 직접 스트리밍하면, 서버 메모리를 거의 사용하지 않고 대용량 파일을 처리할 수 있다. 스트리밍 JSON 응답(StreamableFile)도 NestJS에서 지원.",
+    "tags": [
+      "stream",
+      "memory",
+      "file-processing",
+      "backpressure"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-007",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "package.json의 dependencies와 devDependencies의 차이를 설명하고, 프로덕션 빌드에 미치는 영향을 설명하라.",
+    "answer": "dependencies는 런타임에 필요한 패키지, devDependencies는 개발/빌드 시에만 필요한 패키지. npm install --production은 devDependencies를 설치하지 않음",
+    "explanation": "dependencies: 앱 실행에 필요한 패키지 (express, typeorm 등). devDependencies: 개발/테스트/빌드에만 필요 (jest, eslint, typescript 등). Docker 이미지에서 npm install --production으로 devDependencies를 제외하면 이미지 크기가 줄어든다.",
+    "seniorTip": "Docker 멀티스테이지 빌드 패턴: 1) build 스테이지: npm install (devDeps 포함) → npm run build. 2) production 스테이지: npm install --production (devDeps 제외) → build 결과물 복사. 이렇게 하면 TypeScript 컴파일러, 테스트 라이브러리 등이 최종 이미지에 포함되지 않아 보안과 크기 모두 개선. package-lock.json도 반드시 커밋하고 npm ci를 사용하자 (결정적 설치).",
+    "tags": [
+      "npm",
+      "dependencies",
+      "docker",
+      "multi-stage-build"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-008",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "V8 엔진의 가비지 컬렉션에서 Young Generation과 Old Generation의 차이는?",
+    "options": [
+      "Young은 큰 객체, Old는 작은 객체를 저장한다",
+      "Young은 짧은 수명의 객체로 Minor GC(Scavenge), Old는 오래 생존한 객체로 Major GC(Mark-Sweep-Compact)",
+      "Young은 동기, Old는 비동기로 수집한다",
+      "차이 없이 모든 객체를 동일하게 처리한다"
+    ],
+    "answer": 1,
+    "explanation": "V8은 Generational GC를 사용. 대부분의 객체는 금방 죽으므로(generational hypothesis), 새 객체는 Young Generation(Semi-space)에 할당하고 빠른 Scavenge GC로 수거. 2번 이상 살아남으면 Old Generation으로 이동하여 Mark-Sweep-Compact로 수거.",
+    "seniorTip": "Node.js 메모리 튜닝: --max-old-space-size로 Old Generation 크기 설정 (기본 약 1.5GB). K8s에서 Pod memory limits와 맞춰야 OOM Kill을 방지. --max-semi-space-size로 Young Generation 크기 조정 가능 (처리량 증가, GC 빈도 감소). V8의 Orinoco GC(증분, 병렬, 동시)가 Stop-the-world 시간을 최소화하지만, 대용량 힙에서는 여전히 GC pause가 레이턴시에 영향을 줄 수 있다.",
+    "tags": [
+      "v8",
+      "garbage-collection",
+      "memory",
+      "performance-tuning"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-009",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Node.js에서 require()는 모듈을 매번 새로 로드하고 실행한다.",
+    "answer": "X",
+    "explanation": "require()는 첫 번째 호출 시 모듈을 로드하고 실행한 후 결과를 캐시한다 (require.cache). 이후 같은 모듈을 require하면 캐시된 결과를 반환한다. 이것이 Node.js 모듈이 기본적으로 싱글톤처럼 동작하는 이유다.",
+    "seniorTip": "모듈 캐싱의 함정: 1) 테스트에서 모듈의 상태를 리셋하려면 delete require.cache[require.resolve('./module')]이 필요할 수 있음. 2) jest에서 jest.resetModules()로 모듈 캐시를 초기화. 3) ESM의 import는 항상 같은 바인딩을 참조 (live binding). 4) NestJS의 DI가 모듈 시스템 위에서 한 번 더 싱글톤을 보장하므로, NestJS에서는 직접 require 캐싱을 걱정할 필요는 적다.",
+    "tags": [
+      "module",
+      "require",
+      "cache",
+      "singleton",
+      "esm"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-010",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js 애플리케이션의 에러 핸들링 전략을 운영 관점에서 설명하라. unhandledRejection, uncaughtException을 어떻게 다뤄야 하는가?",
+    "answer": "uncaughtException은 프로세스 종료 전 로깅 후 종료. unhandledRejection은 Node 15+에서 프로세스를 종료시킴. 모든 Promise에 catch 필수",
+    "explanation": "uncaughtException: 동기 에러가 catch되지 않으면 발생. 프로세스 상태가 불확실하므로 로깅 후 종료가 권장. unhandledRejection: Promise reject가 catch되지 않으면 발생. Node 15+부터 프로세스를 종료시킨다.",
+    "seniorTip": "운영 전략: 1) process.on('unhandledRejection')에서 로그를 남기고 process.exit(1). 2) K8s가 재시작해줌 (restartPolicy: Always). 3) NestJS에서는 ExceptionFilter가 HTTP 요청 내 에러를 처리하지만, 비동기 작업(cron, queue worker)의 에러는 직접 try-catch 필요. 4) 글로벌 에러 로깅: Sentry, DataDog 등에 에러를 전송. 5) 에러 발생 시 graceful shutdown으로 진행 중인 요청 완료 후 종료. 절대 uncaughtException에서 process를 살려두려고 하지 말자 — 메모리/상태 오염 위험.",
+    "tags": [
+      "error-handling",
+      "unhandled-rejection",
+      "uncaught-exception",
+      "operations"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "nodejs-011",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "이벤트 루프의 각 단계(timers, poll, check)를 설명하고, setImmediate와 setTimeout(fn, 0)의 실행 순서가 달라지는 조건을 설명하라.",
+    "answer": "timers(setTimeout/setInterval) → pending callbacks → idle/prepare → poll(I/O 대기) → check(setImmediate) → close callbacks 순서. I/O 콜백 내부에서는 setImmediate가 항상 먼저 실행되고, 최상위 컨텍스트에서는 순서가 비결정적",
+    "explanation": "이벤트 루프는 6단계로 구성된다. timers 단계는 만료된 setTimeout/setInterval 콜백을 실행하고, poll 단계는 새 I/O 이벤트를 가져오며 콜백을 실행한다. check 단계는 setImmediate 콜백 전용이다. 최상위 레벨에서 setTimeout(fn, 0)과 setImmediate를 동시에 호출하면 타이머 정밀도에 따라 순서가 달라지지만, I/O 콜백 안에서는 check 단계가 timers보다 먼저 오므로 setImmediate가 항상 앞선다.",
+    "seniorTip": "process.nextTick()은 이벤트 루프의 어떤 단계도 아니고, 현재 작업 완료 직후 다음 단계 진입 전에 실행된다(microtask queue). Promise의 .then()도 microtask queue에 쌓이며 nextTick보다는 늦게 실행된다. 실행 우선순위: process.nextTick > Promise.then > setImmediate > setTimeout. nextTick을 재귀 호출하면 I/O starvation이 발생할 수 있어 setImmediate를 쓰는 게 안전하다. 실제 IoT/소켓 서버에서 고빈도 이벤트 처리 시 이 우선순위가 레이턴시에 직접 영향을 준다.",
+    "deepDive": "poll 단계에서 대기 시간은 어떻게 결정되는가? process.nextTick을 재귀로 쓰면 어떤 문제가 생기는가? queueMicrotask()와 process.nextTick()의 차이는?",
+    "tags": [
+      "event-loop",
+      "setImmediate",
+      "setTimeout",
+      "nextTick",
+      "libuv"
+    ]
+  },
+  {
+    "id": "nodejs-012",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "libuv의 스레드 풀이 무엇인지, 어떤 작업이 스레드 풀을 사용하는지, UV_THREADPOOL_SIZE를 어떻게 결정해야 하는지 설명하라.",
+    "answer": "libuv는 OS가 비동기를 지원하지 않는 작업(파일 I/O, DNS, crypto 등)을 위해 기본 4개의 스레드 풀을 제공. UV_THREADPOOL_SIZE로 최대 1024까지 조정 가능하며, 동시 처리 작업 수와 CPU 코어 수를 고려해 설정",
+    "explanation": "네트워크 소켓은 OS 커널(epoll/kqueue)이 직접 비동기를 지원하지만, 파일 시스템과 DNS lookup, crypto(pbkdf2, scrypt, randomBytes) 등은 libuv가 스레드 풀로 처리한다. 스레드 풀 크기가 4인데 동시에 5개의 파일 읽기가 발생하면 4개는 즉시 시작하고 1개는 스레드가 해제될 때까지 대기한다.",
+    "seniorTip": "AWS Lambda나 K8s Pod에서 crypto.pbkdf2()를 다수 병렬 처리하는 경우, UV_THREADPOOL_SIZE=사용 가능한 vCPU 수 정도로 조정하면 처리량이 개선된다. 단순히 무작정 올리면 컨텍스트 스위칭 비용이 증가하므로 벤치마크가 필수. Node.js 22부터 파일 I/O 일부가 io_uring(리눅스)을 사용해 스레드 풀 의존도가 줄어드는 방향으로 진화 중. Lambda 환경에서 cold start 문제의 한 원인이 스레드 풀 초기화임을 기억하자.",
+    "deepDive": "스레드 풀을 사용하는 작업과 사용하지 않는 작업을 각각 3개씩 나열하라 UV_THREADPOOL_SIZE를 너무 크게 설정하면 어떤 부작용이 생기는가? io_uring이 libuv 스레드 풀을 어떻게 대체하는가?",
+    "tags": [
+      "libuv",
+      "thread-pool",
+      "UV_THREADPOOL_SIZE",
+      "crypto",
+      "file-io"
+    ]
+  },
+  {
+    "id": "nodejs-013",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Node.js의 Buffer와 TypedArray(Uint8Array)의 관계로 올바른 것은?",
+    "options": [
+      "Buffer와 TypedArray는 완전히 별개의 독립적인 구현이다",
+      "Buffer는 Uint8Array를 상속(extends)하므로 TypedArray API를 모두 사용할 수 있다",
+      "TypedArray가 Buffer를 상속한다",
+      "Buffer는 문자열만 다루고 TypedArray는 숫자만 다룬다"
+    ],
+    "answer": 1,
+    "explanation": "Node.js 4.0부터 Buffer는 Uint8Array의 서브클래스다. 따라서 Buffer.alloc()으로 만든 버퍼는 forEach, slice, indexOf 등 TypedArray의 모든 메서드를 사용할 수 있다. 반대로 Uint8Array를 Buffer.from(uint8array)로 변환하면 동일한 메모리를 공유하는 Buffer를 얻는다.",
+    "seniorTip": "바이너리 데이터 처리 실무 팁: 1) Buffer.alloc(size)는 0으로 초기화(안전), Buffer.allocUnsafe(size)는 초기화 안 함(빠름). 민감한 데이터가 담길 수 있는 경우 alloc 사용. 2) MQTT/WebSocket으로 받은 바이너리 프레임을 파싱할 때 Buffer.readUInt16BE(), readFloatLE() 등으로 바이트 단위 제어 가능. 3) 대용량 바이너리를 concat으로 반복 합치면 O(n²) 복사가 발생 — Buffer.concat(chunks, totalLength)로 한 번에 합치자. 4) ESP32와 MQTT 통신 시 little-endian float32 파싱 패턴이 자주 쓰인다.",
+    "deepDive": "Buffer.from(string, 'utf8')과 Buffer.from(string, 'base64')의 차이는? Buffer.allocUnsafe가 보안 위험이 될 수 있는 상황을 설명하라 Node.js Streams에서 Buffer와 string 인코딩 문제를 어떻게 다루는가?",
+    "tags": [
+      "buffer",
+      "binary",
+      "uint8array",
+      "typedarray",
+      "encoding"
+    ]
+  },
+  {
+    "id": "nodejs-014",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js crypto 모듈에서 bcrypt 대신 scrypt나 argon2를 사용하는 이유와 비밀번호 해싱 시 성능과 보안의 트레이드오프를 설명하라.",
+    "answer": "bcrypt는 메모리 하드하지 않아 GPU 병렬 공격에 취약. scrypt(Node.js 내장)와 argon2는 메모리 집약적으로 설계되어 GPU/ASIC 공격을 어렵게 함. 단, 해싱 비용이 이벤트 루프와 libuv 스레드 풀을 점유하므로 동시 요청 수가 많으면 병목이 됨",
+    "explanation": "비밀번호 해싱은 의도적으로 느리게 설계된다. bcrypt는 CPU 비용만 높이지만 메모리는 4KB 고정으로 GPU 병렬화가 가능하다. scrypt와 argon2는 메모리 사용량도 조절할 수 있어(N, r, p 파라미터) 메모리 하드 함수라 불린다. Node.js에 내장된 crypto.scrypt()를 사용하면 외부 의존성 없이 안전한 해싱이 가능하다.",
+    "seniorTip": "실무 전략: 1) crypto.scrypt()는 libuv 스레드 풀을 사용하므로 동시 해싱 요청이 UV_THREADPOOL_SIZE를 초과하면 큐에 쌓임 — 회원가입/로그인 버스트 트래픽 시 응답 지연 주의. 2) Lambda에서 bcrypt/scrypt를 사용하면 cold start + 해싱 시간이 타임아웃을 유발할 수 있음. 3) JWT 기반 인증에서는 해싱이 로그인 시에만 발생하므로 상대적으로 영향 적음. 4) 세션 토큰, CSRF 토큰 등 랜덤값은 crypto.randomBytes()로 생성하고 절대 Math.random()을 쓰지 말 것.",
+    "deepDive": "scrypt의 N, r, p 파라미터가 각각 무엇을 의미하는가? crypto.timingSafeEqual()은 왜 필요하고 어떤 공격을 막는가? Node.js Web Crypto API(globalThis.crypto)와 crypto 모듈의 차이는?",
+    "tags": [
+      "crypto",
+      "security",
+      "password-hashing",
+      "scrypt",
+      "performance"
+    ]
+  },
+  {
+    "id": "nodejs-015",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "ESM(ES Modules)과 CJS(CommonJS)의 차이 중 올바르지 않은 것은?",
+    "options": [
+      "ESM은 정적 분석이 가능하여 Tree-shaking에 유리하다",
+      "CJS의 require()는 동기적으로 모듈을 로드하고, ESM의 import는 비동기적으로 로드된다",
+      "ESM에서 CJS 모듈을 import하면 named export를 직접 구조분해할 수 있다",
+      "ESM은 Top-level await를 지원한다"
+    ],
+    "answer": 2,
+    "explanation": "ESM에서 CJS 모듈을 import할 때 named export를 직접 구조분해하는 것은 지원되지 않는다. CJS 모듈은 module.exports 전체를 default import로만 가져올 수 있다. 나머지 선택지는 모두 올바르다. ESM은 정적 바인딩으로 Tree-shaking에 유리하고, Top-level await를 지원하며, 로딩은 비동기(파싱은 동기)다.",
+    "seniorTip": "실무에서 ESM/CJS 혼용 문제: 1) package.json에 \"type\": \"module\" 설정 시 .js 파일이 ESM으로 해석됨. CJS를 유지하려면 .cjs 확장자 사용. 2) TypeScript에서 tsconfig의 module을 ESNext/NodeNext로 설정하면 import 시 .js 확장자를 명시해야 함. 3) Jest는 기본적으로 CJS이므로 ESM 테스트를 위해 --experimental-vm-modules 또는 vitest 사용. 4) NestJS 프로젝트에서 ESM 마이그레이션은 고통스러울 수 있음 — 대부분의 NestJS 생태계가 CJS 기반. 5) tsup, esbuild는 CJS/ESM 동시 출력을 지원하여 라이브러리 배포 시 유용.",
+    "deepDive": "Top-level await가 CJS에서 불가능한 이유는? ESM의 live binding이란 무엇이고 CJS와 어떻게 다른가? Node.js에서 .mjs 파일과 package.json의 exports 필드를 함께 사용하는 방법은?",
+    "tags": [
+      "esm",
+      "commonjs",
+      "modules",
+      "tree-shaking",
+      "typescript"
+    ]
+  },
+  {
+    "id": "nodejs-016",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js 애플리케이션을 --inspect 플래그로 디버깅하는 방법과 메모리 누수를 힙 스냅샷(Heap Snapshot)으로 분석하는 과정을 설명하라.",
+    "answer": "node --inspect(또는 --inspect-brk)로 실행 후 Chrome DevTools(chrome://inspect)에 연결. 힙 스냅샷을 두 시점에서 촬영하고 비교(Comparison 뷰)하여 증가한 객체를 추적",
+    "explanation": "node --inspect 실행 시 WebSocket 디버그 서버가 9229 포트에 열린다. Chrome의 chrome://inspect에서 Remote Target으로 연결하면 Profiler, Memory 탭을 사용할 수 있다. 힙 스냅샷은 특정 시점의 메모리를 덤프하므로, 정상 상태와 누수 의심 상태의 스냅샷을 비교하면 새로 생성되어 해제되지 않은 객체를 식별할 수 있다.",
+    "seniorTip": "실전 메모리 누수 분석 프로세스: 1) node --inspect app.js로 실행. 2) 트래픽을 일정 시간 흘리거나 특정 API를 반복 호출. 3) DevTools Memory 탭 → Take Heap Snapshot (스냅샷1). 4) 추가로 트래픽 흘리기. 5) Take Heap Snapshot (스냅샷2). 6) Comparison 뷰에서 #Delta(+) 높은 객체 확인 → Retainers 탭으로 참조 체인 추적. K8s에서 OOM Kill이 반복되면 kubectl exec -it로 --inspect를 포트포워딩해서 원격 프로파일링도 가능. clinic.js heapProfiler나 v8-profiler-node8도 좋은 대안.",
+    "deepDive": "--inspect와 --inspect-brk의 차이는? Retainer(리테이너)란 무엇이고 누수 추적에서 어떻게 활용하는가? 운영 환경에서 힙 스냅샷을 안전하게 수집하는 방법은?",
+    "tags": [
+      "debugging",
+      "heap-snapshot",
+      "inspect",
+      "memory-leak",
+      "chrome-devtools"
+    ]
+  },
+  {
+    "id": "nodejs-017",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "process.env의 값은 항상 문자열(string) 타입이므로, 숫자나 불리언 환경변수는 타입 변환이 필요하다.",
+    "answer": "O",
+    "explanation": "OS 환경변수는 모두 문자열로 전달된다. PORT=3000을 설정해도 process.env.PORT는 '3000'(문자열)이므로 Number(process.env.PORT) 변환이 필요하다. ENABLE_CACHE=true도 'true'(문자열)이므로 process.env.ENABLE_CACHE === 'true'로 비교해야 한다. 이 점을 모르고 if (process.env.ENABLE_CACHE)를 쓰면 'false'도 truthy로 평가된다.",
+    "seniorTip": "환경변수 관리 실무 패턴: 1) dotenv + Joi/Zod로 시작 시 환경변수 스키마 검증 → 필수 변수 누락이나 잘못된 타입을 서버 시작 시점에 조기 실패로 감지. 2) NestJS ConfigModule의 validationSchema 옵션 활용. 3) K8s에서는 ConfigMap(비민감)/Secret(민감)을 환경변수로 주입. 4) AWS Lambda에서는 환경변수를 핸들러 외부에서 한 번만 읽어 모듈 스코프 변수에 캐싱하면 warm 실행 시 재파싱 비용을 절약. 5) process.env를 테스트에서 직접 수정할 수 있으나 테스트 간 오염 주의 — beforeEach/afterEach에서 복원.",
+    "deepDive": "dotenv가 process.env를 어떻게 채우는지 내부 동작을 설명하라 K8s Secret을 환경변수로 주입할 때와 볼륨으로 마운트할 때의 차이와 보안 고려사항은? 환경변수 대신 AWS Parameter Store나 Vault를 사용해야 하는 기준은?",
+    "tags": [
+      "process-env",
+      "configuration",
+      "dotenv",
+      "type-coercion",
+      "secrets"
+    ]
+  },
+  {
+    "id": "nodejs-018",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Child Process, Worker Threads, Cluster 모듈의 특징으로 올바른 것은?",
+    "options": [
+      "Worker Threads는 별도 프로세스를 생성하므로 메모리를 공유할 수 없다",
+      "Child Process는 IPC를 통해 부모와 통신하며 독립 메모리 공간을 가지고, Worker Threads는 같은 프로세스 내 스레드로 SharedArrayBuffer로 메모리 공유가 가능하다",
+      "Cluster는 Worker Threads의 확장판으로 내부적으로 같은 구현을 사용한다",
+      "세 방식 모두 CPU 코어를 하나만 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "Child Process: fork()로 독립 프로세스 생성, 별도 메모리 공간, IPC(process.send/message)로 통신. Worker Threads: 같은 프로세스 내 스레드, SharedArrayBuffer와 Atomics로 메모리 공유 가능, MessageChannel로 통신. Cluster: 마스터가 워커 프로세스를 fork하고 소켓을 공유, HTTP 서버 부하 분산에 특화.",
+    "seniorTip": "선택 기준: 1) CPU 집약적 계산 (이미지 처리, 암호화) → Worker Threads (메모리 공유로 데이터 복사 최소화). 2) 외부 바이너리 실행, 완전한 격리 필요 → Child Process (spawn/exec/fork). 3) 웹 서버 멀티코어 활용 → Cluster (단, K8s에서는 Pod replica로 대체). 4) SharedArrayBuffer + Atomics를 쓰면 뮤텍스 없이 lock-free 동시성이 가능하지만 레이스 컨디션 주의. 5) 실시간 IoT 데이터 처리에서 MQTT 메시지를 Worker Thread에서 파싱하고 메인 스레드는 WebSocket 브로드캐스트만 담당하는 패턴이 효과적.",
+    "deepDive": "Worker Threads에서 SharedArrayBuffer를 안전하게 사용하려면 Atomics가 왜 필요한가? child_process.fork()와 spawn()의 차이는? Cluster 모드에서 여러 워커가 동일한 포트를 공유하는 원리는?",
+    "tags": [
+      "child-process",
+      "worker-threads",
+      "cluster",
+      "concurrency",
+      "ipc"
+    ]
+  },
+  {
+    "id": "nodejs-019",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js의 프로토타입 오염(Prototype Pollution) 공격이 무엇이고, 어떻게 방어하는가? 실제 취약점 사례와 함께 설명하라.",
+    "answer": "공격자가 __proto__ 또는 constructor.prototype을 통해 Object.prototype을 조작하여 모든 객체의 동작을 변경하는 공격. 입력값 검증(JSON Schema), Object.freeze(Object.prototype), 안전한 객체 병합 라이브러리 사용으로 방어",
+    "explanation": "프로토타입 오염의 예: JSON.parse('{\"__proto__\":{\"admin\":true}}')를 lodash.merge() 같은 구형 deep merge 함수에 넣으면 Object.prototype.admin이 true가 되어 모든 객체에서 obj.admin이 true로 평가된다. lodash 4.17.15 이전 버전, jQuery, express-fileupload 등에서 실제 CVE가 보고된 바 있다.",
+    "seniorTip": "방어 전략: 1) npm audit를 CI 파이프라인에 포함하여 알려진 취약점 자동 감지. 2) 외부 입력으로 객체 병합 시 Object.assign() 대신 __proto__를 무시하는 구현 사용 또는 JSON Schema로 입력 구조 제한. 3) Object.create(null)로 프로토타입 없는 순수 딕셔너리 객체 생성. 4) ReDoS(정규식 서비스 거부) 방어: 복잡한 정규식에 신뢰할 수 없는 입력을 넣지 말 것. safe-regex 패키지로 취약한 정규식 탐지. 5) 공급망 공격(supply chain): package-lock.json 커밋, npm audit, Dependabot 활성화, 패키지 출처 검증.",
+    "deepDive": "Object.freeze(Object.prototype)가 프로토타입 오염을 방어하는 원리는? ReDoS(Regular Expression Denial of Service) 취약점이 이벤트 루프에 미치는 영향은? npm 공급망 공격(supply chain attack)을 방어하기 위한 실무적 전략 3가지는?",
+    "tags": [
+      "security",
+      "prototype-pollution",
+      "redos",
+      "supply-chain",
+      "npm-audit"
+    ]
+  },
+  {
+    "id": "nodejs-020",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "clinic.js와 0x를 사용한 Node.js 성능 프로파일링 방법을 설명하고, 플레임 그래프에서 병목을 어떻게 식별하는가?",
+    "answer": "clinic doctor로 이벤트 루프 지연/CPU/메모리를 종합 진단하고, clinic flame 또는 0x로 V8 CPU 샘플링 플레임 그래프를 생성. 플레임 그래프에서 너비가 넓고(실행 시간이 긴) 꼭대기에 가까운 프레임이 최적화 대상",
+    "explanation": "플레임 그래프는 함수 호출 스택을 시각화한다. x축은 시간(CPU 샘플 수), y축은 호출 깊이다. 아래가 호출자, 위가 피호출자. 너비가 넓을수록 CPU를 많이 사용한다. '플레임'의 꼭대기 평평한 부분(plateau)이 실제 실행 시간을 소비하는 함수다.",
+    "seniorTip": "실전 프로파일링 워크플로우: 1) clinic doctor -- node app.js로 종합 건강 진단. 이벤트 루프 지연, 메모리 증가, CPU 패턴을 한 눈에 확인. 2) 병목 의심 시 0x로 플레임 그래프 생성: 0x -- node app.js. 3) wrk나 autocannon으로 부하를 걸면서 프로파일링. 4) 플레임 그래프에서 빨간색/주황색 프레임 집중 확인. 5) 실무 발견 패턴: JSON.stringify()가 플레임 상위에 자주 등장 → 응답 직렬화 최적화 필요. 6) K8s 환경에서는 kubectl port-forward로 디버그 포트를 로컬로 터널링해 원격 프로파일링 가능.",
+    "deepDive": "플레임 그래프에서 'idle' 또는 'epoll_wait'가 넓게 나타나는 것은 좋은 신호인가? clinic bubbles는 어떤 문제를 진단하는 데 특화되어 있는가? V8 CPU 프로파일러의 샘플링 방식이 프로파일링 결과에 어떤 편향을 일으킬 수 있는가?",
+    "tags": [
+      "profiling",
+      "clinic-js",
+      "flame-graph",
+      "performance",
+      "0x"
+    ]
+  },
+  {
+    "id": "nodejs-021",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AsyncLocalStorage를 사용한 요청 컨텍스트 전파(Request Context Propagation)란 무엇이고, 분산 추적(distributed tracing)에서 어떻게 활용하는가?",
+    "answer": "AsyncLocalStorage는 비동기 호출 체인 전반에 걸쳐 컨텍스트(예: requestId, userId, traceId)를 자동으로 전파한다. 미들웨어에서 스토어를 초기화하면 해당 요청의 모든 async 콜백에서 동일한 컨텍스트에 접근 가능",
+    "explanation": "기존에는 요청 컨텍스트를 함수 인자로 계속 넘겨야 했다. AsyncLocalStorage는 async_hooks 기반으로 비동기 경계를 넘어도 컨텍스트가 유지된다. Express 미들웨어에서 als.run({requestId: uuid()}, next)를 호출하면 이후 모든 비동기 작업(DB 쿼리, 외부 API 호출, 로거)에서 als.getStore().requestId에 접근할 수 있다.",
+    "seniorTip": "실무 활용 패턴: 1) 로거에 requestId를 자동 삽입 — pino나 winston 인스턴스를 AsyncLocalStorage에서 가져와 모든 로그에 requestId가 자동으로 포함되게 설정. 2) OpenTelemetry의 Context는 내부적으로 AsyncLocalStorage를 사용하여 traceId/spanId를 전파 — Jaeger, DataDog에서 요청 전체 추적 가능. 3) NestJS에서 cls-hooked(Node 12 이하) 또는 @nestjs/cls 패키지가 이를 래핑하여 쉽게 사용. 4) Socket.IO 실시간 세션 컨텍스트 전파에도 활용 가능 — 소켓 연결별 컨텍스트 관리. 5) 성능 오버헤드는 미미하지만 async_hooks 자체의 미세한 비용은 존재함.",
+    "deepDive": "AsyncLocalStorage와 구형 domain 모듈의 차이는 무엇인가? AsyncLocalStorage의 컨텍스트가 Worker Threads로 전파되지 않는 이유는? OpenTelemetry가 AsyncLocalStorage를 활용하는 방식을 설명하라",
+    "tags": [
+      "async-local-storage",
+      "context-propagation",
+      "tracing",
+      "opentelemetry",
+      "async-hooks"
+    ]
+  },
+  {
+    "id": "nodejs-022",
+    "category": "nodejs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Node.js의 LTS(Long Term Support) 전략에 대한 설명으로 올바른 것은?",
+    "options": [
+      "모든 Node.js 버전이 동일한 기간 동안 지원된다",
+      "짝수 버전(18, 20, 22)이 LTS로 지정되며 30개월 동안 지원되고, 홀수 버전은 6개월 후 지원 종료된다",
+      "LTS 버전에서만 새로운 기능이 추가된다",
+      "홀수 버전이 LTS이고 짝수 버전은 최신 기능 실험용이다"
+    ],
+    "answer": 1,
+    "explanation": "Node.js는 짝수 버전을 LTS로 지정한다. 짝수 버전은 출시 6개월 후 Active LTS 상태가 되어 18개월간 유지보수, 이후 12개월간 Maintenance 상태로 총 30개월 지원된다. 홀수 버전은 최신 기능을 테스트하는 Current 버전으로 6개월 후 지원 종료된다.",
+    "seniorTip": "팀 Node.js 버전 관리 전략: 1) 프로덕션은 항상 Active LTS 버전 사용. 현재 시점(2026년 초) 기준 Node.js 22가 Active LTS. 2) nvm(Node Version Manager) 또는 fnm(Fast Node Manager)으로 로컬 버전 관리. .nvmrc 파일을 리포지토리에 커밋하여 팀 표준화. 3) Docker 이미지는 node:22-alpine 같이 LTS 메이저 버전을 고정하되 패치는 자동으로 받도록 구성. 4) node:22-alpine과 node:22-slim의 차이: alpine은 musl libc(네이티브 모듈 호환성 주의), slim은 glibc 기반. 5) 업그레이드 전 node:releases 확인 및 주요 변경사항(breaking changes) 검토.",
+    "deepDive": "Node.js 메이저 버전 업그레이드 시 가장 먼저 확인해야 할 것들은? Alpine 이미지에서 네이티브 애드온(bcrypt, sharp 등)이 문제가 되는 이유는? fnm이 nvm보다 빠른 기술적 이유는?",
+    "tags": [
+      "lts",
+      "version-management",
+      "nvm",
+      "docker",
+      "node-releases"
+    ]
+  },
+  {
+    "id": "nodejs-023",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "npm, yarn, pnpm의 차이를 설명하고, 모노레포(monorepo)에서 workspaces를 활용하는 방법과 각 패키지 매니저의 트레이드오프를 비교하라.",
+    "answer": "npm은 표준이지만 느림. yarn은 병렬 설치와 PnP로 성능 개선. pnpm은 컨텐츠 주소 저장소(CAS)와 하드링크로 디스크 절약 및 가장 빠른 설치 속도 제공. workspaces로 모노레포 내 패키지 간 로컬 참조와 공통 의존성 호이스팅 관리",
+    "explanation": "pnpm의 핵심 차이: 패키지를 ~/.pnpm-store에 한 번만 저장하고 각 프로젝트에는 하드링크를 생성하므로 디스크 사용량이 대폭 줄고 설치가 빠르다. 또한 npm/yarn처럼 의존성을 최상위로 평탄화(flatten)하지 않아 팬텀 의존성(phantom dependency) 문제를 방지한다. workspaces를 통해 모노레포의 packages/*를 연결하고 루트에서 모든 패키지를 관리한다.",
+    "seniorTip": "모노레포 실무 패턴: 1) pnpm workspaces + Turborepo 조합이 현재 가장 권장됨 — Turborepo의 빌드 캐시와 병렬 실행으로 CI 시간 단축. 2) 공통 TypeScript 설정, ESLint 설정을 별도 패키지로 분리하여 extends. 3) pnpm의 --filter 플래그로 특정 패키지만 빌드/테스트: pnpm --filter @app/api build. 4) K8s 마이크로서비스를 모노레포로 관리 시 각 서비스별 Dockerfile에서 pnpm fetch + pnpm install --offline 패턴으로 Docker 레이어 캐시 최적화. 5) phantom dependency 허용이 필요하면 pnpm의 shamefully-hoist 옵션을 최후 수단으로 사용.",
+    "deepDive": "pnpm의 팬텀 의존성(phantom dependency) 방지가 왜 중요한가? Turborepo의 빌드 캐시(Remote Cache)가 CI/CD에서 어떻게 작동하는가? yarn berry의 Plug'n'Play(PnP)가 node_modules를 제거하는 방식과 단점은?",
+    "tags": [
+      "npm",
+      "yarn",
+      "pnpm",
+      "monorepo",
+      "workspaces",
+      "turborepo"
+    ]
+  },
+  {
+    "id": "nodejs-024",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "TypeScript 컴파일 전략(tsc, swc, esbuild)에 대한 설명으로 올바르지 않은 것은?",
+    "options": [
+      "esbuild와 swc는 Go/Rust로 작성되어 tsc보다 수십~수백 배 빠른 트랜스파일 속도를 제공한다",
+      "esbuild와 swc는 TypeScript의 타입 검사(type checking)를 tsc와 동일하게 수행한다",
+      "ts-node는 개발 환경에서 TypeScript를 런타임에 직접 실행하지만 프로덕션에서는 권장되지 않는다",
+      "swc-loader나 esbuild-loader를 webpack과 함께 사용하면 빌드 속도를 개선할 수 있다"
+    ],
+    "answer": 1,
+    "explanation": "esbuild와 swc는 타입 정보를 제거(strip)하여 JavaScript로 변환하는 트랜스파일만 수행하며, TypeScript의 타입 검사는 전혀 하지 않는다. 타입 오류가 있어도 빌드가 성공한다. 타입 검사는 별도로 tsc --noEmit을 실행해야 한다. 이 분리가 빠른 빌드의 핵심이다.",
+    "seniorTip": "실무 TypeScript 빌드 전략: 1) 개발 서버: ts-node-dev 또는 tsx (esbuild 기반) — 빠른 재시작. 2) CI 타입 체크: tsc --noEmit — 타입 오류만 검사, JS 출력 없음. 3) 프로덕션 빌드: swc(tsup) 또는 esbuild — 최고 속도의 트랜스파일. 4) NestJS + swc: nest build --watch에 swc를 적용하면 재빌드가 수 초 → 수백ms로 단축. 5) Lambda 배포 시 esbuild로 번들링하면 cold start 개선 (node_modules 포함 단일 파일, Tree-shaking 적용). 6) 타입 체크와 빌드를 분리하는 것이 모던 TypeScript 프로젝트의 표준.",
+    "deepDive": "isolatedModules 옵션이 왜 swc/esbuild와 함께 사용할 때 권장되는가? esbuild가 TypeScript 타입을 단순히 제거하는 방식의 한계는 무엇인가? tsup이 라이브러리 배포용으로 많이 사용되는 이유는?",
+    "tags": [
+      "typescript",
+      "tsc",
+      "swc",
+      "esbuild",
+      "compilation",
+      "build-performance"
+    ]
+  },
+  {
+    "id": "nodejs-025",
+    "category": "nodejs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Node.js에서 AsyncLocalStorage를 활용한 멀티테넌트 요청 추적과 Sentry/OpenTelemetry 통합 시 고려해야 할 사항을 설명하라. 실시간 소켓 서버에서 요청 컨텍스트가 소실되는 상황을 어떻게 방지하는가?",
+    "answer": "AsyncLocalStorage.run()으로 각 HTTP 요청/소켓 연결마다 독립 컨텍스트를 생성. OpenTelemetry의 Context API가 내부적으로 AsyncLocalStorage를 사용하므로 자동 전파됨. 소켓 서버에서는 connection 이벤트 핸들러에서 run()을 시작하여 해당 소켓의 모든 이벤트 핸들러에 컨텍스트가 유지되도록 구성",
+    "explanation": "HTTP 서버와 달리 WebSocket/Socket.IO는 지속 연결이므로 연결마다 한 번 AsyncLocalStorage.run()을 호출하면 그 소켓의 생명주기 동안 컨텍스트가 유지된다. 그러나 Worker Threads나 외부 큐(Bull)에서 실행되는 작업은 원래 요청 컨텍스트를 잃으므로, traceId 등 추적에 필요한 값을 명시적으로 직렬화하여 전달해야 한다.",
+    "seniorTip": "실시간 시스템 통합 패턴: 1) Socket.IO 서버에서 socket.data.traceId = opentelemetry.trace.getSpan()?.spanContext().traceId 패턴으로 소켓 레벨에서 traceId 보존. 2) Redis Pub/Sub로 이벤트를 전달할 때 메시지 페이로드에 traceId를 포함시켜 구독자가 스팬을 이어받을 수 있도록 함. 3) Sentry의 setUser(), setTag()를 AsyncLocalStorage 미들웨어에서 호출하면 모든 에러 리포트에 사용자/요청 정보가 자동 첨부됨. 4) BullMQ 잡에서 OpenTelemetry 컨텍스트를 전파하려면 잡 데이터에 W3C TraceContext 헤더(traceparent)를 포함시키고, 워커에서 propagation.extract()로 복원. 5) 멀티테넌트 환경에서 AsyncLocalStorage로 tenantId를 전파하면 DB 쿼리마다 tenantId를 인자로 넘길 필요가 없어 코드가 간결해짐.",
+    "deepDive": "BullMQ Worker에서 OpenTelemetry span 컨텍스트를 복원하는 구체적인 방법은? AsyncLocalStorage의 enterWith()와 run()의 차이와 위험성은? 멀티테넌트 SaaS에서 AsyncLocalStorage로 DB 연결 풀을 테넌트별로 라우팅하는 패턴을 설명하라",
+    "tags": [
+      "async-local-storage",
+      "opentelemetry",
+      "sentry",
+      "socket-io",
+      "multi-tenant",
+      "tracing"
+    ]
+  }
+]

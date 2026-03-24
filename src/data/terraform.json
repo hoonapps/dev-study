@@ -1,0 +1,502 @@
+[
+  {
+    "id": "tf-001",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform의 state 파일이 하는 역할은?",
+    "options": [
+      "Terraform 코드를 컴파일한 바이너리",
+      "실제 인프라의 현재 상태를 추적하여 plan 시 변경사항을 계산하는 데이터",
+      "AWS 콘솔의 UI 설정 파일",
+      "인프라 로그 파일"
+    ],
+    "answer": 1,
+    "explanation": "terraform.tfstate는 Terraform이 관리하는 리소스의 현재 상태를 JSON으로 저장한다. plan 실행 시 코드(.tf)의 원하는 상태와 state의 현재 상태를 비교하여 변경/생성/삭제할 리소스를 계산한다.",
+    "seniorTip": "state 파일은 인프라의 소스 오브 트루스(Source of Truth)다. 절대 수동 편집하면 안 되고, git에 커밋하면 안 된다(민감 정보 포함). 팀에서는 S3 + DynamoDB를 backend로 사용하여 원격 저장 + state locking을 구현해야 한다. state가 꼬이면 terraform state rm/import로 수정하는데, 이건 인프라를 직접 건드리는 위험한 작업이므로 반드시 백업 후 진행.",
+    "tags": [
+      "state",
+      "plan",
+      "backend",
+      "team-collaboration"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-002",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 state drift란 무엇이고 어떻게 감지/해결하는가?",
+    "answer": "실제 인프라가 Terraform 외부에서 변경되어 state와 불일치하는 상태. terraform plan으로 감지, apply로 원복 또는 import로 반영",
+    "explanation": "누군가 AWS 콘솔에서 직접 리소스를 변경하면 state와 실제 인프라가 달라진다. terraform plan을 실행하면 차이를 보여주고, apply하면 코드 상태로 원복된다. 만약 콘솔 변경을 유지하고 싶으면 코드를 수정한 후 apply.",
+    "seniorTip": "drift 방지 전략: 1) 모든 인프라 변경은 반드시 Terraform을 통해서만 (콘솔 직접 변경 금지). 2) CI/CD에서 정기적으로 terraform plan을 실행하여 drift 감지 (Atlantis, Spacelift 등). 3) SCP(Service Control Policy)로 특정 리소스의 콘솔 변경을 차단. 4) drift 발견 시 terraform refresh(deprecated) 대신 terraform plan -refresh-only로 state만 업데이트. terraform import는 Terraform 외부에서 생성된 리소스를 state로 가져올 때 사용.",
+    "tags": [
+      "drift",
+      "plan",
+      "import",
+      "governance"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-003",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform module을 사용하는 핵심 이유는?",
+    "options": [
+      "Terraform 실행 속도를 높이기 위해",
+      "인프라 코드의 재사용성, 캡슐화, 일관된 패턴 적용을 위해",
+      "AWS의 요구사항이기 때문에",
+      "state 파일 크기를 줄이기 위해"
+    ],
+    "answer": 1,
+    "explanation": "module은 관련 리소스를 묶어 재사용 가능한 단위로 만든다. VPC module, EKS module 등을 만들어 여러 환경(dev/staging/prod)에서 동일한 패턴으로 인프라를 생성할 수 있다.",
+    "seniorTip": "module 설계 원칙: 1) 너무 작으면 오버헤드, 너무 크면 유연성 부족 → '독립적으로 관리되는 인프라 단위'가 기준. 2) variable로 환경별 차이를 주입, output으로 다른 module에 전달. 3) 공개 모듈(terraform-aws-modules) 활용하되, 내부 요구사항에 맞게 wrapper module 작성. 4) 버전 관리: source에 ?ref=v1.0.0으로 버전 고정. ncnc-infra-v1에서 modules/ 디렉토리 구조를 확인해보면 이 패턴을 확인할 수 있다.",
+    "tags": [
+      "module",
+      "reusability",
+      "best-practice",
+      "architecture"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-004",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "terraform plan은 실제 인프라를 변경하지 않으며, 변경될 내용의 미리보기만 제공한다.",
+    "answer": "O",
+    "explanation": "plan은 현재 state와 코드를 비교하여 어떤 리소스가 생성/변경/삭제될지 보여주는 실행 계획이다. 실제 변경은 apply에서 일어난다. plan은 안전하게 언제든 실행 가능하다.",
+    "seniorTip": "plan 출력을 팀에 공유하고 리뷰하는 것이 인프라 변경의 핵심 프로세스다. CI에서 PR마다 plan을 자동 실행하고 결과를 PR 코멘트에 남기는 것이 best practice. terraform plan -out=plan.out으로 plan 결과를 저장하고, terraform apply plan.out으로 정확히 그 plan대로만 적용할 수 있다. 이는 plan과 apply 사이에 인프라가 변경되는 것을 방지한다.",
+    "tags": [
+      "plan",
+      "apply",
+      "ci-cd",
+      "review"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-005",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 리소스를 삭제하지 않고 state에서만 제거하려면 어떻게 하는가? 어떤 상황에서 필요한가?",
+    "answer": "terraform state rm으로 state에서 제거. 리소스의 관리 주체를 다른 Terraform 워크스페이스로 이전할 때 사용",
+    "explanation": "terraform state rm <resource>는 state에서만 해당 리소스를 제거하고, 실제 인프라는 그대로 둔다. 이후 다른 워크스페이스에서 terraform import로 해당 리소스를 가져올 수 있다.",
+    "seniorTip": "실무 시나리오: 1) 모놀리식 Terraform을 여러 워크스페이스로 분리할 때. 2) 특정 리소스를 수동 관리로 전환할 때. 3) lifecycle { prevent_destroy = true }로 실수로 삭제를 방지한 리소스를 정리할 때. moved 블록(Terraform 1.1+)을 사용하면 state rm + import 없이 리소스 이름 변경/모듈 이동이 가능하다. 대규모 리팩토링에서 매우 유용.",
+    "tags": [
+      "state-management",
+      "migration",
+      "moved-block",
+      "refactoring"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-006",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform에서 sensitive = true로 표시된 variable의 효과는?",
+    "options": [
+      "해당 변수가 암호화되어 state에 저장된다",
+      "plan/apply 출력에서 해당 값이 마스킹되지만, state에는 평문으로 저장된다",
+      "해당 변수를 사용할 수 없게 된다",
+      "해당 변수가 자동으로 Vault에 저장된다"
+    ],
+    "answer": 1,
+    "explanation": "sensitive = true는 CLI 출력에서 값을 (sensitive value)로 마스킹한다. 하지만 state 파일에는 평문으로 저장된다. 따라서 state 파일 자체를 안전하게 관리(암호화된 S3 backend 등)하는 것이 필수다.",
+    "seniorTip": "민감 정보 관리 베스트 프랙티스: 1) state backend에 encryption 활성화 (S3 SSE-KMS). 2) DB 비밀번호 같은 시크릿은 Terraform으로 생성(random_password)하고 AWS Secrets Manager에 저장. 3) terraform.tfvars에 시크릿을 넣고 .gitignore에 추가. 4) 더 나은 방법: data source로 Vault/Secrets Manager에서 런타임에 가져오기. state 파일 유출 = 모든 인프라 시크릿 유출이므로 접근 제어가 최우선.",
+    "tags": [
+      "sensitive",
+      "security",
+      "secrets-management",
+      "state"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-007",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 for_each와 count의 차이를 설명하고, 어떤 상황에서 각각을 사용해야 하는지 설명하라.",
+    "answer": "count는 인덱스 기반, for_each는 키 기반. 리소스 삭제/추가 시 for_each가 안전",
+    "explanation": "count: 리스트의 인덱스로 리소스를 식별. 중간 항목을 삭제하면 이후 인덱스가 밀려 불필요한 재생성 발생. for_each: map/set의 키로 리소스를 식별. 특정 항목 삭제 시 해당 리소스만 제거.",
+    "seniorTip": "count는 단순히 '몇 개 만들지' 결정할 때만 사용 (예: count = var.create ? 1 : 0으로 조건부 생성). 리소스 목록을 다룰 때는 반드시 for_each를 사용. 예: IAM 유저 목록, 서브넷 목록 등. for_each에 toset()을 활용하면 리스트도 사용 가능. 실수로 count를 사용하면 인프라 변경 시 예상치 못한 재생성이 발생하여 서비스 중단이 일어날 수 있다.",
+    "tags": [
+      "for-each",
+      "count",
+      "iteration",
+      "best-practice"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-008",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform 워크스페이스(workspace)를 환경 분리에 사용하는 것에 대한 시니어의 견해는?",
+    "options": [
+      "워크스페이스가 환경 분리의 최적 방법이다",
+      "워크스페이스보다 디렉토리/레포 분리가 더 안전하고 권장된다",
+      "워크스페이스는 Terraform Enterprise에서만 사용 가능하다",
+      "환경별로 다른 프로바이더를 사용할 수 없으므로 불가능하다"
+    ],
+    "answer": 1,
+    "explanation": "워크스페이스는 같은 코드로 여러 state를 관리하지만, 환경별 차이(리소스 크기, 개수 등)를 표현하기 어렵고 실수로 prod를 변경할 위험이 있다. 디렉토리 분리(environments/dev, environments/prod)가 더 안전하다.",
+    "seniorTip": "추천 구조: 1) modules/에 재사용 모듈 정의. 2) environments/dev, environments/prod에서 각각 모듈을 호출하며 환경별 변수를 주입. 3) 각 환경의 backend를 별도 S3 경로/계정으로 분리. 4) prod는 별도 AWS 계정을 사용하면 IAM 수준에서 격리 가능. Terragrunt를 사용하면 이 패턴의 보일러플레이트를 크게 줄일 수 있다.",
+    "tags": [
+      "workspace",
+      "environment",
+      "directory-structure",
+      "terragrunt"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-009",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "terraform apply 중 실패하면 어떤 일이 발생하는가?",
+    "options": [
+      "모든 변경이 자동으로 롤백된다",
+      "성공한 리소스는 적용되고 실패한 리소스만 남아, state가 부분 적용 상태가 된다",
+      "state 파일이 삭제된다",
+      "모든 리소스가 삭제된다"
+    ],
+    "answer": 1,
+    "explanation": "Terraform은 트랜잭션을 지원하지 않는다. apply 중 실패하면 이미 성공한 리소스는 state에 반영되고, 실패한 리소스는 반영되지 않는다. 이 부분 적용 상태에서 다시 apply하면 실패한 부분만 재시도한다.",
+    "seniorTip": "Terraform에 롤백이 없다는 것은 매우 중요한 특성이다. 대응 방법: 1) 작은 단위로 apply (blast radius 최소화). 2) -target으로 특정 리소스만 apply 가능하지만 남용하면 state 불일치 위험. 3) 실패 시 로그를 확인하고 원인을 수정한 후 재apply. 4) 정말 롤백이 필요하면 git revert 후 apply. 이것이 인프라를 코드로 관리하는 핵심 이점이다.",
+    "tags": [
+      "apply",
+      "failure",
+      "rollback",
+      "partial-apply"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-010",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 depends_on을 명시적으로 사용해야 하는 경우는 언제인가?",
+    "answer": "리소스 간 암시적 의존성이 없지만 실제로는 순서가 필요한 경우 (예: IAM 정책 → 역할 사용 리소스)",
+    "explanation": "Terraform은 리소스 간 참조(예: aws_instance.subnet_id = aws_subnet.id)를 통해 자동으로 의존성 그래프를 만든다. 하지만 직접 참조가 없는데 순서가 필요한 경우(예: IAM 정책이 생성된 후에야 EC2가 제대로 동작)에는 depends_on이 필요하다.",
+    "seniorTip": "depends_on 남용은 안티패턴이다. 1) 대부분의 경우 리소스 속성 참조로 암시적 의존성이 충분하다. 2) depends_on을 사용하면 해당 리소스가 병렬 생성되지 않아 apply 속도가 느려진다. 3) 모듈 간 depends_on은 Terraform 0.13+에서 지원. 4) 정말 필요한 경우: IAM 전파 지연, API Gateway → Lambda 권한, CloudFront → S3 버킷 정책 등 AWS의 최종 일관성(eventual consistency) 때문에 순서가 필요한 경우.",
+    "tags": [
+      "depends-on",
+      "dependency-graph",
+      "ordering",
+      "anti-pattern"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "tf-011",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "다음 lifecycle 블록 조합이 실제로 의미하는 바는?\n\n```hcl\nlifecycle {\n  create_before_destroy = true\n  prevent_destroy       = true\n  ignore_changes        = [tags]\n}\n```",
+    "options": [
+      "리소스를 교체할 때 새 리소스를 먼저 만들고, 삭제를 막으며, tags 변경은 무시한다",
+      "리소스 생성을 막고 삭제를 허용하며 tags를 항상 최신으로 유지한다",
+      "prevent_destroy와 create_before_destroy는 함께 사용할 수 없다",
+      "ignore_changes에 tags를 추가하면 tags가 자동 삭제된다"
+    ],
+    "answer": 0,
+    "explanation": "create_before_destroy: 리소스를 교체(replace)할 때 새 리소스를 먼저 생성한 후 기존 리소스를 삭제한다 (zero-downtime 교체). prevent_destroy: terraform destroy 또는 리소스 삭제 시 에러를 발생시켜 실수 삭제를 방지한다. ignore_changes: 지정한 속성이 외부에서 변경되더라도 plan에서 차이로 인식하지 않는다.",
+    "seniorTip": "ncnc-infra-v1 같은 운영 환경에서 lifecycle 전략: RDS나 ElastiCache에는 반드시 prevent_destroy를 걸어 실수로 데이터베이스를 날리는 것을 방지한다. EKS 클러스터 업그레이드처럼 교체가 필요한 경우에는 create_before_destroy가 필수다. ignore_changes는 ASG desired_count처럼 외부 오토스케일링이 관리하는 값에 사용한다. 단, ignore_changes = all은 남용 금지 — 해당 리소스가 Terraform의 통제에서 벗어나기 시작한다.",
+    "deepDive": "prevent_destroy가 걸린 리소스를 정말 삭제해야 할 때는 어떤 순서로 작업하는가? create_before_destroy가 없을 때 EKS 노드그룹 교체 시 어떤 문제가 발생할 수 있는가? ignore_changes와 terraform refresh-only의 차이는 무엇인가?",
+    "tags": [
+      "lifecycle",
+      "create-before-destroy",
+      "prevent-destroy",
+      "ignore-changes"
+    ]
+  },
+  {
+    "id": "tf-012",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "S3 + DynamoDB를 Terraform remote backend로 사용할 때, DynamoDB가 하는 역할과 locking 메커니즘을 구체적으로 설명하라.",
+    "answer": "DynamoDB의 LockID 항목을 이용해 state 파일에 대한 분산 잠금을 구현. apply 시작 시 항목 생성, 완료 시 삭제",
+    "explanation": "두 명이 동시에 terraform apply를 실행하면 state 파일이 충돌할 수 있다. Terraform은 apply 시작 시 DynamoDB에 LockID(버킷+경로)를 기본 키로 하는 항목을 조건부 쓰기(PutItem with condition)로 삽입한다. 이미 항목이 있으면 실패하여 락 획득에 실패한다. apply가 끝나면 항목을 삭제(DeleteItem)한다.",
+    "seniorTip": "backend 설정 예시: terraform { backend \"s3\" { bucket = \"my-tfstate\", key = \"prod/terraform.tfstate\", region = \"ap-northeast-2\", dynamodb_table = \"terraform-lock\", encrypt = true } }. 주의사항: 1) DynamoDB 테이블의 기본 키 이름은 반드시 LockID(문자열)여야 한다. 2) S3 버킷에 versioning을 활성화하면 state 파일의 이전 버전을 복구할 수 있다. 3) terraform force-unlock <LOCK_ID>로 비정상 종료 시 락을 강제 해제할 수 있다 — 다른 apply가 실제로 실행 중인지 반드시 확인 후 사용. 4) S3 버킷과 DynamoDB 테이블 자체는 Terraform으로 만들 수 없다 (chicken-and-egg 문제) — AWS CLI나 콘솔로 초기 생성.",
+    "deepDive": "terraform force-unlock을 잘못 사용하면 어떤 상황이 발생하는가? S3 backend의 state 파일에 versioning을 켜두면 어떤 복구 시나리오가 가능한가? 여러 팀이 하나의 모놀리식 state를 공유할 때 발생하는 문제와 state 분리 전략은?",
+    "tags": [
+      "backend",
+      "s3",
+      "dynamodb",
+      "state-locking",
+      "remote-backend"
+    ]
+  },
+  {
+    "id": "tf-013",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform에서 data source와 resource의 근본적인 차이는?",
+    "options": [
+      "data source는 읽기 전용으로 기존 인프라 정보를 조회하고, resource는 인프라를 생성/관리한다",
+      "data source는 변수를 선언하고 resource는 출력값을 선언한다",
+      "data source는 AWS에서만 사용 가능하고 resource는 모든 프로바이더에서 사용 가능하다",
+      "data source는 plan 단계에서 실행되지 않는다"
+    ],
+    "answer": 0,
+    "explanation": "data 블록은 Terraform 외부에서 이미 존재하는 리소스의 정보를 조회한다 (읽기 전용). resource 블록은 Terraform이 직접 생성하고 lifecycle을 관리한다. data source로 조회한 정보는 리소스 설정에 참조할 수 있다.",
+    "seniorTip": "data source의 핵심 활용: 1) data \"aws_vpc\" \"main\" { tags = { Name = \"prod\" } } — 이미 존재하는 VPC를 이름으로 조회. 2) data \"aws_ami\" \"eks_node\" { most_recent = true, filter ... } — 최신 AMI 조회. 3) data \"aws_caller_identity\" \"current\" {} — 현재 AWS 계정 ID 조회 (ARN 조합 시 유용). 4) data \"aws_secretsmanager_secret_version\" \"db_password\" {} — 런타임에 시크릿 조회 (state에 남지 않는 장점). ncnc-infra-v1에서 다른 Terraform 모듈이 만든 VPC나 서브넷을 data source로 조회하는 패턴을 자주 사용했을 것이다.",
+    "deepDive": "data source로 조회한 값이 plan 시점에 알 수 없는 경우(known after apply) 어떤 문제가 발생하는가? terraform_remote_state data source와 일반 data source의 차이와 각각의 위험성은? data source 조회 실패 시 plan/apply가 어떻게 동작하는가?",
+    "tags": [
+      "data-source",
+      "resource",
+      "read-only",
+      "information"
+    ]
+  },
+  {
+    "id": "tf-014",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Terraform provisioner(remote-exec, local-exec)는 인프라를 구성하는 일반적인 방법으로 권장된다.",
+    "answer": "X",
+    "explanation": "HashiCorp는 provisioner를 'last resort(최후의 수단)'로만 사용하도록 공식 문서에서 명시한다. provisioner는 Terraform의 선언형 모델을 깨고 명령형 실행을 도입하여 멱등성(idempotency)을 보장하기 어렵고, 실패 시 state가 불완전해진다.",
+    "seniorTip": "provisioner를 피해야 하는 이유: 1) 멱등성 없음 — 같은 provisioner를 두 번 실행하면 의도치 않은 결과 발생. 2) 실패 시 리소스가 tainted 상태가 되어 다음 apply에서 재생성 시도. 3) SSH/WinRM 연결이 필요한 remote-exec는 네트워크 설정이 복잡. 대안: EC2 user_data로 초기화, AWS Systems Manager Run Command, Packer로 AMI 사전 빌드, Kubernetes에서는 Helm/ArgoCD 사용. ncnc-infra-v1처럼 EKS 환경이면 노드 설정은 launch template user_data나 EKS managed node group이 처리한다.",
+    "deepDive": "local-exec provisioner를 null_resource와 함께 사용하는 합당한 유스케이스가 있다면 무엇인가? provisioner 실패로 리소스가 tainted 상태가 되면 어떻게 복구하는가? Packer와 Terraform을 함께 사용하는 immutable infrastructure 패턴을 설명하라.",
+    "tags": [
+      "provisioner",
+      "anti-pattern",
+      "idempotency",
+      "user-data"
+    ]
+  },
+  {
+    "id": "tf-015",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "팀에서 Terraform을 협업할 때 Atlantis와 Terraform Cloud 중 하나를 선택한다면 각각의 장단점과 선택 기준을 설명하라.",
+    "answer": "Atlantis: 셀프호스팅, GitHub PR 기반 자동 plan/apply, 무료. Terraform Cloud: 관리형 서비스, UI/감사로그/원격 실행 환경 제공, 유료(팀 규모 이상)",
+    "explanation": "Atlantis는 GitHub/GitLab PR에 댓글로 plan/apply를 트리거하는 오픈소스 봇이다. Terraform Cloud(HCP Terraform)는 HashiCorp가 제공하는 관리형 서비스로 원격 실행 환경, 상태 관리, 정책 적용(Sentinel) 등을 제공한다.",
+    "seniorTip": "Atlantis 선택 기준: 1) AWS 계정 내 자체 인프라에서 실행해야 할 때 (VPC 내 리소스 접근 필요). 2) 비용 제약이 있을 때. 3) 이미 GitHub Actions/Jenkins가 있어 통합이 필요할 때. Terraform Cloud 선택 기준: 1) 운영 오버헤드를 최소화하고 싶을 때. 2) Sentinel 정책으로 거버넌스가 필요할 때. 3) 대규모 팀에서 세밀한 RBAC이 필요할 때. ncnc처럼 ArgoCD를 이미 사용하는 팀이라면 Atlantis가 GitOps 워크플로우와 자연스럽게 통합된다.",
+    "deepDive": "Atlantis에서 automerge 옵션이 활성화되어 있을 때 발생할 수 있는 위험은? Terraform Cloud의 워크스페이스와 로컬 워크스페이스(terraform workspace)의 차이는? 여러 레포에서 Terraform 모듈을 공유할 때 Atlantis 설정은 어떻게 구성하는가?",
+    "tags": [
+      "atlantis",
+      "terraform-cloud",
+      "collaboration",
+      "gitops",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "tf-016",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 AWS EKS 클러스터를 프로비저닝할 때 모듈 설계 관점에서 고려해야 할 핵심 요소를 설명하라.",
+    "answer": "VPC/서브넷 모듈 분리, 노드그룹 설정(managed/self-managed), IAM OIDC 프로바이더, 클러스터 애드온(coredns, kube-proxy, vpc-cni) 버전 관리",
+    "explanation": "EKS는 여러 AWS 리소스가 복잡하게 얽혀 있다. 모듈을 계층적으로 분리하면 각 레이어를 독립적으로 업그레이드하고 테스트할 수 있다.",
+    "seniorTip": "EKS Terraform 모듈 설계 레이어: 1) network 모듈: VPC, public/private 서브넷, NAT Gateway, 서브넷 태그(kubernetes.io/role/elb, kubernetes.io/role/internal-elb). 2) eks-cluster 모듈: 클러스터 자체, CloudWatch 로깅, KMS 암호화. 3) eks-nodegroup 모듈: managed node group, launch template, IAM 역할(AmazonEKSWorkerNodePolicy, AmazonEKS_CNI_Policy, AmazonEC2ContainerRegistryReadOnly). 4) eks-addons 모듈: vpc-cni, coredns, kube-proxy 버전 고정. 5) irsa 모듈: OIDC 프로바이더 + IAM role for service account (ALB Controller, ExternalDNS, Cluster Autoscaler용). terraform-aws-modules/eks/aws 공개 모듈을 wrapper해서 사용하는 것을 권장한다.",
+    "deepDive": "EKS 클러스터 버전 업그레이드를 Terraform으로 수행할 때 안전한 순서는 무엇인가? IRSA(IAM Roles for Service Accounts)를 Terraform으로 설정할 때 OIDC provider ARN을 어떻게 동적으로 참조하는가? EKS managed node group에서 launch template을 직접 정의해야 하는 경우는 언제인가?",
+    "tags": [
+      "eks",
+      "module-design",
+      "nodegroup",
+      "irsa",
+      "addons"
+    ]
+  },
+  {
+    "id": "tf-017",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform으로 RDS를 생성할 때 parameter group과 subnet group을 별도 리소스로 분리해야 하는 주된 이유는?",
+    "options": [
+      "RDS 생성 속도를 높이기 위해",
+      "parameter group과 subnet group은 여러 RDS 인스턴스에서 재사용 가능하고, 독립적인 lifecycle 관리가 필요하기 때문에",
+      "AWS가 기본 parameter group 수정을 허용하지 않기 때문에",
+      "subnet group은 VPC와 다른 계정에 있어야 하기 때문에"
+    ],
+    "answer": 1,
+    "explanation": "aws_db_parameter_group은 DB 엔진 설정(max_connections, slow_query_log 등)을 담고, aws_db_subnet_group은 RDS가 위치할 서브넷 목록을 정의한다. 둘 다 여러 RDS 인스턴스가 공유할 수 있고, RDS 인스턴스 교체 없이 독립적으로 변경 가능하다.",
+    "seniorTip": "RDS Terraform 설계 체크리스트: 1) aws_db_parameter_group: family(mysql8.0 등) 지정, 필요한 파라미터만 override. 2) aws_db_subnet_group: private 서브넷만 포함, multi-AZ를 위해 최소 2개 AZ 서브넷. 3) aws_db_instance: parameter_group_name, db_subnet_group_name 참조, multi_az, backup_retention_period, deletion_protection = true 필수. 4) 비밀번호: random_password 리소스로 생성 후 aws_secretsmanager_secret에 저장. 5) aws_db_option_group: MySQL/Oracle에서 추가 기능(SSL, Audit) 활성화 시 사용. parameter group 변경은 dynamic 타입은 즉시 적용, static 타입은 재시작 필요 — 운영 환경에서 maintenance window 설정 중요.",
+    "deepDive": "RDS의 deletion_protection = true를 Terraform으로 해제하고 삭제하는 절차는? RDS parameter group을 변경할 때 즉시 적용(apply_immediately)과 maintenance window 적용의 차이와 위험성은? Multi-AZ RDS 장애 조치(failover) 시 Terraform state는 어떻게 되는가?",
+    "tags": [
+      "rds",
+      "parameter-group",
+      "subnet-group",
+      "database",
+      "deletion-protection"
+    ]
+  },
+  {
+    "id": "tf-018",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 VPC, 서브넷, 보안 그룹을 설계할 때 EKS + RDS + ElastiCache 환경에 맞는 서브넷 계층 구조와 보안 그룹 규칙을 설명하라.",
+    "answer": "public(ALB), private-app(EKS 노드), private-data(RDS/ElastiCache) 3계층 서브넷. 보안 그룹은 레이어별로 분리하고 CIDR 대신 보안 그룹 ID 참조",
+    "explanation": "3계층 아키텍처: public 서브넷은 ALB만, private-app은 EKS 워커 노드, private-data는 RDS/ElastiCache. 보안 그룹은 CIDR 대신 다른 보안 그룹 ID를 소스로 사용하면 IP 변경에 유연하다.",
+    "seniorTip": "Terraform VPC 설계 코드 패턴: 1) aws_vpc: enable_dns_hostnames = true, enable_dns_support = true (EKS 필수). 2) 서브넷 태그: EKS 로드밸런서를 위한 kubernetes.io/cluster/<cluster-name> = shared 태그. 3) 보안 그룹 규칙: alb-sg → eks-node-sg (포트 범위), eks-node-sg → rds-sg (3306), eks-node-sg → elasticache-sg (6379). 4) aws_security_group_rule을 별도 리소스로 분리하면 순환 참조를 방지할 수 있다. 5) NAT Gateway는 고가용성을 위해 AZ별로 하나씩 (비용 vs 가용성 트레이드오프). terraform-aws-modules/vpc/aws 모듈이 이 모든 설정을 잘 추상화한다.",
+    "deepDive": "보안 그룹 규칙에서 CIDR 대신 security_group_id를 참조할 때 Terraform에서 순환 참조(circular dependency)가 발생하는 경우와 해결 방법은? EKS 클러스터의 API server endpoint를 private으로만 설정할 때 Terraform apply는 어떻게 실행하는가? VPC Flow Logs를 Terraform으로 활성화하고 분석하는 구성은?",
+    "tags": [
+      "vpc",
+      "subnet",
+      "security-group",
+      "network-design",
+      "eks",
+      "rds"
+    ]
+  },
+  {
+    "id": "tf-019",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "기존 AWS 콘솔로 수동 생성한 RDS 인스턴스를 Terraform으로 가져오는 올바른 절차는?",
+    "options": [
+      "terraform apply를 실행하면 자동으로 감지하여 import한다",
+      "tf 파일에 리소스 블록 작성 → terraform import 실행 → plan으로 차이 확인 → 코드 조정 → apply",
+      "terraform import만 실행하면 tf 파일도 자동 생성된다",
+      "state 파일을 직접 수정하여 리소스를 추가한다"
+    ],
+    "answer": 1,
+    "explanation": "import는 두 단계다: 1) 코드(.tf)에 리소스 블록을 먼저 작성한다. 2) terraform import aws_db_instance.main <db-identifier>로 state에 실제 리소스를 연결한다. 이후 terraform plan으로 코드와 실제 리소스의 차이를 확인하고 코드를 조정한다.",
+    "seniorTip": "Terraform 1.5+의 import 블록을 사용하면 더 안전하다: import { to = aws_db_instance.main, id = \"my-rds\" }를 .tf에 작성하고 plan으로 미리 확인 후 apply한다. 또한 terraform import -generate-config-out=generated.tf 옵션(실험적)으로 코드 자동 생성을 시도할 수 있다. import 후 주의사항: 1) 비밀번호 같은 sensitive 값은 코드에서 ignore_changes에 추가. 2) 불필요한 기본값이 코드에 포함되어 plan이 지저분해지면 lifecycle ignore_changes로 정리. 3) 대규모 import는 terraformer 오픈소스 도구 활용.",
+    "deepDive": "Terraform 1.5+ import 블록과 CLI terraform import 명령어의 차이와 각각의 장단점은? import 후 terraform plan에서 '~ update in-place'가 수십 개 나오는 경우 어떻게 접근하는가? 여러 개의 리소스를 한꺼번에 import해야 할 때 스크립트 자동화 방법은?",
+    "tags": [
+      "import",
+      "state-manipulation",
+      "migration",
+      "existing-infra"
+    ]
+  },
+  {
+    "id": "tf-020",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform dynamic 블록과 for 표현식을 사용해야 하는 상황과 남용 시 문제점을 설명하라.",
+    "answer": "반복되는 중첩 블록(ingress 규칙, tag 등)을 변수로 동적 생성할 때 사용. 과용 시 가독성이 크게 저하됨",
+    "explanation": "dynamic 블록은 리소스 내 반복 중첩 블록을 변수로 생성한다. for 표현식은 리스트/맵을 변환한다. 예: 보안 그룹의 ingress 규칙을 var.ingress_rules 변수로 동적으로 생성.",
+    "seniorTip": "dynamic 블록 예시: dynamic \"ingress\" { for_each = var.ingress_rules, content { from_port = ingress.value.from_port, to_port = ingress.value.to_port, protocol = ingress.value.protocol, cidr_blocks = ingress.value.cidr_blocks } }. for 표현식 활용: 1) 리스트 변환: [for s in var.names : upper(s)]. 2) 맵 필터링: {for k, v in var.tags : k => v if v != \"\"}. 3) 플래튼: flatten([for s in var.subnets : s.ids]). 남용 주의: dynamic 블록 중첩은 코드를 거의 해독 불가능하게 만든다. 복잡한 경우 locals로 중간 값을 계산하고 단계를 나누는 것이 훨씬 유지보수에 좋다.",
+    "deepDive": "dynamic 블록 내에서 iterator를 명시적으로 지정해야 하는 경우는 언제인가? for 표현식으로 중첩 맵(map of maps)을 다룰 때 주의사항은? locals 블록을 활용하여 복잡한 dynamic 블록을 리팩토링하는 전략은?",
+    "tags": [
+      "dynamic-block",
+      "for-expression",
+      "locals",
+      "expressions"
+    ]
+  },
+  {
+    "id": "tf-021",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terratest로 Terraform 모듈을 테스트할 때의 접근 방식으로 올바른 것은?",
+    "options": [
+      "Terratest는 terraform plan 결과만 검증하며 실제 리소스는 생성하지 않는다",
+      "Terratest는 실제 AWS 환경에 리소스를 생성하고 검증한 후 자동으로 삭제한다",
+      "Terratest는 로컬 모의(mock) 환경에서만 동작한다",
+      "Terratest는 Terraform Enterprise에서만 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "Terratest(Go 기반)는 실제 AWS 환경에 Terraform을 적용하고, 생성된 리소스가 기대한 대로 동작하는지 HTTP 요청, AWS SDK 호출 등으로 검증한 후 defer를 이용해 자동으로 정리한다.",
+    "seniorTip": "Terraform 테스트 전략 3단계: 1) 정적 분석: terraform validate, tflint, checkov(보안 정책) — PR마다 빠르게 실행. 2) Plan 검증: terraform plan + conftest(OPA 정책)로 plan 출력의 JSON을 분석 — 비용 없이 의도 검증. 3) E2E 테스트(Terratest): 실제 리소스 생성 — 비용과 시간이 들어 핵심 모듈에만 적용. 빠른 대안으로 Terraform native test(1.6+, .tftest.hcl)가 있어 mock provider를 지원한다. CI에서 격리된 테스트 계정을 사용하여 실제 비용과 사이드 이펙트를 관리한다.",
+    "deepDive": "Terratest 실행 중 테스트가 실패하여 AWS 리소스가 정리되지 않으면 어떻게 처리하는가? Terraform 1.6+의 네이티브 테스트 프레임워크(.tftest.hcl)와 Terratest의 차이와 선택 기준은? mock provider를 사용한 단위 테스트는 실제 인프라 테스트를 얼마나 대체할 수 있는가?",
+    "tags": [
+      "terratest",
+      "testing",
+      "tflint",
+      "checkov",
+      "validation"
+    ]
+  },
+  {
+    "id": "tf-022",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Infracost를 Terraform 워크플로우에 통합하는 방법과 비용 추정이 중요한 이유를 설명하라.",
+    "answer": "PR마다 Infracost를 실행하여 인프라 변경으로 인한 월간 비용 증감을 PR 코멘트에 표시. 비용 의식을 개발 초기에 심어줌",
+    "explanation": "Infracost는 terraform plan의 JSON 출력을 분석하여 생성/변경/삭제될 리소스의 AWS 비용을 계산한다. CI에서 자동으로 실행하면 개발자가 PR 단계에서 비용 영향을 인식할 수 있다.",
+    "seniorTip": "Infracost 통합 방법: 1) infracost breakdown --path . 로 로컬 확인. 2) CI(GitHub Actions): infracost/infracost-action으로 PR에 비용 diff 코멘트 자동 추가. 3) 비용 정책(예: 월 $500 초과 변경은 승인 필요)을 infracost comment + custom script로 구현. 주의사항: 1) Infracost는 추정치 — 실제 사용량(데이터 전송, 요청 수)은 반영되지 않음. 2) Reserved Instance/Savings Plans 할인은 별도 설정. 3) EKS처럼 복잡한 비용 구조는 추가 검토 필요. 비용 최적화는 사후 대응이 아닌 설계 단계에서 시작해야 한다.",
+    "deepDive": "Infracost 비용 추정에서 가장 큰 오차가 발생하는 AWS 서비스는 무엇이며 이유는? 팀 차원에서 월별 AWS 비용 목표를 Terraform 워크플로우에 enforcing하는 방법은? Infracost CLI와 Terraform Cloud의 비용 추정 기능의 차이는?",
+    "tags": [
+      "infracost",
+      "cost-estimation",
+      "finops",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "tf-023",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": ".terraform.lock.hcl 파일의 역할은 무엇이며 어떻게 관리해야 하는가?",
+    "options": [
+      "state 파일을 잠그는 파일로, 자동 생성되며 무시해야 한다",
+      "프로바이더의 정확한 버전과 체크섬을 고정하며, git에 커밋해야 한다",
+      "Terraform 바이너리 버전을 고정하는 파일이다",
+      ".terraform.lock.hcl은 삭제해도 아무런 영향이 없다"
+    ],
+    "answer": 1,
+    "explanation": ".terraform.lock.hcl은 terraform init 시 선택된 프로바이더의 정확한 버전과 플랫폼별 체크섬을 기록한다. git에 커밋하면 팀 전체가 동일한 프로바이더 버전을 사용하게 되어 '내 로컬에서는 됐는데' 문제를 방지한다.",
+    "seniorTip": "버전 관리 전략: 1) .terraform.lock.hcl은 반드시 git에 커밋. 2) required_providers에서 version = \"~> 5.0\"으로 마이너 버전 범위를 지정. 3) terraform init -upgrade로 lock 파일 업데이트 후 PR을 통해 검토. 4) .terraform/ 디렉토리는 .gitignore에 추가. Terraform 자체 버전은 .terraform-version 파일(tfenv)이나 required_version = \">= 1.5.0, < 2.0.0\"으로 관리. CI에서 tfenv나 asdf로 팀 전체 Terraform 버전을 통일하는 것이 필수다.",
+    "deepDive": "terraform init -upgrade 후 lock 파일이 변경되었는데 CI에서 체크섬 불일치 오류가 발생하는 이유는? 멀티 플랫폼 팀(macOS + Linux CI)에서 lock 파일 체크섬을 올바르게 관리하는 방법은? 프로바이더 버전을 올릴 때 breaking change를 사전에 검출하는 방법은?",
+    "tags": [
+      "lock-file",
+      "provider-versioning",
+      "terraform-version",
+      "reproducibility"
+    ]
+  },
+  {
+    "id": "tf-024",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 민감한 시크릿(DB 비밀번호, API 키)을 Vault와 통합하여 안전하게 관리하는 방법을 설명하라.",
+    "answer": "Vault provider의 data source로 런타임에 시크릿을 조회하거나, AWS Secrets Manager를 data source로 참조. 시크릿을 코드나 state에 평문 저장하지 않음",
+    "explanation": "Terraform Vault provider를 사용하면 vault_generic_secret data source로 Vault에서 시크릿을 읽어 리소스 설정에 주입할 수 있다. AWS 환경에서는 aws_secretsmanager_secret_version data source를 사용하는 것이 더 자연스럽다.",
+    "seniorTip": "시크릿 관리 성숙도 단계: 1) 입문: terraform.tfvars에 저장 + .gitignore (최소한의 보안). 2) 중급: AWS Secrets Manager에 저장 후 data source로 조회, state에는 ARN만 남음. 3) 고급: Vault + dynamic secrets (RDS 임시 자격증명 — 매 apply마다 새 비밀번호 발급, TTL 관리). Vault 통합 코드: provider \"vault\" { address = \"https://vault.internal\" }, data \"vault_generic_secret\" \"db\" { path = \"secret/prod/rds\" }, resource \"aws_db_instance\" \"main\" { password = data.vault_generic_secret.db.data[\"password\"] }. 주의: Vault data source로 가져온 값도 Terraform state에 저장되므로 state 암호화는 필수.",
+    "deepDive": "Vault dynamic secrets(RDS용 임시 자격증명)를 Terraform과 함께 사용할 때 TTL 만료 문제를 어떻게 다루는가? Terraform apply 중 Vault 토큰이 만료되면 어떻게 되는가? 장기 실행 apply를 위한 토큰 전략은? AWS IAM 기반으로 Vault 인증(aws auth method)을 설정하는 Terraform 코드 구조는?",
+    "tags": [
+      "vault",
+      "secrets-management",
+      "security",
+      "secrets-manager",
+      "dynamic-secrets"
+    ]
+  },
+  {
+    "id": "tf-025",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS 멀티 계정 전략(dev/staging/prod 별도 계정)을 Terraform으로 구현할 때 provider alias, assume_role, 계정 간 리소스 참조를 어떻게 설계하는가?",
+    "answer": "provider alias로 여러 계정을 동시에 관리, assume_role로 각 계정에 접근. 계정 간 리소스는 data source 또는 SSM Parameter Store로 참조",
+    "explanation": "하나의 Terraform 루트 모듈에서 여러 AWS 계정을 동시에 관리할 때는 provider alias를 사용한다. 각 provider에 assume_role을 설정하면 중앙 계정에서 다른 계정의 리소스를 프로비저닝할 수 있다.",
+    "seniorTip": "멀티 계정 Terraform 설계: provider \"aws\" { alias = \"prod\", region = \"ap-northeast-2\", assume_role { role_arn = \"arn:aws:iam::111122223333:role/TerraformRole\" } }. 계정 간 리소스 공유: 1) VPC Peering/Transit Gateway 설정 시 두 provider를 동시에 참조. 2) 계정 A의 output을 계정 B가 참조해야 할 때 SSM Parameter Store에 값을 저장 (terraform_remote_state는 state 파일 전체 접근 권한을 요구하여 보안상 좋지 않음). 3) AWS Organizations + SCPs를 Terraform으로 관리하면 계정 생성/정책 적용 자동화 가능. 구조: management 계정에서 org 관리, tooling 계정에서 Terraform 실행, workload 계정(dev/prod)에 리소스 배포. ncnc처럼 성장하는 스타트업은 지금이 멀티 계정 전환의 적기다.",
+    "deepDive": "assume_role 방식에서 TerraformRole에 필요한 최소 권한과 신뢰 정책(trust policy)은 어떻게 구성하는가? 멀티 계정 환경에서 Terraform state 파일은 어느 계정의 S3에 저장해야 하는가? AWS Organizations를 Terraform으로 관리할 때 Organization 자체를 부트스트래핑하는 chicken-and-egg 문제를 어떻게 해결하는가?",
+    "tags": [
+      "multi-account",
+      "provider-alias",
+      "assume-role",
+      "aws-organizations",
+      "security"
+    ]
+  }
+]

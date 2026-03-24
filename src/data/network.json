@@ -1,0 +1,709 @@
+[
+  {
+    "id": "net-001",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "HTTPS에서 TLS 핸드셰이크가 수행하는 핵심 역할은?",
+    "options": [
+      "IP 주소를 도메인으로 변환",
+      "클라이언트와 서버 간 암호화 키를 교환하고 서버 인증서를 검증",
+      "HTTP 요청을 압축",
+      "쿠키를 암호화"
+    ],
+    "answer": 1,
+    "explanation": "TLS 핸드셰이크 과정: 1) ClientHello (지원 암호화 방식 전달). 2) ServerHello + 인증서 전송. 3) 클라이언트가 인증서 검증 (CA 체인 확인). 4) 대칭키 교환 (비대칭 암호화로). 5) 이후 통신은 교환된 대칭키로 암호화.",
+    "seniorTip": "TLS 1.3은 핸드셰이크를 1-RTT로 줄여 성능을 개선했다 (TLS 1.2는 2-RTT). K8s에서 TLS 종단점(termination)을 어디에 둘지가 중요한 설계 결정: 1) Ingress Controller에서 TLS 종료 (가장 일반적). 2) Pod까지 TLS 유지 (E2E 암호화, 금융 등 규제). 3) Service Mesh(Istio)로 mTLS 자동화. Let's Encrypt + cert-manager로 K8s에서 인증서 자동 갱신이 가능.",
+    "tags": [
+      "tls",
+      "https",
+      "handshake",
+      "certificate",
+      "kubernetes"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-002",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "DNS가 어떻게 동작하는지 브라우저에서 example.com을 입력했을 때의 과정을 설명하라.",
+    "answer": "브라우저 캐시 → OS 캐시 → 로컬 DNS 서버 → 루트 DNS → TLD DNS → 권한 DNS 순으로 IP를 조회",
+    "explanation": "1) 브라우저 DNS 캐시 확인. 2) OS DNS 캐시 확인 (/etc/hosts 포함). 3) 로컬 DNS 서버(ISP 또는 8.8.8.8)에 질의. 4) 로컬 DNS가 캐시에 없으면 루트 DNS → .com TLD DNS → example.com 권한 DNS 순으로 재귀적 조회. 5) 결과를 TTL 동안 캐시.",
+    "seniorTip": "실무 이슈: 1) DNS TTL이 길면 서버 IP 변경 시 반영이 느림. 블루-그린 배포 시 TTL을 미리 낮춰두고, 전환 후 다시 올림. 2) K8s 내부 DNS(CoreDNS): service-name.namespace.svc.cluster.local. ndots:5 설정 때문에 외부 도메인 조회 시 불필요한 검색이 발생할 수 있음 → Pod의 dnsConfig로 ndots:1 설정 고려. 3) DNS 기반 서비스 디스커버리: Headless Service(ClusterIP: None)는 Pod IP 목록을 직접 반환.",
+    "tags": [
+      "dns",
+      "ttl",
+      "coredns",
+      "kubernetes",
+      "service-discovery"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-003",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "L4 로드밸런서와 L7 로드밸런서의 차이는?",
+    "options": [
+      "L4는 4개, L7은 7개의 서버를 지원한다",
+      "L4는 TCP/IP 수준에서 분배, L7은 HTTP 헤더/경로/쿠키 등 애플리케이션 수준에서 분배",
+      "L4는 암호화, L7은 복호화를 담당한다",
+      "L7이 항상 L4보다 빠르다"
+    ],
+    "answer": 1,
+    "explanation": "L4(Transport Layer): IP + Port 기반으로 패킷을 분배. 빠르지만 HTTP 내용을 모름. L7(Application Layer): URL 경로, Host 헤더, 쿠키 등을 보고 라우팅. 더 유연하지만 오버헤드가 있음.",
+    "seniorTip": "K8s에서의 매핑: Service(ClusterIP/NodePort) = L4 로드밸런서. Ingress = L7 로드밸런서. AWS에서: NLB = L4, ALB = L7. 선택 기준: 1) 경로 기반 라우팅이 필요하면 L7 (API 버저닝, 마이크로서비스 라우팅). 2) WebSocket, gRPC 등 비-HTTP 프로토콜은 L4가 적합할 수 있음. 3) L7은 TLS 종료, 헤더 조작, rate limiting 등 부가 기능 제공. 4) 성능이 극도로 중요하면 L4 (패킷을 수정하지 않고 전달).",
+    "tags": [
+      "load-balancer",
+      "l4",
+      "l7",
+      "nlb",
+      "alb",
+      "kubernetes"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-004",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "CORS(Cross-Origin Resource Sharing)가 왜 필요하고, 어떻게 동작하는지 설명하라.",
+    "answer": "브라우저가 다른 출처(origin)의 리소스 접근을 제한하는 보안 정책. 서버가 Access-Control-Allow-Origin 헤더로 허용 출처를 명시",
+    "explanation": "Same-Origin Policy: 브라우저는 보안상 다른 출처(프로토콜+도메인+포트)의 API 호출을 차단한다. CORS는 서버가 '이 출처는 허용한다'고 응답 헤더로 알려주는 메커니즘이다. preflight 요청(OPTIONS)으로 먼저 허용 여부를 확인한 후 실제 요청을 보낸다.",
+    "seniorTip": "흔한 실수: 1) Access-Control-Allow-Origin: *는 쿠키 인증과 함께 사용할 수 없음 (credentials: 'include' 시). 2) preflight가 불필요한 Simple Request 조건: GET/HEAD/POST + Content-Type이 text/plain, multipart/form-data, application/x-www-form-urlencoded. JSON API는 application/json이므로 항상 preflight 발생. 3) NestJS에서 app.enableCors({ origin: ['https://example.com'], credentials: true }). 4) CORS는 브라우저 보안이므로, 서버 간 통신(백엔드→백엔드)에서는 적용되지 않는다.",
+    "tags": [
+      "cors",
+      "same-origin-policy",
+      "preflight",
+      "security"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-005",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "CDN(Content Delivery Network)이 성능을 개선하는 핵심 원리는?",
+    "options": [
+      "서버의 CPU를 업그레이드한다",
+      "사용자와 지리적으로 가까운 엣지 서버에서 캐시된 콘텐츠를 제공하여 레이턴시를 줄인다",
+      "데이터를 압축하여 전송한다",
+      "HTTP/2만 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "CDN은 전 세계에 분산된 엣지 서버에 콘텐츠를 캐시한다. 서울의 사용자가 미국 서버의 이미지를 요청하면, CDN의 서울 엣지 서버에서 제공하므로 레이턴시가 수백ms에서 수ms로 줄어든다.",
+    "seniorTip": "CDN 활용 범위: 1) 정적 파일(이미지, JS, CSS) — 가장 기본. 2) API 응답 캐싱 — Cache-Control 헤더 설정 주의. 3) Lambda@Edge / CloudFront Functions — 엣지에서 로직 실행 (A/B 테스트, 리다이렉트). 캐시 무효화(invalidation) 전략: 파일명에 해시를 포함(main.a1b2c3.js)하면 캐시 무효화가 불필요. API 캐싱 시 Cache-Control: private, no-store로 사용자별 데이터가 CDN에 캐시되는 것을 방지해야 한다.",
+    "tags": [
+      "cdn",
+      "edge",
+      "caching",
+      "latency",
+      "cloudfront"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-006",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "TCP의 3-way handshake는 SYN → SYN-ACK → ACK 순서로 진행되며, 연결 수립에 1 RTT가 소요된다.",
+    "answer": "X",
+    "explanation": "3-way handshake는 SYN → SYN-ACK → ACK 순서는 맞지만, 1.5 RTT가 소요된다. 클라이언트가 SYN을 보내고(0.5 RTT), 서버가 SYN-ACK를 보내고(1 RTT), 클라이언트가 ACK를 보낸다(1.5 RTT). 다만 ACK와 함께 데이터를 보낼 수 있으므로 실질적으로 1 RTT 후 데이터 전송을 시작할 수 있다.",
+    "seniorTip": "TCP 연결 비용이 중요한 이유: 매 HTTP 요청마다 3-way handshake를 하면 RTT만큼 지연. 해결: 1) HTTP/1.1 Keep-Alive (연결 재사용). 2) HTTP/2 멀티플렉싱 (하나의 연결에 여러 요청). 3) 커넥션 풀링 (DB, Redis). 4) TCP Fast Open (TFO) — SYN에 데이터를 실어 0-RTT 연결. TLS 1.3의 0-RTT resumption도 비슷한 최적화.",
+    "tags": [
+      "tcp",
+      "handshake",
+      "rtt",
+      "http2",
+      "connection"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-007",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "HTTP/1.1, HTTP/2, HTTP/3의 핵심 차이를 설명하라.",
+    "answer": "HTTP/1.1: 텍스트 기반, HOL blocking. HTTP/2: 바이너리, 멀티플렉싱, 헤더 압축. HTTP/3: QUIC(UDP 기반), 연결 수준 HOL blocking 해결",
+    "explanation": "HTTP/1.1: 하나의 연결에 하나의 요청/응답. 여러 연결을 열어 병렬 처리(보통 6개 제한). HTTP/2: 하나의 연결에 여러 스트림으로 병렬 처리. 하지만 TCP 수준에서 패킷 손실 시 모든 스트림이 대기(HOL blocking). HTTP/3: QUIC(UDP 기반)로 스트림별 독립적 전송, 패킷 손실이 해당 스트림에만 영향.",
+    "seniorTip": "실무 적용: 1) 대부분의 웹 서비스는 HTTP/2가 기본. nginx, AWS ALB가 자동 지원. 2) HTTP/3는 CloudFront, Cloudflare에서 활성화 가능. 3) gRPC는 HTTP/2 기반 — MSA에서 서비스 간 통신에 적합. 4) Server Push(HTTP/2)는 실무에서 거의 사용되지 않음 — 103 Early Hints가 대안. 5) K8s Ingress에서 HTTP/2 지원 여부와 백엔드 연결(gRPC 프록시) 설정을 확인해야 한다.",
+    "tags": [
+      "http2",
+      "http3",
+      "quic",
+      "multiplexing",
+      "grpc"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-008",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "WebSocket과 HTTP의 핵심 차이는?",
+    "options": [
+      "WebSocket은 HTTPS만 지원한다",
+      "WebSocket은 양방향 통신이 가능하고, 연결을 유지한 채로 서버가 클라이언트에게 데이터를 push할 수 있다",
+      "WebSocket은 UDP를 사용한다",
+      "HTTP가 WebSocket보다 항상 빠르다"
+    ],
+    "answer": 1,
+    "explanation": "HTTP는 요청-응답 모델. 클라이언트가 요청해야 서버가 응답한다. WebSocket은 HTTP 업그레이드로 시작하여 양방향 전이중(full-duplex) 통신 채널을 연다. 서버가 클라이언트에게 실시간으로 데이터를 보낼 수 있다.",
+    "seniorTip": "WebSocket vs SSE(Server-Sent Events) vs Long Polling: 1) WebSocket: 양방향, 바이너리 지원, 복잡함 → 채팅, 게임. 2) SSE: 서버→클라이언트 단방향, 간단, 자동 재연결 → 알림, 실시간 피드. 3) Long Polling: 호환성 최고, 오버헤드 큼 → 레거시 대응. K8s에서 WebSocket 사용 시 Ingress의 proxy-read-timeout, proxy-send-timeout을 늘려야 하고, sticky session이 필요할 수 있다.",
+    "tags": [
+      "websocket",
+      "sse",
+      "real-time",
+      "full-duplex"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-009",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "gRPC는 JSON을 사용하며, REST API보다 항상 느리다.",
+    "answer": "X",
+    "explanation": "gRPC는 Protocol Buffers(바이너리 직렬화)를 사용하여 JSON보다 직렬화/역직렬화가 훨씬 빠르고, 페이로드 크기도 작다. HTTP/2 기반으로 멀티플렉싱, 헤더 압축을 활용하므로 REST보다 대부분 빠르다.",
+    "seniorTip": "gRPC 사용 시나리오: 1) MSA 서비스 간 내부 통신 — 성능 + 타입 안전성. 2) 스트리밍이 필요한 경우 (서버 스트리밍, 클라이언트 스트리밍, 양방향). 3) 다양한 언어 간 통신 (proto 파일에서 코드 자동 생성). REST를 유지해야 하는 경우: 브라우저 직접 호출 (gRPC-Web 필요), 외부 API 제공, 디버깅 용이성 필요. NestJS는 @nestjs/microservices로 gRPC를 기본 지원한다.",
+    "tags": [
+      "grpc",
+      "protobuf",
+      "http2",
+      "microservices"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-010",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Rate Limiting(속도 제한)이 왜 필요하고, 어떤 알고리즘이 있는지 설명하라.",
+    "answer": "API 남용/DDoS 방지, 서버 보호. 알고리즘: Token Bucket, Sliding Window, Fixed Window, Leaky Bucket",
+    "explanation": "Rate Limiting은 특정 시간 동안 클라이언트가 보낼 수 있는 요청 수를 제한한다. 서버 과부하 방지, 공정한 리소스 분배, API 남용 방지에 필수.",
+    "seniorTip": "구현 위치: 1) API Gateway / Ingress 레벨 (nginx rate limiting, Kong). 2) 애플리케이션 레벨 (NestJS의 @nestjs/throttler). 3) Redis 기반 분산 Rate Limiter (여러 Pod에서 공유 카운트). Token Bucket이 가장 유연 — 평소에 토큰을 쌓아두고 버스트 트래픽을 허용. Sliding Window는 Fixed Window의 경계 문제(경계 시점에 2배 트래픽 허용)를 해결. 429 Too Many Requests 응답 시 Retry-After 헤더도 함께 반환하는 것이 좋은 API 설계.",
+    "tags": [
+      "rate-limiting",
+      "token-bucket",
+      "sliding-window",
+      "api-design"
+    ],
+    "deepDive": ""
+  },
+  {
+    "id": "net-011",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "TCP 연결 상태(TIME_WAIT, CLOSE_WAIT, FIN_WAIT)가 서버에 대량으로 쌓일 때 발생하는 문제와 원인, 해결 방법을 설명하라.",
+    "answer": "TIME_WAIT 과다: 포트 고갈 → SO_REUSEADDR, tcp_tw_reuse. CLOSE_WAIT 과다: 앱이 연결을 닫지 않는 버그 → 코드에서 connection.close() 누락 수정",
+    "explanation": "TIME_WAIT: 연결을 능동적으로 종료한 쪽이 마지막 ACK 전달 보장을 위해 2MSL(보통 60~120초) 대기하는 상태. CLOSE_WAIT: 상대방이 FIN을 보냈지만 자신이 FIN을 아직 보내지 않은 상태 — 보통 애플리케이션이 소켓을 명시적으로 닫지 않았을 때 발생. FIN_WAIT_2: 자신은 FIN을 보냈지만 상대방이 FIN을 아직 보내지 않은 상태.",
+    "deepDive": "TIME_WAIT이 왜 필요한가? → 마지막 ACK가 유실됐을 때 상대방이 FIN을 재전송하면 받을 수 있어야 하므로. → 그러면 TIME_WAIT 없이 포트를 재사용하면 무슨 일이 생기는가? → 이전 연결의 지연된 패킷이 새 연결에 전달될 수 있음 (패킷 혼선). → CLOSE_WAIT이 대량 발생하면 어디를 먼저 봐야 하나? → 앱 코드에서 DB 커넥션, HTTP 클라이언트 등 close()를 빠뜨린 곳 탐색. → K8s에서 Pod가 종료될 때 CLOSE_WAIT이 쌓이는 이유는? → preStop hook 없이 즉시 종료되면 진행 중인 연결을 앱이 정리하지 못함.",
+    "seniorTip": "실무 대응: 1) ss -s 또는 netstat -an | grep TIME_WAIT | wc -l 로 상태 수 확인. 2) net.ipv4.tcp_tw_reuse=1 (클라이언트 측 TIME_WAIT 재사용 허용). 3) net.ipv4.ip_local_port_range를 늘려 가용 포트 확장. 4) K8s Pod에서 CLOSE_WAIT 방지: lifecycle.preStop에서 sleep을 줘서 연결 정리 시간 확보. 5) 커넥션 풀(DB, Redis) 사용 시 pool의 keepAlive 설정으로 TIME_WAIT 자체를 줄인다.",
+    "tags": [
+      "tcp",
+      "time-wait",
+      "close-wait",
+      "connection-state",
+      "socket"
+    ]
+  },
+  {
+    "id": "net-012",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "HTTP 캐싱에서 Cache-Control: no-cache와 no-store의 차이는?",
+    "options": [
+      "둘 다 동일하게 캐시를 완전히 금지한다",
+      "no-cache는 캐시는 하되 매번 서버에 재검증 요청, no-store는 캐시 자체를 금지",
+      "no-store는 캐시는 하되 매번 서버에 재검증 요청, no-cache는 캐시 자체를 금지",
+      "no-cache는 CDN만 적용되고, no-store는 브라우저에만 적용된다"
+    ],
+    "answer": 1,
+    "explanation": "no-cache: 로컬에 캐시는 저장하지만, 사용하기 전 반드시 서버에 유효성을 검증(ETag/Last-Modified 활용). 서버가 304 Not Modified를 반환하면 캐시된 내용을 사용. no-store: 절대로 캐시에 저장하지 않음. 민감한 데이터(금융, 개인정보)에 적용.",
+    "deepDive": "ETag와 Last-Modified는 어떻게 동작하나? → ETag: 서버가 리소스의 버전 해시를 응답. 다음 요청 시 If-None-Match 헤더로 전달, 변경 없으면 304. → Last-Modified: 마지막 수정 시간 기반. If-Modified-Since로 검증. → ETag가 Last-Modified보다 나은 이유는? → 1초 미만 변경 감지, 내용이 같아도 타임스탬프가 다른 경우 ETag가 더 정확. → CDN에서 캐시 무효화(invalidation)를 언제 써야 하나? → 파일명에 해시 포함이 불가능한 경우(HTML 등)에 CloudFront Invalidation 사용. → stale-while-revalidate는 무엇인가? → 캐시 만료 후에도 stale 콘텐츠를 먼저 반환하고 백그라운드에서 갱신, 사용자 체감 지연 제거.",
+    "seniorTip": "결제/주문 API 응답에는 Cache-Control: no-store, private을 명시해야 CDN이나 프록시에 민감 데이터가 캐시되는 것을 방지한다. 상품 목록 같은 공용 API는 Cache-Control: public, max-age=60, stale-while-revalidate=300으로 성능과 신선도를 균형 있게 가져갈 수 있다.",
+    "tags": [
+      "http-cache",
+      "cache-control",
+      "etag",
+      "cdn",
+      "performance"
+    ]
+  },
+  {
+    "id": "net-013",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 gRPC 서비스를 구현할 때 핵심 설정과 주의 사항을 설명하라.",
+    "answer": "proto 파일 정의 → @nestjs/microservices GrpcOptions 설정 → @GrpcMethod 데코레이터로 핸들러 구현. HTTP/2 필수이므로 K8s Ingress gRPC 설정 필요",
+    "explanation": "NestJS gRPC 구성: 1) .proto 파일에 서비스와 메시지 타입 정의. 2) main.ts에서 app.connectMicroservice({ transport: Transport.GRPC, options: { package, protoPath, url } }). 3) Controller에 @GrpcMethod('ServiceName', 'MethodName')으로 핸들러 구현. 4) 클라이언트 측은 ClientGrpc를 주입받아 getService<T>()로 사용.",
+    "deepDive": "gRPC 스트리밍은 언제 쓰나? → 서버 스트리밍: 대용량 데이터를 청크로 전송 (결제 내역 대량 조회). → 클라이언트 스트리밍: 파일 업로드, 로그 수집. → 양방향 스트리밍: 실시간 주문 상태 업데이트. → K8s Ingress에서 gRPC가 안 되는 이유는? → 일반 HTTP/2 설정이 없으면 nginx-ingress가 gRPC 트래픽을 프록시하지 못함. nginx.ingress.kubernetes.io/backend-protocol: 'GRPC' annotation 필요. → 서비스 간 gRPC 호출 시 인증은 어떻게? → mTLS(서비스 메시) 또는 JWT를 gRPC metadata에 포함하여 전달. → proto 변경 시 하위 호환성은? → 필드 번호를 절대 변경/재사용하지 않고, reserved 키워드로 삭제된 필드 관리.",
+    "seniorTip": "니콘내콘처럼 외부 파트너 API가 있는 경우: 내부 서비스 간 통신(주문↔결제↔정산)은 gRPC로 타입 안전성과 성능을 확보하고, 외부 파트너 API는 REST로 유지하는 하이브리드 전략이 현실적이다. gRPC Health Checking Protocol도 구현하면 K8s readinessProbe와 통합 가능.",
+    "tags": [
+      "grpc",
+      "nestjs",
+      "protobuf",
+      "microservices",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "net-014",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "K8s에서 WebSocket 기반 실시간 서비스를 수평 확장(HPA)할 때 발생하는 핵심 문제는?",
+    "options": [
+      "WebSocket은 HTTP/2를 지원하지 않는다",
+      "연결이 특정 Pod에 고정(sticky)되므로 Pod 간 메시지 브로드캐스트가 안 되고, 스케일 아웃 시 기존 연결이 끊어진다",
+      "K8s Service가 WebSocket을 차단한다",
+      "WebSocket은 TLS와 함께 사용할 수 없다"
+    ],
+    "answer": 1,
+    "explanation": "WebSocket은 장시간 유지되는 연결이다. Pod A에 연결된 사용자와 Pod B에 연결된 사용자 간 메시지를 전달하려면 별도 메커니즘이 필요하다. 또한 HPA로 Pod가 축소되면 해당 Pod에 연결된 클라이언트는 강제 종료된다.",
+    "deepDive": "WebSocket 스케일 아웃 문제를 어떻게 해결하나? → Redis Pub/Sub: 각 Pod가 Redis 채널을 구독, 메시지를 Redis에 발행하면 모든 Pod가 수신하여 연결된 클라이언트에게 전달. → 왜 Redis가 적합한가? → 메모리 기반으로 레이턴시가 낮고, NestJS Socket.IO의 @nestjs/platform-socket.io + socket.io-adapter-redis로 바로 통합 가능. → Pod 종료 시 연결 끊김은? → K8s PodDisruptionBudget과 Graceful Shutdown으로 재연결을 유도. 클라이언트에서도 자동 재연결 로직 구현 필수. → sticky session이 필요한 이유는? → Socket.IO의 polling 모드에서 같은 클라이언트가 항상 같은 Pod에 가야 핸드셰이크 상태가 유지됨. Ingress에서 nginx.ingress.kubernetes.io/affinity: 'cookie' 설정.",
+    "seniorTip": "2.1M 사용자 규모의 실시간 알림 서비스라면: 1) WebSocket보다 SSE(Server-Sent Events)를 먼저 고려 — 단방향이라 구조가 단순하고 Stateless에 가까움. 2) WebSocket 필수라면 Redis Adapter 패턴이 표준. 3) Kafka를 통해 WebSocket 서버로 이벤트를 fanout하는 아키텍처도 대용량에 적합.",
+    "tags": [
+      "websocket",
+      "kubernetes",
+      "hpa",
+      "redis-pubsub",
+      "scaling"
+    ]
+  },
+  {
+    "id": "net-015",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "mTLS(Mutual TLS)에서는 서버만 인증서를 제공하고, 클라이언트는 인증서를 제공하지 않아도 된다.",
+    "answer": "X",
+    "explanation": "일반 TLS: 서버만 인증서를 제공하고 클라이언트가 서버를 검증. mTLS(Mutual TLS): 서버와 클라이언트 양쪽이 모두 인증서를 제공하여 상호 인증. MSA에서 서비스 간 통신의 신원을 보장하는 데 사용된다.",
+    "deepDive": "서비스 메시(Istio, Linkerd)가 mTLS를 어떻게 자동화하나? → 각 Pod에 사이드카(Envoy Proxy)를 주입하고, 서비스 간 모든 통신을 사이드카가 가로채 자동으로 mTLS 적용. → 개발자가 코드를 수정하지 않아도 되는 이유는? → 인증서 발급/갱신/교체를 서비스 메시 컨트롤 플레인(Istiod)이 자동 관리. → mTLS 없이 K8s 클러스터 내부 통신은 안전한가? → 기본적으로 암호화되지 않음 — 같은 노드에서 패킷 스니핑 가능. → Zero Trust 네트워크 모델과의 관계는? → 'Never trust, always verify' — 네트워크 위치(내부/외부)에 관계없이 모든 통신을 인증/암호화.",
+    "seniorTip": "K8s에서 mTLS 도입 단계: 1) Istio 설치 → PeerAuthentication을 PERMISSIVE(혼합)로 시작. 2) 서비스별로 mTLS 적용 확인 후 STRICT 모드로 전환. 3) cert-manager + Vault 통합으로 인증서 라이프사이클 관리. 결제 서비스처럼 내부 서비스 간 신뢰를 강화해야 하는 경우 mTLS + AuthorizationPolicy로 특정 서비스만 접근 허용하는 것이 권장 패턴이다.",
+    "tags": [
+      "mtls",
+      "service-mesh",
+      "istio",
+      "zero-trust",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "net-016",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "API Gateway 패턴이 MSA에서 필요한 이유와 주요 기능을 설명하라.",
+    "answer": "클라이언트가 여러 서비스를 직접 호출하는 복잡성을 제거. 인증, 라우팅, rate limiting, 로깅, 프로토콜 변환 등을 단일 진입점에서 처리",
+    "explanation": "API Gateway는 클라이언트와 내부 마이크로서비스 사이의 단일 진입점(Single Entry Point)이다. 클라이언트는 Gateway 하나만 알면 되고, 내부 서비스 구조 변경이 외부에 노출되지 않는다.",
+    "deepDive": "API Gateway와 BFF(Backend for Frontend)의 차이는? → API Gateway: 모든 클라이언트(웹, 앱, 파트너)가 공통으로 사용. → BFF: 특정 클라이언트(모바일 앱, 어드민 웹)에 최적화된 전용 게이트웨이. 모바일은 배터리를 고려해 요청 수를 줄이는 응답 집계가 필요. → API Gateway에서 인증을 처리하면 뭐가 좋은가? → 각 서비스에서 JWT 검증 로직을 중복 구현할 필요 없음. → Kong, AWS API Gateway, nginx 중 선택 기준은? → Kong: 플러그인 생태계, 자체 호스팅 가능. AWS API Gateway: 서버리스 연동, AWS 종속. nginx: 단순 라우팅/rate limiting, 오버헤드 최소. → 서킷 브레이커를 Gateway에 두면 좋은 점은? → 모든 서비스 호출에 일괄 적용, 서비스별 임계치 설정 가능.",
+    "seniorTip": "파트너사 API를 제공하는 경우(니콘내콘 외부 API): API Gateway에서 파트너별 API 키 인증 + rate limiting + 사용량 로깅을 처리하면 각 서비스가 파트너 관리 로직을 몰라도 된다. AWS API Gateway + Lambda Authorizer 조합이 관리 오버헤드를 낮추는 현실적인 선택.",
+    "tags": [
+      "api-gateway",
+      "msa",
+      "routing",
+      "authentication",
+      "rate-limiting"
+    ]
+  },
+  {
+    "id": "net-017",
+    "category": "network",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "K8s Pod 내부에서 외부 도메인 DNS 조회가 유독 느릴 때 가장 먼저 확인해야 할 것은?",
+    "options": [
+      "Pod의 CPU 제한(limit)을 높인다",
+      "CoreDNS의 ndots 설정과 Pod dnsConfig를 확인한다",
+      "네트워크 인터페이스를 재시작한다",
+      "Node를 재부팅한다"
+    ],
+    "answer": 1,
+    "explanation": "K8s의 기본 ndots:5 설정은 점이 5개 미만인 도메인(외부 도메인 포함)을 조회할 때 클러스터 내부 접미사를 붙여 여러 번 조회한 후 실패하면 원래 도메인을 조회한다. 이로 인해 외부 도메인 조회가 평균보다 훨씬 느려진다.",
+    "deepDive": "ndots:5가 외부 DNS 조회에서 어떻게 느림을 유발하나? → api.external.com 조회 시 먼저 api.external.com.default.svc.cluster.local. → api.external.com.svc.cluster.local. → api.external.com.cluster.local. 모두 실패 후 → api.external.com. 을 조회. → 해결책은? → Pod spec에 dnsConfig: { options: [{ name: ndots, value: '1' }] } 설정. → 또는 도메인 끝에 점을 붙이면(api.external.com.) 즉시 절대 도메인으로 조회. → CoreDNS 자체가 느리다면? → CoreDNS HPA 설정, NodeLocal DNSCache 도입 (각 Node에 DNS 캐시 데몬 실행으로 CoreDNS 부하 분산).",
+    "seniorTip": "결제 API 같이 외부 PG사 도메인을 반복 호출하는 서비스에서 ndots 문제는 레이턴시에 직접 영향을 준다. 파드 단위 dnsConfig 조정이 부담스럽다면 NodeLocal DNSCache를 클러스터 전체에 적용하는 것이 한 번의 작업으로 전 서비스에 효과를 줄 수 있다.",
+    "tags": [
+      "dns",
+      "coredns",
+      "ndots",
+      "kubernetes",
+      "troubleshooting"
+    ]
+  },
+  {
+    "id": "net-018",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "데이터베이스 커넥션 풀(Connection Pool)이 필요한 이유와, NestJS + TypeORM에서 설정 시 주의 사항을 설명하라.",
+    "answer": "매 요청마다 DB 연결 생성은 비용이 크므로, 미리 연결을 만들어 재사용. pool size는 DB 최대 연결 수와 Pod 수를 고려하여 설정",
+    "explanation": "DB 연결 생성에는 TCP 핸드셰이크 + 인증 과정이 포함되어 수십ms가 소요된다. 커넥션 풀은 연결을 미리 만들어두고 요청이 올 때 재사용하므로 레이턴시와 DB 서버 부하를 크게 줄인다.",
+    "deepDive": "pool size를 얼마로 설정해야 하나? → DB 서버 max_connections(MySQL 기본 151)을 Pod 수로 나눈 값이 상한. → 예: max_connections=500, Pod 10개 → Pod당 최대 50개. → 풀이 너무 작으면? → 요청이 몰릴 때 커넥션 대기(pool exhaustion) 발생 → 타임아웃. → 풀이 너무 크면? → DB 서버 메모리/스레드 부하 증가, DB 성능 오히려 저하. → K8s HPA로 Pod가 늘어날 때 문제는? → 총 커넥션 수 = pool size × Pod 수가 max_connections를 초과할 수 있음. → 해결책: PgBouncer, ProxySQL 같은 커넥션 풀러(pooler)를 DB 앞에 두어 연결 수를 중앙에서 관리.",
+    "seniorTip": "TypeORM DataSource 설정: extra.connectionLimit(MySQL) 또는 poolSize(PostgreSQL)를 명시하고, connectTimeout, acquireTimeout도 설정해 deadlock 상황에서 무한 대기를 방지한다. 커넥션 풀 고갈은 장애 상황에서 흔한 원인이므로 Datadog/Prometheus에서 pool.waiting, pool.size 메트릭을 반드시 모니터링해야 한다.",
+    "tags": [
+      "connection-pool",
+      "typeorm",
+      "mysql",
+      "database",
+      "nestjs"
+    ]
+  },
+  {
+    "id": "net-019",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "HTTP Keep-Alive는 하나의 TCP 연결로 여러 HTTP 요청/응답을 처리하므로, 서버의 동시 연결 수를 무조건 줄여준다.",
+    "answer": "X",
+    "explanation": "Keep-Alive는 연결 재사용으로 연결 수립 비용을 줄여주지만, 유휴 연결(idle connection)이 오랫동안 유지되면 오히려 서버 파일 디스크립터(FD)와 메모리를 점유한다. 따라서 keepAliveTimeout을 적절히 설정하여 유휴 연결을 정리해야 한다.",
+    "deepDive": "Keep-Alive timeout을 너무 길게 설정하면? → FD 고갈, 메모리 증가. 짧게 설정하면? → 연결을 자주 새로 만들어 3-way handshake 비용 재발생. → ALB/NLB의 idle timeout과 서버 keepAliveTimeout의 관계는? → 서버 keepAliveTimeout이 로드밸런서 idle timeout보다 짧아야 한다. 반대면 LB가 먼저 연결을 끊어 서버가 '연결이 살아있다'고 착각하는 상태에서 요청 수신 → 502 에러 발생. → NestJS(Node.js HTTP 서버)의 기본 keepAliveTimeout은? → 5초(Node.js 기본). AWS ALB의 기본 idle timeout은 60초이므로 서버를 60초보다 크게 설정해야 안전. → HTTP/2는 Keep-Alive 개념이 다른가? → HTTP/2는 단일 연결에서 멀티플렉싱이 기본이므로 Keep-Alive 헤더가 불필요.",
+    "seniorTip": "NestJS 서버에서 권장 설정: server.keepAliveTimeout = 65000; server.headersTimeout = 66000; (ALB idle timeout 60초보다 높게). 이 설정을 빠뜨리면 트래픽이 늘어날수록 간헐적 502 에러가 발생하는 원인이 된다.",
+    "tags": [
+      "keep-alive",
+      "tcp",
+      "http",
+      "alb",
+      "nestjs",
+      "timeout"
+    ]
+  },
+  {
+    "id": "net-020",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s 환경에서 SSL/TLS 인증서를 자동으로 관리하는 방법과 cert-manager 동작 원리를 설명하라.",
+    "answer": "cert-manager가 Let's Encrypt 등 CA에서 인증서를 자동 발급/갱신. Issuer/ClusterIssuer 리소스로 CA 설정, Certificate 리소스로 인증서 선언, Ingress annotation으로 자동 연동",
+    "explanation": "cert-manager는 K8s CRD(Custom Resource Definition)를 활용한다. ClusterIssuer: 클러스터 전체에서 사용할 인증서 발급기관 설정(Let's Encrypt ACME). Certificate: 원하는 도메인의 인증서를 선언. cert-manager가 ACME 챌린지(HTTP-01 또는 DNS-01)를 자동으로 수행하여 인증서를 발급받고 K8s Secret에 저장. 만료 30일 전 자동 갱신.",
+    "deepDive": "HTTP-01 챌린지와 DNS-01 챌린지의 차이는? → HTTP-01: Let's Encrypt가 도메인에 HTTP 요청을 보내 특정 경로에 토큰이 있는지 확인. 80포트가 열려 있어야 하며 와일드카드 인증서는 불가. → DNS-01: DNS TXT 레코드에 토큰을 추가. 80포트 불필요, 와일드카드 가능. → 멀티 도메인 인증서(SAN)가 필요하면? → Certificate 리소스의 dnsNames에 여러 도메인 나열. → 인증서가 갱신되면 Pod 재시작 없이 반영되나? → Ingress Controller가 K8s Secret 변경을 감지해 자동으로 인증서 리로드 (nginx-ingress 지원). → 와일드카드 인증서를 사용할 때 주의점은? → DNS-01만 가능하므로 Route53 등 DNS provider의 API 권한을 cert-manager에 부여해야 함.",
+    "seniorTip": "프로덕션 권장 구성: 1) ClusterIssuer로 Let's Encrypt production + staging 두 개 설정. 2) 처음에는 staging으로 테스트 후 production으로 전환(rate limit 초과 방지). 3) Ingress에 cert-manager.io/cluster-issuer: 'letsencrypt-prod' annotation 한 줄로 인증서 자동 관리. 4) 사설 CA가 필요하다면 Vault PKI Secrets Engine과 cert-manager를 통합.",
+    "tags": [
+      "ssl",
+      "tls",
+      "cert-manager",
+      "lets-encrypt",
+      "kubernetes",
+      "ingress"
+    ]
+  },
+  {
+    "id": "net-021",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "TCP Window Scaling이란 무엇이고, 높은 지연(latency)의 네트워크에서 다운로드 속도가 느려지는 원인과의 관계를 설명하라.",
+    "answer": "TCP 수신 윈도우(receive window)는 ACK 없이 보낼 수 있는 데이터 양을 결정한다. 기본 16비트(최대 64KB)로는 높은 RTT 링크에서 대역폭을 채울 수 없어 Window Scaling 옵션으로 윈도우를 확대한다",
+    "explanation": "처리량 = Window Size / RTT. 윈도우가 64KB이고 RTT가 100ms면 최대 처리량은 64KB/0.1s = 5.12Mbps. 1Gbps 회선이어도 이 제한에 걸린다. Window Scaling(RFC 7323)은 3-way handshake 시 협상되어 윈도우를 최대 1GB까지 확대할 수 있다. 해외 서버 다운로드가 느린 원인 중 하나.",
+    "seniorTip": "실무 영향: 니콘내콘이 해외 PG와 통신할 때 RTT가 200ms라면, TCP 윈도우 크기가 성능 병목이 될 수 있다. Linux에서 net.core.rmem_max, net.core.wmem_max 커널 파라미터로 최대 윈도우 크기 조정. K8s에서는 initContainer나 DaemonSet으로 노드 sysctl 설정. 또한 TCP BBR 혼잡 제어 알고리즘은 높은 RTT 환경에서 기존 CUBIC보다 훨씬 효율적이다.",
+    "tags": [
+      "tcp",
+      "window-scaling",
+      "latency",
+      "throughput",
+      "bbr"
+    ],
+    "deepDive": "TCP 혼잡 제어에서 CUBIC과 BBR 알고리즘의 차이, 그리고 BBR이 높은 RTT 환경에서 더 나은 성능을 보이는 이유는? → K8s 노드에서 sysctl 파라미터를 변경하려면 securityContext.sysctls vs DaemonSet 중 어떤 방식이 적합하고, EKS Managed Node Group에서의 제약은? → CDN(CloudFront)이 TCP 윈도우 스케일링 문제를 해결하는 원리(에지 로케이션으로 RTT 단축)는?"
+  },
+  {
+    "id": "net-022",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s 배포 시 Connection Draining(연결 배수)이 제대로 되지 않으면 어떤 문제가 발생하고, ALB + K8s에서 올바르게 설정하는 방법은?",
+    "answer": "진행 중인 요청이 완료되기 전에 Pod가 종료되어 502/504 에러 발생. terminationGracePeriodSeconds, preStop hook, ALB deregistration delay를 조합하여 해결",
+    "explanation": "Pod 종료 순서: 1) K8s가 Endpoint에서 Pod 제거 → 2) preStop hook 실행 → 3) SIGTERM 전송 → 4) gracePeriod 경과 후 SIGKILL. 문제: ALB가 Pod를 target에서 제거하기 전에 Pod가 종료되면, ALB가 이미 죽은 Pod로 요청을 보낸다.",
+    "seniorTip": "니콘내콘 결제 API에서의 필수 설정: 1) preStop: ['sh', '-c', 'sleep 15'] — ALB가 target을 제거할 시간을 벌어준다. 2) terminationGracePeriodSeconds: 60 — 진행 중인 결제 처리 완료 대기. 3) ALB target group deregistration delay: 30초. 4) NestJS에서 SIGTERM 핸들러로 graceful shutdown 구현: 새 요청 거부, 진행 중인 요청 완료 대기, DB 커넥션 풀 정리. 이 설정 없이 Rolling Update하면 배포할 때마다 간헐적 5xx 에러가 발생한다.",
+    "tags": [
+      "connection-draining",
+      "graceful-shutdown",
+      "kubernetes",
+      "alb",
+      "deployment"
+    ],
+    "deepDive": "preStop hook의 sleep 시간과 ALB deregistration delay의 관계, 그리고 둘 중 어느 것이 더 길어야 하는가? → NestJS의 onApplicationShutdown() 훅에서 SQS consumer를 먼저 중지하고, 처리 중인 메시지 완료를 기다린 후 DB 커넥션을 닫는 순서가 왜 중요한가? → Rolling Update 중 maxSurge/maxUnavailable 설정이 connection draining과 어떻게 상호작용하는가?"
+  },
+  {
+    "id": "net-023",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "HTTP/2 멀티플렉싱이 TCP 레벨의 Head-of-Line Blocking 문제를 해결하지 못하는 이유는?",
+    "options": [
+      "HTTP/2가 멀티플렉싱을 제대로 구현하지 않아서",
+      "하나의 TCP 연결에서 패킷 손실이 발생하면 TCP가 손실된 패킷을 재전송할 때까지 모든 스트림이 블로킹되기 때문",
+      "HTTP/2는 암호화를 강제하여 느리기 때문",
+      "브라우저가 HTTP/2 멀티플렉싱을 제한하기 때문"
+    ],
+    "answer": 1,
+    "explanation": "HTTP/2는 하나의 TCP 연결에서 여러 요청/응답을 동시에 전송(멀티플렉싱)한다. 하지만 TCP는 바이트 순서를 보장하므로, 하나의 패킷이 손실되면 그 뒤의 모든 데이터(다른 스트림 포함)가 대기한다. 이것이 TCP 레벨 Head-of-Line Blocking이다. HTTP/3(QUIC)은 UDP 위에서 스트림별 독립적 전송을 구현하여 이 문제를 해결한다.",
+    "seniorTip": "패킷 손실률 2%만 되어도 HTTP/2 단일 연결이 HTTP/1.1 다중 연결보다 느릴 수 있다. 모바일 네트워크(패킷 손실 빈번)에서 특히 문제. HTTP/3(QUIC) 장점: 1) 스트림별 독립적 손실 처리. 2) 0-RTT 연결 수립(재접속 시). 3) 연결 마이그레이션(WiFi→LTE 전환 시 연결 유지). CloudFront는 HTTP/3를 지원하므로 니콘내콘 웹 클라이언트에서 바로 활용 가능.",
+    "tags": [
+      "http2",
+      "http3",
+      "quic",
+      "head-of-line-blocking",
+      "multiplexing"
+    ],
+    "deepDive": "QUIC이 UDP 위에서 신뢰성을 구현하는 방식과 TCP의 재전송 메커니즘의 차이점은? → HTTP/3의 0-RTT 재접속이 Replay Attack에 취약한 이유와 방어 방법은? → CloudFront에서 HTTP/3를 활성화할 때 Origin(ALB/NLB)까지 HTTP/3가 적용되는 것인지, Edge까지만인지의 구분은?"
+  },
+  {
+    "id": "net-024",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "gRPC에서 Deadline Propagation이란 무엇이고, 마이크로서비스 체인에서 왜 중요한가?",
+    "answer": "클라이언트가 설정한 deadline(최대 응답 대기 시간)을 호출 체인의 모든 하위 서비스에 전파하여, 이미 타임아웃된 요청에 대해 불필요한 처리를 하지 않도록 하는 메커니즘",
+    "explanation": "서비스 A → B → C 체인에서 A가 5초 deadline을 설정. A→B에 2초 걸렸으면 B→C에는 3초 deadline이 전파된다. C가 3초 내에 응답하지 못하면 즉시 DEADLINE_EXCEEDED 에러 반환. deadline 전파 없이 각 서비스가 독립적 타임아웃을 설정하면, A는 이미 타임아웃했는데 B, C가 계속 작업하는 낭비가 발생한다.",
+    "seniorTip": "REST API에서는 이 개념이 내장되어 있지 않아 직접 구현해야 한다(X-Request-Timeout 커스텀 헤더 전파). gRPC의 장점 중 하나. 니콘내콘에서 결제 API → PG 호출 → 콜백 처리 체인에서, 사용자가 이미 이탈했는데(클라이언트 타임아웃) 서버가 PG 호출을 계속하면 PG 리소스 낭비 + 불필요한 결제 발생 가능. gRPC를 안 쓰더라도 OpenTelemetry의 context propagation으로 유사한 패턴 구현 가능.",
+    "tags": [
+      "grpc",
+      "deadline-propagation",
+      "timeout",
+      "microservices",
+      "context-propagation"
+    ],
+    "deepDive": "gRPC deadline과 HTTP timeout의 근본적 차이(메타데이터 자동 전파 vs 수동 전파)는? → gRPC 서버가 deadline을 초과한 요청을 감지했을 때, 이미 시작한 DB 트랜잭션을 어떻게 롤백하는가? → Deadline Propagation과 Distributed Tracing(Jaeger/X-Ray)을 함께 사용할 때, 타임아웃된 요청의 trace를 어떻게 분석하여 병목 서비스를 식별하는가?"
+  },
+  {
+    "id": "net-025",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "블루-그린 배포에서 DNS TTL을 충분히 낮추지 않으면 발생하는 문제는?",
+    "options": [
+      "배포 속도가 느려진다",
+      "DNS 캐시에 이전 환경(블루)의 IP가 남아있어, TTL이 만료될 때까지 일부 사용자가 이전 버전으로 트래픽이 라우팅된다",
+      "SSL 인증서가 만료된다",
+      "서버 메모리가 부족해진다"
+    ],
+    "answer": 1,
+    "explanation": "DNS TTL이 3600초(1시간)인 상태에서 블루→그린 전환하면, 최대 1시간 동안 일부 사용자(ISP DNS, 브라우저 캐시)가 이전 IP로 접속한다. 전환 전에 TTL을 60초로 낮추고, 충분한 시간(기존 TTL 이상) 대기 후 전환해야 한다.",
+    "seniorTip": "실무 절차: 1) 전환 1시간 전에 TTL을 60초로 변경. 2) 기존 TTL(3600초) 동안 대기하여 모든 캐시가 새 TTL을 반영. 3) DNS를 그린으로 전환. 4) 전환 후 기존 블루 환경은 1시간 유지(롤백 대비). 5) 안정 확인 후 TTL 복원. AWS에서는 Route53 + ALB 조합으로 DNS 전환 대신 ALB 타겟 그룹 가중치를 변경하면 DNS TTL 문제 자체를 회피할 수 있다.",
+    "tags": [
+      "dns",
+      "ttl",
+      "blue-green",
+      "deployment",
+      "route53"
+    ],
+    "deepDive": "Route53의 Alias Record는 TTL을 직접 제어할 수 없는 경우가 있는데, ALB Alias의 TTL은 어떻게 결정되는가? → DNS 전환 대신 ALB의 weighted target group을 사용한 블루-그린 배포가 DNS TTL 문제를 완전히 해결하는 이유는? → Java/JVM 기반 서비스에서 DNS 캐시가 무한(InetAddress 캐시)인 기본 설정이 블루-그린 배포에 어떤 문제를 일으키는가?"
+  },
+  {
+    "id": "net-026",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS NAT Gateway의 처리량 제한과 비용 구조, 그리고 Single NAT Gateway 구성의 위험성을 설명하라.",
+    "answer": "NAT Gateway는 버스트 45Gbps, 단일 목적지 연결 55,000개 제한. 비용은 시간당 + 데이터 처리 GB당 과금. 단일 NAT GW는 해당 AZ 장애 시 모든 아웃바운드 통신 두절",
+    "explanation": "NAT Gateway 비용: $0.045/hr + $0.045/GB 처리. 월 1TB 아웃바운드 시 $45(처리) + $32.4(시간) = $77.4. AZ별 NAT Gateway를 배치하지 않으면 해당 AZ 장애 시 다른 AZ의 Pod도 인터넷에 접근 불가(라우팅이 장애 AZ의 NAT GW를 가리키므로).",
+    "seniorTip": "니콘내콘 179개 서비스에서 NAT Gateway 비용이 의외로 크다. 비용 절감: 1) VPC Endpoint를 S3, DynamoDB, ECR, CloudWatch 등에 적용하면 NAT를 통하지 않아 데이터 처리 비용 제거. 2) ECR 이미지 풀(하루 수백 번)이 NAT를 통하면 상당한 비용. ECR VPC Endpoint만 추가해도 월 수십 달러 절감. 3) HA 구성: 각 AZ에 NAT Gateway 배치 + 라우트 테이블을 AZ별로 분리. 비용은 2-3배지만 가용성 필수.",
+    "tags": [
+      "nat-gateway",
+      "vpc",
+      "cost-optimization",
+      "high-availability",
+      "vpc-endpoint"
+    ],
+    "deepDive": "NAT Gateway의 55,000 동시 연결 제한에 걸리면 ErrorPortAllocation 메트릭이 증가하는데, 이를 모니터링하고 해결하는 방법(여러 NAT GW 분산)은? → VPC Endpoint Gateway(S3, DynamoDB)와 VPC Endpoint Interface(ECR, CloudWatch)의 비용 구조 차이는? → NAT Instance(EC2 기반)로 대체하여 비용을 절감하는 것이 합리적인 시나리오는?"
+  },
+  {
+    "id": "net-027",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "ALB의 idle timeout(기본 60초)과 애플리케이션의 keep-alive timeout이 불일치하면 발생하는 문제는?",
+    "options": [
+      "SSL 인증서 에러가 발생한다",
+      "애플리케이션의 keep-alive timeout이 ALB idle timeout보다 짧으면, 서버가 먼저 연결을 끊어 ALB가 이미 닫힌 연결로 요청을 보내 502 에러가 발생한다",
+      "요청이 2배로 느려진다",
+      "메모리 누수가 발생한다"
+    ],
+    "answer": 1,
+    "explanation": "시나리오: ALB idle timeout = 60초, Node.js keepAliveTimeout = 5초(기본값). 연결이 5초간 유휴하면 Node.js가 연결을 닫지만, ALB는 60초까지 유효하다고 판단. ALB가 이 연결로 요청을 보내면 서버는 이미 닫았으므로 RST 응답 → ALB가 502 반환.",
+    "seniorTip": "NestJS 필수 설정: const server = app.getHttpServer(); server.keepAliveTimeout = 65000; server.headersTimeout = 66000; (ALB 60초보다 높게). 이 설정 없이 운영하면 트래픽이 높아질수록 간헐적 502가 증가하는데, 재현이 어려워 디버깅에 며칠을 허비한다. headersTimeout은 keepAliveTimeout보다 반드시 높아야 한다(Node.js가 헤더를 기다리는 시간).",
+    "tags": [
+      "alb",
+      "keep-alive",
+      "timeout",
+      "502-error",
+      "nestjs"
+    ],
+    "deepDive": "Node.js의 keepAliveTimeout과 headersTimeout의 차이, 그리고 headersTimeout이 keepAliveTimeout보다 낮으면 발생하는 에러는? → NLB를 사용할 때는 이 문제가 발생하지 않는 이유(L4 vs L7)는? → HTTP/2에서는 keep-alive 개념이 다른데, ALB의 HTTP/2 지원 시 동일한 문제가 발생하는가?"
+  },
+  {
+    "id": "net-028",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "TCP TIME_WAIT 상태가 고트래픽 서버에서 문제가 되는 이유와 해결 방법을 설명하라.",
+    "answer": "TCP 연결 종료 후 2MSL(보통 60초) 동안 TIME_WAIT 상태를 유지하여 로컬 포트를 점유. 초당 수천 건의 단기 연결이 생기면 사용 가능한 포트가 고갈되어 새 연결이 실패한다",
+    "explanation": "TIME_WAIT 존재 이유: 1) 지연된 패킷이 새 연결에 혼입되는 것을 방지. 2) 마지막 ACK가 유실됐을 때 FIN 재전송에 응답하기 위해. 문제: 포트 범위 32768-60999(약 28,000개)에서 TIME_WAIT이 쌓이면 ephemeral port 고갈.",
+    "seniorTip": "해결 방법: 1) net.ipv4.tcp_tw_reuse = 1 — 안전하게 TIME_WAIT 소켓 재사용(outbound 연결에만 적용). 2) Connection Pool 활용 — DB, Redis, HTTP 클라이언트에서 연결을 재사용하면 TIME_WAIT 자체가 줄어듦. 3) HTTP Keep-Alive로 연결 재사용. 니콘내콘에서 8개 PG로 대량 요청 시 각 PG별 connection pool 없이 요청마다 새 연결을 생성하면 TIME_WAIT 폭발. Node.js의 http.Agent({ keepAlive: true })가 기본 설정.",
+    "tags": [
+      "tcp",
+      "time-wait",
+      "ephemeral-port",
+      "connection-pool",
+      "high-traffic"
+    ],
+    "deepDive": "tcp_tw_reuse와 (이제 제거된) tcp_tw_recycle의 차이, 그리고 tcp_tw_recycle이 NAT 환경에서 왜 위험했는가? → K8s Pod에서 대량의 외부 API 호출 시 TIME_WAIT 모니터링 방법(ss -s 또는 netstat)과 경고 임계치 설정은? → HTTP/2 단일 연결 멀티플렉싱이 TIME_WAIT 문제를 근본적으로 해결하는 이유는?"
+  },
+  {
+    "id": "net-029",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "SNI(Server Name Indication)란 무엇이고, 하나의 ALB에서 여러 도메인의 TLS 인증서를 처리하는 방식을 설명하라.",
+    "answer": "SNI는 TLS 핸드셰이크 시 클라이언트가 접속하려는 도메인명을 평문으로 전달하여, 서버가 해당 도메인에 맞는 인증서를 선택할 수 있게 하는 TLS 확장",
+    "explanation": "SNI 이전: 하나의 IP에 하나의 TLS 인증서만 가능. TLS 핸드셰이크가 HTTP 요청(Host 헤더) 전에 일어나므로 서버가 어떤 인증서를 제공할지 알 수 없었다. SNI로 클라이언트가 목표 도메인을 먼저 알려주면 서버가 올바른 인증서를 선택한다.",
+    "seniorTip": "AWS ALB는 SNI를 지원하여 하나의 ALB에 최대 25개 인증서를 연결할 수 있다. 니콘내콘에서 api.example.com, admin.example.com, partner.example.com을 하나의 ALB로 서비스 가능. 와일드카드 인증서(*.example.com)를 쓰면 더 간편하지만, 서브도메인 하나가 탈취되면 와일드카드 인증서를 재발급해야 하는 보안 리스크. 개별 인증서 + SNI가 보안적으로 더 안전한 선택일 수 있다.",
+    "tags": [
+      "sni",
+      "tls",
+      "alb",
+      "certificate",
+      "https"
+    ],
+    "deepDive": "SNI 정보가 평문으로 전달되어 어떤 도메인에 접속하는지 노출되는 프라이버시 문제를 Encrypted Client Hello(ECH)가 어떻게 해결하는가? → ALB에서 default certificate과 SNI certificate의 우선순위 로직은? → 오래된 클라이언트(Android 2.x, IE6)가 SNI를 지원하지 않을 때의 fallback 전략은?"
+  },
+  {
+    "id": "net-030",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "K8s에서 WebSocket 연결을 사용하는 Pod의 수평 확장(HPA)과 Graceful Drain에서 가장 주의할 점은?",
+    "options": [
+      "WebSocket은 K8s에서 지원되지 않는다",
+      "WebSocket은 장기 연결이므로 Pod 종료 시 기존 연결이 끊기고, HPA 축소 시 연결이 불균등하게 분배되며, Sticky Session이나 reconnect 로직이 필요하다",
+      "WebSocket은 HTTP/2에서만 동작한다",
+      "WebSocket 연결은 Pod 간 자동 마이그레이션된다"
+    ],
+    "answer": 1,
+    "explanation": "WebSocket은 한번 연결되면 장시간 유지되는 stateful 연결이다. 새로 생성된 Pod에는 기존 WebSocket 연결이 없으므로 부하가 불균등해진다. Pod 축소 시 해당 Pod의 모든 WebSocket 연결이 끊긴다. 클라이언트에서 reconnect + 지수 백오프 로직이 필수.",
+    "seniorTip": "실무 설계: 1) preStop hook으로 새 연결 수신 중단 + 기존 연결에 reconnect 신호 전송 + 드레인 대기. 2) Redis Pub/Sub로 WebSocket 메시지를 Pod 간 공유하여 어느 Pod에 재접속해도 동일한 서비스. 3) ALB의 sticky session(AWSALB 쿠키)은 WebSocket 초기 핸드셰이크에는 도움되지만, 재접속 시 같은 Pod가 없을 수 있으므로 의존하면 안 됨. 4) Socket.IO의 adapter를 Redis로 설정하는 것이 표준 패턴.",
+    "tags": [
+      "websocket",
+      "kubernetes",
+      "hpa",
+      "graceful-drain",
+      "socket-io"
+    ],
+    "deepDive": "Socket.IO Redis Adapter가 Pod 간 메시지를 동기화하는 내부 구조(Pub/Sub 채널)와, Redis 장애 시 WebSocket 서비스에 미치는 영향은? → K8s에서 WebSocket Pod의 HPA 메트릭으로 연결 수(custom metric)를 사용할 때 Prometheus + KEDA로 구현하는 방법은? → ALB의 WebSocket idle timeout(기본 4000초)을 넘는 장기 연결은 어떻게 유지하는가(ping/pong frame)?"
+  },
+  {
+    "id": "net-031",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "K8s Network Policy의 'deny-all-then-allow' 패턴이란 무엇이고, 왜 보안 모범 사례인가?",
+    "answer": "기본적으로 모든 Ingress/Egress 트래픽을 차단(deny-all)하고, 필요한 통신만 명시적으로 허용(allow)하는 패턴. 제로 트러스트 네트워크의 기본 원칙",
+    "explanation": "K8s는 기본적으로 모든 Pod 간 통신이 허용된다. 결제 서비스 Pod가 해킹되면 DB Pod, 관리자 서비스 등에 자유롭게 접근 가능. deny-all NetworkPolicy를 먼저 적용하고, 결제→DB, 결제→PG 같은 필요한 경로만 명시적으로 허용하면 공격 범위가 제한된다.",
+    "seniorTip": "니콘내콘 적용 예시: 결제 네임스페이스에 deny-all 적용 후, 1) Ingress: API Gateway에서만 결제 Pod 접근 허용. 2) Egress: PG 도메인/IP와 RDS만 허용. 이렇게 하면 결제 Pod가 침해되어도 다른 서비스로의 lateral movement가 차단된다. 주의: CoreDNS(kube-system의 53번 포트)에 대한 Egress를 허용하지 않으면 DNS 해석 자체가 안 되어 모든 통신이 실패한다. Calico나 Cilium CNI 필요(기본 VPC CNI는 제한적 지원).",
+    "tags": [
+      "network-policy",
+      "kubernetes",
+      "zero-trust",
+      "calico",
+      "security"
+    ],
+    "deepDive": "NetworkPolicy에서 namespaceSelector와 podSelector를 조합할 때, 의도치 않게 너무 넓은 범위를 허용하는 실수를 어떻게 방지하는가? → Cilium의 CiliumNetworkPolicy가 K8s 기본 NetworkPolicy보다 강력한 점(L7 정책, FQDN 기반 Egress 제어)은? → Network Policy를 CI/CD에서 자동 검증하는 도구(kube-network-policy-validator)와 드라이런 방법은?"
+  },
+  {
+    "id": "net-032",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS 서비스(S3, ECR, CloudWatch 등) 접근 시 VPC Endpoint를 사용하면 NAT Gateway 대비 어떤 이점이 있는가?",
+    "options": [
+      "VPC Endpoint가 더 빠르기만 하다",
+      "트래픽이 AWS 내부 네트워크를 통하므로 NAT Gateway 데이터 처리 비용이 제거되고, 보안적으로도 인터넷을 거치지 않아 안전하다",
+      "VPC Endpoint는 무료이므로 비용이 전혀 들지 않는다",
+      "VPC Endpoint는 모든 AWS 서비스를 지원한다"
+    ],
+    "answer": 1,
+    "explanation": "NAT Gateway 경유: Pod → NAT GW($0.045/GB) → 인터넷 → S3. VPC Endpoint(Gateway): Pod → VPC Endpoint(무료) → S3. VPC Endpoint(Interface): Pod → ENI($0.01/hr + $0.01/GB) → AWS 서비스. Gateway 타입(S3, DynamoDB)은 완전 무료, Interface 타입은 소액 과금이지만 NAT보다 저렴.",
+    "seniorTip": "비용 시뮬레이션(니콘내콘 기준): ECR 이미지 풀 하루 500회 × 이미지 500MB = 250GB/일 = 7.5TB/월. NAT 경유: $337.5/월 데이터 처리 비용. ECR VPC Endpoint: ~$21.6/월(Interface $0.01/hr × 3AZ × 24hr × 30일) + $75/월 데이터. 절감: 약 $240/월. S3 VPC Endpoint(Gateway)는 무료이므로 S3 트래픽 전체가 무료. 설정: VPC Endpoint 생성 + 라우트 테이블(Gateway) 또는 Private DNS(Interface) 활성화.",
+    "tags": [
+      "vpc-endpoint",
+      "nat-gateway",
+      "cost-optimization",
+      "aws",
+      "s3"
+    ],
+    "deepDive": "VPC Endpoint Policy로 특정 S3 버킷만 접근을 허용하여 데이터 유출을 방지하는 방법은? → Interface VPC Endpoint의 Private DNS 활성화가 VPC 전체에 영향을 미치는 이유와, 멀티 계정 환경에서의 주의점은? → VPC Endpoint를 Terraform으로 관리할 때 라우트 테이블 연결을 빠뜨리는 흔한 실수와 디버깅 방법은?"
+  },
+  {
+    "id": "net-033",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "mTLS(Mutual TLS) 인증서 로테이션을 무중단으로 수행하는 방법을 설명하라.",
+    "answer": "새 인증서와 기존 인증서를 동시에 신뢰하는 과도기를 두어 점진적으로 교체. 1) 새 CA/인증서 생성 → 2) 양쪽 CA를 모두 Trust Store에 추가 → 3) 서비스별 인증서를 새 것으로 교체 → 4) 구 CA를 Trust Store에서 제거",
+    "explanation": "mTLS에서는 클라이언트도 인증서를 제시하고 서버가 검증한다. 한쪽만 새 인증서로 교체하면 상대방이 신뢰하지 않아 통신이 끊긴다. 핵심은 과도기에 양쪽 인증서를 모두 수용하는 것.",
+    "seniorTip": "Istio에서의 자동화: Istio는 citadel/istiod가 자동으로 워크로드 인증서를 발급하고 만료 전 갱신. 인증서 수명 기본 24시간. cert-manager + Vault PKI를 사용하면 K8s Secret에 인증서를 자동 갱신하고, Envoy가 Secret 변경을 감지하여 핫 리로드. 수동 관리 시의 위험: 인증서 만료를 놓치면 전체 서비스 간 통신이 중단되는 대규모 장애. PagerDuty 알림으로 만료 30일/7일/1일 전 경고 설정 필수.",
+    "tags": [
+      "mtls",
+      "certificate-rotation",
+      "istio",
+      "zero-downtime",
+      "cert-manager"
+    ],
+    "deepDive": "Istio의 SDS(Secret Discovery Service)가 인증서를 Envoy 사이드카에 동적으로 전달하는 메커니즘은? → 외부 PG사와의 mTLS 연동에서 상대방 인증서 갱신 일정을 모를 때 Trust Store 관리 전략은? → 인증서 만료 모니터링을 Prometheus + 커스텀 exporter로 구현하는 방법(x509_cert_expiry 메트릭)은?"
+  },
+  {
+    "id": "net-034",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "NLB(Network Load Balancer)를 사용할 때 클라이언트 원본 IP를 보존하기 위해 Proxy Protocol을 활성화하는 이유는?",
+    "options": [
+      "NLB 성능을 높이기 위해",
+      "NLB가 L4에서 동작하여 HTTP 헤더(X-Forwarded-For)를 추가할 수 없으므로, Proxy Protocol 헤더로 원본 IP를 전달한다",
+      "TLS 암호화를 위해",
+      "WebSocket 지원을 위해"
+    ],
+    "answer": 1,
+    "explanation": "ALB(L7)는 HTTP 헤더에 X-Forwarded-For를 추가하여 클라이언트 IP를 전달한다. NLB(L4)는 HTTP를 이해하지 못하므로 헤더를 추가할 수 없다. Proxy Protocol v2는 TCP 연결 시작에 바이너리 헤더를 추가하여 원본 IP/포트를 전달한다.",
+    "seniorTip": "주의: Proxy Protocol을 NLB에서 활성화하면 백엔드 서비스도 Proxy Protocol을 파싱해야 한다. nginx에서 proxy_protocol 디렉티브 활성화 필요. 활성화하지 않으면 Proxy Protocol 헤더가 HTTP 요청의 일부로 해석되어 400 Bad Request 발생. NLB target이 IP 모드(K8s의 AWS Load Balancer Controller)일 때 client IP 보존 설정이 다르다 — target type이 instance면 자동 보존, ip면 Proxy Protocol 필요.",
+    "tags": [
+      "proxy-protocol",
+      "nlb",
+      "client-ip",
+      "x-forwarded-for",
+      "load-balancer"
+    ],
+    "deepDive": "Proxy Protocol v1(텍스트)과 v2(바이너리)의 차이와 성능 영향은? → K8s에서 AWS Load Balancer Controller가 NLB를 프로비저닝할 때 service.beta.kubernetes.io/aws-load-balancer-proxy-protocol annotation의 동작은? → 클라이언트 IP 기반 Rate Limiting을 NLB 뒤에서 구현할 때 Proxy Protocol 파싱 위치(Ingress Controller vs 애플리케이션)는?"
+  },
+  {
+    "id": "net-035",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "K8s에서 IPv6 Dual-Stack을 도입할 때 고려해야 할 사항을 설명하라.",
+    "answer": "IPv4와 IPv6를 동시에 지원하여 Pod, Service, Ingress 모두 양쪽 주소를 할당. IPv6 전용 클라이언트 접근 가능, 주소 고갈 문제 해결. 단, 모든 CNI/로드밸런서/방화벽이 IPv6를 지원해야 한다",
+    "explanation": "EKS dual-stack: Pod에 IPv4 + IPv6 주소 모두 할당. Service의 ipFamilyPolicy를 PreferDualStack 또는 RequireDualStack으로 설정. VPC도 IPv6 CIDR을 연결해야 한다. 서브넷, Security Group, NACL 모두 IPv6 규칙 추가 필요.",
+    "seniorTip": "현실적 판단: 니콘내콘 규모에서 IPv6 전환 우선순위는 낮다. 대부분의 AWS 서비스는 IPv4를 완전 지원하고, IPv6 지원은 점진적으로 확대 중. IPv6가 실제로 필요한 경우: 1) Apple App Store 요구사항(iOS 앱은 IPv6-only 네트워크에서 동작해야 함). 2) VPC CIDR 고갈(대규모 서비스). 3) 향후 대비. 도입 시 가장 큰 함정: Security Group에 IPv6 규칙을 누락하여 의도치 않은 접근이 열리거나 차단되는 것.",
+    "tags": [
+      "ipv6",
+      "dual-stack",
+      "kubernetes",
+      "vpc",
+      "networking"
+    ],
+    "deepDive": "EKS에서 IPv6 전용 모드(IPv6-only Pod)를 사용하면 NAT Gateway가 불필요해지는 이유와, 이 모드에서 IPv4 전용 외부 서비스에 접근하는 방법(DNS64/NAT64)은? → IPv6 주소의 /128 vs /64 서브넷 할당이 K8s Pod 주소 계획에 미치는 영향은? → IPv6 환경에서 기존 IPv4 기반 WAF 규칙과 IP 화이트리스트를 어떻게 마이그레이션하는가?"
+  }
+]
