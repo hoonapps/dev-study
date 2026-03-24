@@ -819,5 +819,422 @@
       "autoscaling",
       "queue-depth"
     ]
+  },
+  {
+    "id": "k8s-041",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Helm Chart.yaml의 주요 필드(apiVersion, type, dependencies)를 설명하고, library chart와 application chart의 차이를 말하라.",
+    "answer": "apiVersion: v2(Helm 3), type: application(설치 가능) 또는 library(템플릿만 제공, 직접 설치 불가). dependencies로 subchart를 선언하며 condition/alias로 제어한다",
+    "explanation": "Chart.yaml은 Helm 차트의 메타데이터를 정의한다. apiVersion: v2는 Helm 3 전용. type: application은 K8s 리소스를 직접 렌더링하여 설치 가능하고, type: library는 재사용 가능한 템플릿/헬퍼 함수만 제공하며 다른 차트에서 dependency로 참조한다. appVersion은 차트가 배포하는 애플리케이션의 버전, version은 차트 자체의 버전이다.",
+    "seniorTip": "니콘내콘 179개 서비스 관리 전략: 1) library chart에 공통 Deployment, Service, HPA, PDB 템플릿을 정의. 2) 각 서비스의 application chart가 library chart를 dependency로 참조. 3) values.yaml에서 서비스별 차이(이미지, replicas, 환경변수)만 오버라이드. 이러면 preStop hook, topology spread 같은 공통 설정을 한 곳에서 관리할 수 있다. version과 appVersion을 분리하면 차트 구조 변경과 앱 업데이트를 독립적으로 추적 가능.",
+    "deepDive": "library chart의 named template을 application chart에서 오버라이드할 수 있는가? → Helm의 template 우선순위: 자식 차트의 같은 이름 template이 부모보다 우선. library chart에서 define한 template을 application chart에서 재정의하면 application chart 것이 사용됨. → Chart.yaml의 kubeVersion 필드로 최소 K8s 버전을 강제하면 helm install 시 어떻게 동작하나? → 클러스터 버전이 kubeVersion 조건 미충족 시 설치 거부. EKS 1.35에서 K8s 1.28 이상 요구 조건을 넣으면 구버전 클러스터 실수 배포 방지. → Helm OCI registry로 차트를 배포하는 것과 ChartMuseum의 차이는? → OCI는 ECR 같은 컨테이너 레지스트리에 차트를 저장. 별도 서버 불필요, 이미지와 동일한 인증/권한 체계 사용.",
+    "tags": [
+      "helm",
+      "chart-yaml",
+      "library-chart",
+      "dependencies",
+      "chart-versioning"
+    ]
+  },
+  {
+    "id": "k8s-042",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Helm values.schema.json의 역할과 _helpers.tpl에서 named template을 설계하는 best practice를 설명하라.",
+    "answer": "values.schema.json은 values.yaml의 JSON Schema로 helm install/upgrade 시 값 유효성 검증. _helpers.tpl은 재사용 가능한 named template(define/include)을 정의하여 중복을 제거한다",
+    "explanation": "values.schema.json: helm install 시 사용자가 전달하는 values가 스키마에 맞는지 자동 검증. 필수 필드 누락, 타입 불일치 등을 사전에 차단한다. _helpers.tpl: {{ define \"mychart.labels\" }}...{{ end }}로 공통 라벨, 이름 등을 template으로 정의하고 {{ include \"mychart.labels\" . }}으로 호출한다.",
+    "seniorTip": "실전 _helpers.tpl 설계: 1) fullname: release name + chart name 조합으로 리소스 이름 생성. 63자 제한 고려. 2) labels: app.kubernetes.io/name, instance, version, managed-by 표준 라벨. 3) selectorLabels: Deployment의 matchLabels와 Service의 selector에 동일하게 사용. 4) serviceAccountName: SA 생성 여부에 따라 조건부 반환. values.schema.json에 image.repository를 required로, replicas를 minimum: 1로 설정하면 실수로 replicas: 0 배포를 방지할 수 있다.",
+    "deepDive": "named template에서 include와 template 키워드의 차이는? → template은 결과를 직접 출력하고 파이프라인 불가. include는 결과를 문자열로 반환하여 | nindent, | quote 등 파이프라인 처리 가능. 실무에서는 거의 항상 include를 사용. → values.schema.json에서 oneOf, anyOf 같은 복잡한 스키마를 사용할 때 주의점은? → Helm이 지원하는 JSON Schema draft 버전이 제한적(draft-07). 복잡한 조건부 검증은 제대로 동작하지 않을 수 있어 테스트 필수. → tpl 함수로 values.yaml 안에서 다른 value를 참조하는 패턴은? → {{ tpl .Values.annotations.custom . }}으로 values 안의 Go template을 런타임에 렌더링. 동적 설정에 유용하지만 디버깅이 어려워 남용 금지.",
+    "tags": [
+      "helm",
+      "values-schema",
+      "named-template",
+      "helpers-tpl",
+      "validation"
+    ]
+  },
+  {
+    "id": "k8s-043",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Helm hook 중 pre-upgrade hook으로 DB migration Job을 실행할 때, migration이 실패하면 어떻게 되는가?",
+    "options": [
+      "upgrade가 자동으로 롤백된다",
+      "hook Job이 실패하면 upgrade가 중단되고, --atomic 플래그 없이는 자동 롤백되지 않는다",
+      "migration 실패와 관계없이 upgrade는 계속 진행된다",
+      "Helm이 자동으로 migration을 재시도한다"
+    ],
+    "answer": 1,
+    "explanation": "Helm hook은 특정 lifecycle 이벤트에 리소스를 실행한다. pre-upgrade hook Job이 실패하면 Helm은 upgrade를 중단하지만, 기본적으로 자동 롤백하지 않는다. --atomic 플래그를 사용하면 hook 실패 시 자동으로 이전 릴리스로 롤백한다. hook-delete-policy로 실패한 Job 리소스의 정리 방식도 지정할 수 있다.",
+    "seniorTip": "DB migration hook 설계 패턴: 1) annotations: helm.sh/hook: pre-upgrade, helm.sh/hook-weight: \"-5\"(순서 제어), helm.sh/hook-delete-policy: before-hook-creation(이전 Job 정리). 2) migration Job의 backoffLimit: 0으로 실패 시 즉시 중단. 3) --atomic과 함께 사용하면 migration 실패 → upgrade 중단 → 자동 롤백. 4) 니콘내콘처럼 179개 서비스에서 DB schema 변경이 자주 발생하면 migration을 별도 파이프라인으로 분리하는 것도 고려. 후진 호환(backward compatible) migration만 hook으로 처리하자.",
+    "deepDive": "hook-weight가 같은 여러 hook의 실행 순서는? → 같은 weight일 때 kind 기준 정렬(알파벳순), 그 다음 name 기준 정렬. 명시적으로 weight를 다르게 지정하는 것이 안전. → pre-install과 pre-upgrade hook을 동시에 지정하면? → annotations에 쉼표로 구분: helm.sh/hook: pre-install,pre-upgrade. 첫 설치 시 pre-install, 이후 업그레이드 시 pre-upgrade가 각각 트리거. → post-install hook으로 smoke test를 실행하고 실패 시 --atomic으로 롤백하면 DB migration은 이미 완료된 상태인데? → 이것이 핵심 문제. DB migration은 롤백 불가능하므로 반드시 backward compatible하게 작성해야 한다. expand-and-contract 패턴 필수.",
+    "tags": [
+      "helm",
+      "hooks",
+      "db-migration",
+      "pre-upgrade",
+      "atomic",
+      "rollback"
+    ]
+  },
+  {
+    "id": "k8s-044",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Helm dependency management에서 subchart의 condition, alias, import-values의 역할을 각각 설명하라.",
+    "answer": "condition: 특정 values 값으로 subchart 활성화/비활성화. alias: 같은 차트를 다른 이름으로 여러 번 참조. import-values: subchart의 values를 부모 차트로 가져오기",
+    "explanation": "Chart.yaml dependencies에서 condition: redis.enabled로 설정하면 values.yaml의 redis.enabled: true/false로 subchart를 토글한다. alias: redis-cache로 지정하면 같은 redis 차트를 다른 설정으로 중복 사용 가능. import-values로 subchart의 exports를 부모 차트의 values로 끌어올려 접근을 단순화한다.",
+    "seniorTip": "니콘내콘 활용 예시: 1) 공통 library chart를 dependency로 참조하되, condition으로 HPA, PDB, ServiceMonitor 등을 서비스별로 켜고 끄기. 2) Redis가 필요한 서비스만 redis subchart를 condition: redis.enabled로 활성화. 3) helm dependency update로 charts/ 디렉토리에 subchart를 다운로드. lock 파일(Chart.lock)로 버전 고정. 4) subchart의 values는 부모에서 subchart 이름을 키로 전달: redis: replicaCount: 3.",
+    "deepDive": "subchart와 부모 차트에서 같은 이름의 template을 정의하면? → 부모 차트의 template이 우선. subchart의 template을 부모에서 오버라이드하는 패턴으로 활용 가능. → global values는 subchart에 어떻게 전파되나? → values.yaml에 global: imageRegistry: ecr.aws 설정하면 모든 subchart에서 .Values.global.imageRegistry로 접근 가능. → helm dependency build와 update의 차이는? → update는 Chart.yaml 기반으로 Chart.lock을 갱신하고 다운로드. build는 기존 Chart.lock을 기반으로 다운로드만. CI에서는 build로 재현성 보장, 로컬 개발에서는 update로 최신 버전 반영.",
+    "tags": [
+      "helm",
+      "dependency",
+      "subchart",
+      "condition",
+      "alias",
+      "import-values"
+    ]
+  },
+  {
+    "id": "k8s-045",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "helm upgrade 시 --atomic 플래그의 동작으로 올바른 것은?",
+    "options": [
+      "--atomic은 업그레이드 속도를 높여주는 성능 최적화 옵션이다",
+      "--atomic은 업그레이드 실패 시 자동으로 이전 릴리스로 롤백하며, 내부적으로 --wait를 포함한다",
+      "--atomic은 여러 차트를 동시에 업그레이드하는 옵션이다",
+      "--atomic은 dry-run과 동일한 기능이다"
+    ],
+    "answer": 1,
+    "explanation": "--atomic: 업그레이드 실패(Pod가 Ready 되지 않음, hook 실패 등) 시 자동 롤백. 내부적으로 --wait를 포함하여 모든 리소스가 Ready 상태가 될 때까지 대기한다. --timeout과 함께 사용하여 대기 시간을 제한한다. --cleanup-on-failure는 실패 시 새로 생성된 리소스를 삭제(롤백이 아닌 정리).",
+    "seniorTip": "CI/CD 파이프라인에서의 조합: helm upgrade --install --atomic --wait --timeout 5m --cleanup-on-failure. 1) --install: 릴리스가 없으면 install, 있으면 upgrade. 2) --atomic: 실패 시 롤백. 3) --timeout 5m: 5분 내 Ready 안 되면 실패. 4) --cleanup-on-failure: 롤백 후 잔여 리소스 정리. 니콘내콘 ArgoCD에서는 syncPolicy.automated.selfHeal과 Application의 retry 설정이 이 역할을 대신한다. ArgoCD sync와 helm upgrade --atomic의 차이를 이해하는 것이 중요.",
+    "deepDive": "--atomic 롤백 시 PV(Persistent Volume) 데이터는 어떻게 되나? → PV는 Helm 릴리스와 독립적으로 존재하므로 롤백해도 데이터 유실 없음. 다만 새 릴리스에서 PVC spec을 변경했다면 롤백 시 원래 PVC와 불일치 문제 발생 가능. → --wait가 확인하는 Ready 조건은 리소스 타입별로 다른가? → Deployment: availableReplicas >= replicas. StatefulSet: readyReplicas >= replicas. Job: 완료 상태. Pod: Ready condition true. → --force 플래그와 --atomic을 같이 쓰면? → --force는 리소스를 delete 후 recreate. 이는 다운타임을 유발하므로 --atomic과 함께 써도 순간적인 서비스 중단이 발생. 가능하면 사용하지 말 것.",
+    "tags": [
+      "helm",
+      "atomic",
+      "rollback",
+      "upgrade-strategy",
+      "wait",
+      "timeout"
+    ]
+  },
+  {
+    "id": "k8s-046",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "helm-secrets 플러그인과 SOPS를 사용한 Helm 시크릿 관리 방법을 설명하라.",
+    "answer": "helm-secrets 플러그인이 SOPS로 암호화된 values 파일을 helm install/upgrade 시 자동 복호화. AWS KMS, GCP KMS, PGP 키로 암호화하여 Git에 안전하게 커밋 가능하다",
+    "explanation": "SOPS(Secrets OPerationS)는 YAML/JSON 파일의 값만 암호화하고 키는 평문으로 유지하여 diff/review가 가능하다. helm-secrets 플러그인: helm secrets install -f secrets.yaml로 암호화된 values를 자동 복호화하여 전달한다. .sops.yaml 설정 파일로 프로젝트별 암호화 규칙(어떤 KMS 키, 어떤 경로)을 정의한다.",
+    "seniorTip": "니콘내콘 시크릿 관리 전략 비교: 1) helm-secrets + SOPS: Git에 암호화 커밋. 소규모 팀에 적합. 2) External Secrets Operator: AWS Secrets Manager에서 K8s Secret으로 자동 동기화. 중앙 관리에 적합. 3) Sealed Secrets: kubeseal CLI로 암호화, 클러스터 내 controller가 복호화. 니콘내콘은 External Secrets Operator를 사용하므로 Helm values에는 Secret 참조만 넣고, 실제 값은 AWS Secrets Manager에 저장. SOPS는 Terraform variables나 CI 환경변수 암호화에 활용 가능.",
+    "deepDive": "SOPS가 값만 암호화하고 키를 평문으로 두는 이유는? → Git diff에서 어떤 시크릿이 변경되었는지 키 이름으로 확인 가능. 코드 리뷰 시 '어떤 필드가 변경되었는가'를 알 수 있어 운영 안정성 향상. → AWS KMS 키가 삭제되면 SOPS 암호화된 파일은? → 복호화 불가. KMS 키 삭제 대기 기간(7-30일) 내 취소 필수. 다중 KMS 키로 암호화하면 하나가 삭제되어도 다른 키로 복호화 가능. → ArgoCD에서 helm-secrets를 사용하려면? → ArgoCD 서버에 helm-secrets 플러그인과 SOPS 바이너리 설치 필요. 또는 argocd-vault-plugin을 사용하여 Vault/Secrets Manager에서 직접 주입하는 방식이 더 깔끔.",
+    "tags": [
+      "helm",
+      "secrets",
+      "sops",
+      "encryption",
+      "kms",
+      "external-secrets"
+    ]
+  },
+  {
+    "id": "k8s-047",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "helm test 명령어와 chart-testing(ct) 도구의 차이는?",
+    "options": [
+      "둘 다 같은 도구의 다른 이름이다",
+      "helm test는 릴리스 설치 후 in-cluster 테스트 Pod를 실행하고, ct(chart-testing)는 차트의 lint/install/test를 CI에서 자동화하는 CLI 도구다",
+      "ct는 단위 테스트, helm test는 통합 테스트만 수행한다",
+      "helm test는 Helm 2에서만 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "helm test: 차트 내 templates/tests/ 디렉토리에 정의된 Pod를 실행하여 릴리스가 정상 동작하는지 검증(예: DB 연결 테스트, API 헬스체크). ct(chart-testing): Helm 차트의 lint 검사, 변경된 차트만 감지하여 install/test를 자동 실행하는 CI용 도구. GitHub Actions에서 ct lint-and-install로 PR마다 차트를 검증한다.",
+    "seniorTip": "차트 테스트 전략: 1) ct lint: Chart.yaml 유효성, values.schema.json 검증, helm template 렌더링 오류 탐지. 2) ct install: Kind(K8s in Docker) 클러스터에 실제 설치하여 Pod Ready 확인. 3) helm test: 설치 후 연결 테스트. 4) helm unittest 플러그인: 템플릿 렌더링 결과를 스냅샷 테스트. 니콘내콘 library chart 변경 시 ct가 의존하는 모든 application chart를 자동 테스트하도록 CI를 구성하면 배포 안정성이 크게 향상된다.",
+    "deepDive": "helm test Pod가 실패하면 릴리스 상태는 어떻게 변하나? → 릴리스 상태가 FAILED로 변경되지는 않음. test 결과는 별도로 보고되며, helm test --logs로 실패 로그 확인. → ct에서 changed charts만 감지하는 원리는? → git diff로 변경된 파일을 확인하고, 해당 파일이 속한 차트 디렉토리를 식별. ct.yaml에 chart-dirs를 지정하여 모노레포에서도 동작. → helm unittest와 helm template의 차이는? → helm template은 전체 렌더링 결과를 출력. unittest는 특정 template 파일의 특정 필드를 assertion으로 검증(예: deployment의 replicas가 values의 replicaCount와 일치하는지).",
+    "tags": [
+      "helm",
+      "testing",
+      "chart-testing",
+      "ct",
+      "ci-cd",
+      "unittest"
+    ]
+  },
+  {
+    "id": "k8s-048",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Kubernetes Operator 패턴이란 무엇이며, 언제 Custom Operator를 직접 구현해야 하는가?",
+    "answer": "Operator는 Custom Resource + Controller로 도메인 특화 운영 로직을 자동화하는 패턴. 표준 K8s 리소스로 표현할 수 없는 복잡한 상태 관리(DB 클러스터 failover, 인증서 갱신 등)가 필요할 때 구현한다",
+    "explanation": "Operator = CRD(Custom Resource Definition) + Custom Controller. Controller는 reconciliation loop로 현재 상태를 원하는 상태로 지속 수렴시킨다. 예: cert-manager는 Certificate CRD를 감시하여 자동으로 인증서를 발급/갱신한다. Prometheus Operator는 ServiceMonitor CRD로 모니터링 타겟을 선언적으로 관리한다.",
+    "seniorTip": "Custom Operator를 만들기 전 체크리스트: 1) Helm chart + CronJob으로 해결 가능한가? → 대부분 가능하면 Operator 불필요. 2) 상태를 지속적으로 감시하고 자동 복구해야 하는가? → Operator 필요. 3) kubebuilder 또는 Operator SDK로 빠르게 scaffolding 가능. 니콘내콘에서 사용 중인 Operator들: External Secrets Operator, cert-manager, Prometheus Operator, ArgoCD(자체가 Operator). 이들이 이미 대부분의 운영 자동화를 커버하므로 커스텀 Operator가 필요한 경우는 드물다.",
+    "deepDive": "Operator의 reconciliation loop에서 무한 루프를 방지하는 방법은? → Status subresource를 사용하여 현재 상태를 기록하고, 원하는 상태와 현재 상태가 같으면 reconcile을 스킵. requeue 간격을 적절히 설정하여 API server 부하 방지. → Level-triggered vs Edge-triggered reconciliation의 차이는? → K8s controller는 level-triggered: 현재 상태 자체를 확인하여 결정. 이벤트 유실에도 결국 올바른 상태로 수렴. edge-triggered는 이벤트 기반이라 이벤트 유실 시 상태 불일치 가능. → Operator가 관리하는 리소스를 kubectl로 직접 수정하면? → Controller가 다음 reconcile 시 원래 상태로 되돌림. 이것이 Operator의 핵심 가치이자 주의점.",
+    "tags": [
+      "operator",
+      "crd",
+      "controller",
+      "reconciliation",
+      "kubebuilder",
+      "custom-resource"
+    ]
+  },
+  {
+    "id": "k8s-049",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Kubernetes Admission Webhook 중 ValidatingWebhookConfiguration과 MutatingWebhookConfiguration의 실행 순서와 차이는?",
+    "options": [
+      "Validating이 먼저 실행되고, 그 다음 Mutating이 실행된다",
+      "Mutating webhook이 먼저 실행되어 리소스를 수정하고, 그 다음 Validating webhook이 수정된 리소스를 검증한다",
+      "둘은 동시에 병렬로 실행된다",
+      "실행 순서는 랜덤이며 보장되지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "API 요청 흐름: Authentication → Authorization → Mutating Admission → Object Schema Validation → Validating Admission → etcd 저장. Mutating webhook이 먼저 실행되어 기본값 주입, 사이드카 추가 등 리소스를 수정한다. 이후 Validating webhook이 최종 리소스를 검증하여 정책 위반 시 거부한다.",
+    "seniorTip": "니콘내콘 정책 enforcement 예시: 1) Mutating: 모든 Pod에 자동으로 resource limits 기본값 주입, Datadog 사이드카 주입. 2) Validating: latest 태그 이미지 사용 금지, resource limits 미설정 Pod 거부, 특정 namespace에 privileged Pod 생성 금지. 3) OPA Gatekeeper 또는 Kyverno가 이 webhook 기반으로 동작. Kyverno는 YAML 기반으로 정책을 선언하여 Rego(OPA) 학습 없이 사용 가능. 4) failurePolicy: Ignore vs Fail 설정 주의. webhook 서버 장애 시 Fail이면 모든 배포가 중단됨.",
+    "deepDive": "Mutating webhook이 여러 개일 때 실행 순서는? → reinvocationPolicy: IfNeeded 설정 시, 한 webhook의 mutation이 다른 webhook의 조건을 변경하면 재실행. 무한 루프 방지를 위해 최대 재실행 횟수 제한 있음. → webhook 서버가 응답하지 않을 때 timeoutSeconds와 failurePolicy의 관계는? → timeoutSeconds(기본 10초) 내 응답 없으면 failurePolicy에 따라 Ignore(허용) 또는 Fail(거부). 프로덕션에서는 Fail + 높은 가용성의 webhook 서버가 필요. → namespace selector로 특정 namespace만 webhook을 적용하는 이유는? → kube-system 등 시스템 namespace에 webhook을 적용하면 핵심 컴포넌트 배포가 차단될 수 있어 반드시 제외해야 한다.",
+    "tags": [
+      "admission-webhook",
+      "validating",
+      "mutating",
+      "policy",
+      "kyverno",
+      "opa-gatekeeper"
+    ]
+  },
+  {
+    "id": "k8s-050",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Kubernetes Downward API로 Pod 메타데이터를 컨테이너에 주입하는 두 가지 방법과 활용 사례를 설명하라.",
+    "answer": "환경변수(fieldRef, resourceFieldRef)와 볼륨 마운트(downwardAPI volume) 두 가지 방법. Pod 이름, namespace, 노드 이름, CPU/메모리 limits 등을 주입할 수 있다",
+    "explanation": "1) 환경변수: env에 valueFrom.fieldRef.fieldPath: metadata.name으로 Pod 이름 주입. resourceFieldRef로 CPU/메모리 limits 주입. 2) 볼륨: downwardAPI volume으로 labels, annotations을 파일로 마운트. 환경변수와 달리 런타임에 값이 변경되면 파일도 자동 업데이트된다.",
+    "seniorTip": "활용 사례: 1) 로그에 Pod 이름, 노드 이름 포함 → Datadog에서 인프라와 로그 상관관계 분석. 2) OTEL_RESOURCE_ATTRIBUTES에 k8s.pod.name, k8s.namespace.name 주입 → 분산 추적에서 Pod 식별. 3) resourceFieldRef로 컨테이너 메모리 limit을 JVM의 -Xmx에 동적 반영. 4) annotations을 볼륨으로 마운트하여 config reload 없이 설정 변경(annotation 업데이트 → 파일 자동 변경 → 앱이 파일 감시). 니콘내콘 NestJS 서비스에서 LOG_POD_NAME 환경변수로 구조화 로깅에 활용.",
+    "deepDive": "fieldRef로 접근 가능한 필드와 불가능한 필드의 기준은? → metadata.name, metadata.namespace, metadata.uid, metadata.labels, metadata.annotations, spec.nodeName, spec.serviceAccountName, status.podIP, status.hostIP 등이 가능. Secret 데이터나 다른 Pod의 정보는 접근 불가. → downwardAPI 볼륨으로 labels를 마운트했을 때 label이 변경되면 반영 시간은? → kubelet의 sync 주기(기본 60초) + 캐시 TTL에 따라 최대 수 분 지연. ConfigMap 볼륨과 동일한 메커니즘. → resourceFieldRef에서 divisor 필드의 역할은? → 리소스 값의 단위를 변환. 예: 메모리 limit이 512Mi일 때 divisor: 1Mi로 설정하면 환경변수 값이 512(숫자)로 주입. JVM -Xmx 설정에 직접 사용 가능.",
+    "tags": [
+      "downward-api",
+      "metadata",
+      "environment-variable",
+      "volume",
+      "observability"
+    ]
+  },
+  {
+    "id": "k8s-051",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Kubernetes Projected Volume이란 무엇이며, 어떤 소스들을 하나의 볼륨으로 결합할 수 있는가?",
+    "answer": "Projected Volume은 여러 볼륨 소스(Secret, ConfigMap, Downward API, ServiceAccount Token)를 단일 디렉토리에 마운트하는 볼륨 타입이다",
+    "explanation": "하나의 mountPath에 여러 소스를 결합할 수 있다: 1) secret: 인증서, 키 파일. 2) configMap: 설정 파일. 3) downwardAPI: Pod 메타데이터. 4) serviceAccountToken: audience, expirationSeconds를 지정한 바운드 SA 토큰. 각 소스에서 어떤 key를 어떤 path에 마운트할지 개별 지정 가능.",
+    "seniorTip": "실전 활용: 1) IRSA/Pod Identity에서 내부적으로 projected volume을 사용하여 SA 토큰을 마운트. 2) Istio sidecar가 mTLS 인증서를 projected volume으로 주입. 3) 하나의 /etc/config 디렉토리에 ConfigMap(앱 설정) + Secret(DB 비밀번호) + downwardAPI(Pod 정보)를 함께 마운트하여 앱이 단일 경로에서 모든 설정을 읽도록 구성. 4) serviceAccountToken의 expirationSeconds로 토큰 자동 갱신을 강제하여 보안 강화. EKS에서 Pod Identity webhook이 이 방식으로 토큰을 주입한다.",
+    "deepDive": "projected volume의 serviceAccountToken에서 audience 필드의 역할은? → 토큰의 수신자(audience)를 제한. sts.amazonaws.com을 audience로 설정하면 해당 토큰은 AWS STS에서만 유효. 다른 서비스가 토큰을 탈취해도 audience가 다르면 사용 불가. → ConfigMap과 Secret을 같은 projected volume에 마운트할 때 파일 권한(mode)을 소스별로 다르게 설정할 수 있나? → 가능. 각 소스에 items[].mode를 지정. Secret 파일은 0400(소유자만 읽기), ConfigMap은 0644로 설정하여 보안 차등화. → projected volume으로 마운트된 SA 토큰의 자동 갱신 주기는? → kubelet이 토큰 만료 80% 시점에 자동 갱신. expirationSeconds: 3600이면 약 48분마다 새 토큰 생성. 앱은 파일을 매번 읽어야 최신 토큰 사용 가능.",
+    "tags": [
+      "projected-volume",
+      "secret",
+      "configmap",
+      "service-account-token",
+      "security"
+    ]
+  },
+  {
+    "id": "k8s-052",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "PriorityClass를 사용한 Pod 선점(preemption)에서, 낮은 우선순위 Pod가 축출될 때 graceful shutdown이 보장되는가?",
+    "options": [
+      "선점 시 낮은 우선순위 Pod가 즉시 강제 종료(SIGKILL)된다",
+      "선점 시 낮은 우선순위 Pod에 terminationGracePeriodSeconds가 적용되어 graceful shutdown이 가능하다",
+      "선점은 발생하지 않으며 Pending 상태로 대기한다",
+      "높은 우선순위 Pod가 대신 축출된다"
+    ],
+    "answer": 1,
+    "explanation": "선점(preemption) 시 낮은 우선순위 Pod는 SIGTERM을 받고 terminationGracePeriodSeconds 동안 graceful shutdown할 수 있다. 이 기간이 지나면 SIGKILL로 강제 종료된다. scheduler가 선점 대상 Pod를 선택할 때 PDB(PodDisruptionBudget)도 고려하지만, 충분한 리소스를 확보할 수 없으면 PDB를 위반할 수 있다.",
+    "seniorTip": "니콘내콘 PriorityClass 전략: 1) system-critical(1000000): coredns, kube-proxy 등 시스템 컴포넌트. 2) platform-high(100000): Ingress controller, monitoring. 3) app-high(10000): 쿠폰 API, 결제 서비스 등 핵심 서비스. 4) app-default(1000): 일반 서비스. 5) batch-low(100): 배치 Job, 데이터 처리. preemptionPolicy: Never로 설정하면 높은 우선순위를 가지되 다른 Pod를 축출하지는 않고, 리소스가 자연히 빌 때까지 대기. 배치 Job에 유용.",
+    "deepDive": "PriorityClass의 globalDefault: true는 어떻게 동작하나? → priorityClassName을 명시하지 않은 모든 Pod에 이 PriorityClass가 자동 적용. 클러스터에 하나만 설정 가능. 기존 Pod에는 소급 적용되지 않고 새로 생성되는 Pod부터 적용. → 선점 시 scheduler가 축출할 Pod를 선택하는 알고리즘은? → 1) PDB를 위반하지 않는 Pod 우선 선택. 2) 같은 우선순위 중 리소스를 많이 사용하는 Pod. 3) 가능한 최소한의 Pod를 축출. → preemption과 Cluster Autoscaler의 상호작용은? → CA가 새 노드를 추가하기 전에 preemption이 먼저 시도됨. 새 노드 추가보다 기존 노드에서 낮은 우선순위 Pod를 축출하는 것이 빠르므로 critical 워크로드의 스케줄링 지연을 최소화.",
+    "tags": [
+      "priority-class",
+      "preemption",
+      "scheduling",
+      "pdb",
+      "graceful-shutdown"
+    ]
+  },
+  {
+    "id": "k8s-053",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "VPA(Vertical Pod Autoscaler)의 세 가지 updateMode(Off, Initial, Auto)를 설명하고, HPA와 동시 사용 시 주의점을 말하라.",
+    "answer": "Off: 추천값만 제공, 실제 변경 없음. Initial: Pod 생성 시에만 적용. Auto: 실행 중 Pod도 재시작하여 리소스 조정. HPA가 CPU/메모리 기반일 때 VPA Auto와 충돌하므로 주의",
+    "explanation": "VPA는 3개 컴포넌트로 구성: 1) Recommender: 리소스 사용 이력을 분석하여 적정 requests/limits를 추천. 2) Updater: Auto 모드에서 기존 Pod를 축출하여 새 requests로 재생성. 3) Admission Controller: Pod 생성 시 추천값을 주입. Off 모드는 Recommender만 동작하여 kubectl describe vpa로 추천값을 확인 가능.",
+    "seniorTip": "니콘내콘 권장 패턴: 1) VPA mode: Off로 운영하며 추천값을 모니터링. 2) 추천값을 참고하여 Helm values의 resources를 수동 업데이트. 3) HPA는 CPU 기반 수평 스케일링 담당. 4) VPA Auto + HPA를 같이 쓰려면 HPA는 custom metrics(RPS, 큐 depth)만 사용하고 CPU/메모리는 VPA에 맡기기. Goldilocks 도구를 사용하면 VPA 추천값을 대시보드로 시각화하여 전체 서비스의 right-sizing 현황을 한눈에 파악 가능.",
+    "deepDive": "VPA Auto 모드에서 Pod 재시작 시 서비스 중단을 최소화하는 방법은? → VPA Updater는 한 번에 모든 Pod를 재시작하지 않고 minReplicas를 유지하며 순차 축출. PDB와 연동하여 최소 가용 Pod 수를 보장. → VPA의 추천 알고리즘은 어떤 percentile을 사용하나? → 기본적으로 CPU는 P90, 메모리는 P99(OOM 방지를 위해 더 보수적). target, lowerBound, upperBound, uncappedTarget 네 가지 추천값을 제공하며 containerPolicies의 minAllowed/maxAllowed로 범위 제한 가능. → VPA가 추천하는 limits와 requests의 비율은 어떻게 결정되나? → 원래 설정의 limits/requests 비율을 유지. requests가 100m이고 limits가 200m(2배)이면 VPA가 requests를 150m으로 올리면 limits는 300m.",
+    "tags": [
+      "vpa",
+      "vertical-autoscaling",
+      "right-sizing",
+      "goldilocks",
+      "resource-optimization"
+    ]
+  },
+  {
+    "id": "k8s-054",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "KEDA(Kubernetes Event-Driven Autoscaling)로 SQS 큐 깊이 기반 자동 스케일링을 구성하는 방법을 설명하라.",
+    "answer": "KEDA ScaledObject에서 SQS scaler를 설정하여 큐 메시지 수 기반으로 Deployment를 0에서 N까지 자동 스케일링. HPA를 내부적으로 생성하여 동작한다",
+    "explanation": "KEDA는 Event-Driven Autoscaler로, 다양한 이벤트 소스(SQS, Kafka, Redis 등)를 기반으로 워크로드를 스케일링한다. ScaledObject CRD에 triggers로 aws-sqs-queue scaler를 설정하면 큐의 ApproximateNumberOfMessages 기반으로 replicas를 조정한다. scale-to-zero를 지원하여 메시지가 없으면 Pod를 0으로 축소한다.",
+    "seniorTip": "니콘내콘 SQS consumer 스케일링 설정: 1) ScaledObject: scaleTargetRef로 consumer Deployment 지정. 2) triggers: type: aws-sqs-queue, queueURL, queueLength: 5(Pod당 처리할 메시지 수). 3) minReplicaCount: 0(scale-to-zero), maxReplicaCount: 50. 4) cooldownPeriod: 300(스케일다운 전 대기). 5) KEDA가 Pod Identity 또는 IRSA로 SQS 메트릭을 조회하도록 TriggerAuthentication 설정. KEDA vs HPA custom metrics: KEDA는 scale-to-zero를 지원하고 설정이 선언적이라 더 간편. Datadog scaler도 지원하여 기존 모니터링과 통합 가능.",
+    "deepDive": "KEDA의 scale-to-zero에서 첫 메시지가 도착했을 때 Pod 기동까지 얼마나 걸리나? → KEDA의 pollingInterval(기본 30초) + Pod 스케줄링/이미지 풀/기동 시간. 즉시 처리가 필요하면 minReplicaCount: 1로 설정하여 항상 최소 1개 Pod 유지. → SQS FIFO 큐에서 KEDA를 사용할 때 message group 별로 스케일링이 가능한가? → KEDA SQS scaler는 큐 전체의 메시지 수만 기준. message group별 스케일링은 불가. 각 message group을 별도 큐로 분리하는 아키텍처가 필요. → KEDA ScaledObject와 기존 HPA가 같은 Deployment를 대상으로 하면? → 충돌 발생. KEDA가 내부적으로 HPA를 생성하므로 기존 HPA를 삭제해야 함. 두 개의 HPA가 동시에 같은 Deployment를 제어하면 예측 불가능한 스케일링.",
+    "tags": [
+      "keda",
+      "sqs",
+      "event-driven",
+      "scale-to-zero",
+      "autoscaling",
+      "trigger-authentication"
+    ]
+  },
+  {
+    "id": "k8s-055",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "K8s 노드 유지보수 시 cordon, drain, uncordon의 차이와 실행 순서를 설명하라.",
+    "answer": "cordon: 노드를 스케줄링 불가로 표시(기존 Pod 유지). drain: cordon + 기존 Pod를 다른 노드로 퇴거. uncordon: 노드를 다시 스케줄링 가능으로 전환. 순서: cordon → drain → 유지보수 → uncordon",
+    "explanation": "kubectl cordon <node>: 노드에 Unschedulable taint를 추가하여 새 Pod가 스케줄되지 않도록 함. 기존 Pod는 영향 없음. kubectl drain <node>: cordon을 포함하며, 기존 Pod를 안전하게 축출(evict)하여 다른 노드로 이동. DaemonSet Pod는 --ignore-daemonsets로 무시. 로컬 스토리지 Pod는 --delete-emptydir-data로 삭제 허용. uncordon: 유지보수 후 노드를 정상 복귀.",
+    "seniorTip": "drain 실패 대처: 1) PDB로 보호된 Pod가 있으면 drain이 대기. --timeout으로 최대 대기 시간 설정. 2) 로컬 볼륨(emptyDir)을 사용하는 Pod는 --delete-emptydir-data 없이 drain 불가. 3) Static Pod(kubelet 직접 관리)는 drain으로 제거 불가. 4) EKS Managed Node Group 업그레이드 시 AWS가 자동으로 cordon/drain을 수행하지만 PDB 설정이 없으면 서비스 중단 위험. 5) Karpenter의 노드 교체도 내부적으로 cordon → drain → terminate 순서를 따른다.",
+    "deepDive": "drain 중 Pod가 terminationGracePeriodSeconds를 초과하면? → SIGKILL로 강제 종료 후 다음 Pod의 drain을 진행. --grace-period 플래그로 drain 명령 자체의 grace period를 Pod의 설정과 별도로 지정 가능. → drain과 PDB의 관계에서 PDB가 maxUnavailable: 0이면? → drain이 무한 대기. --timeout을 설정하면 시간 초과 시 drain 실패로 종료. 강제로 진행하려면 --disable-eviction으로 eviction API를 우회(PDB 무시)하지만 서비스 중단 위험. → taint 기반 노드 유지보수와 cordon/drain의 차이는? → NoSchedule taint는 cordon과 유사. NoExecute taint는 기존 Pod도 축출하므로 drain과 유사. tolerationSeconds로 Pod의 축출 유예 시간 설정 가능.",
+    "tags": [
+      "node-maintenance",
+      "cordon",
+      "drain",
+      "uncordon",
+      "pdb",
+      "taint"
+    ]
+  },
+  {
+    "id": "k8s-056",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "멀티 컨테이너 패턴 중 Sidecar, Ambassador, Adapter의 차이를 올바르게 설명한 것은?",
+    "options": [
+      "세 패턴 모두 동일하며 이름만 다르다",
+      "Sidecar는 기본 컨테이너의 기능을 보조/확장, Ambassador는 외부 서비스에 대한 프록시, Adapter는 기본 컨테이너의 출력을 표준 형식으로 변환한다",
+      "Ambassador만 네트워크를 사용하고 나머지는 볼륨만 공유한다",
+      "Adapter는 Init Container의 다른 이름이다"
+    ],
+    "answer": 1,
+    "explanation": "Sidecar: 메인 컨테이너를 보조하는 보편적 패턴. 예: 로그 수집(Fluent Bit), 서비스 메시(Envoy proxy). Ambassador: 메인 앱 대신 외부 서비스와 통신하는 프록시. 예: Redis proxy, API gateway sidecar. Adapter: 메인 앱의 출력을 모니터링 시스템이 이해하는 형식으로 변환. 예: Prometheus exporter.",
+    "seniorTip": "니콘내콘 실전 멀티 컨테이너: 1) Sidecar: Datadog Agent가 DaemonSet이지만, 특수 메트릭 수집이 필요한 서비스에는 sidecar로 추가 agent 투입. 2) K8s 1.28+ Sidecar Containers(restartPolicy: Always인 init container): 기존 sidecar와 달리 init 순서가 보장되고 메인 앱 종료 후 정리됨. 3) Istio의 Envoy sidecar 주입은 mutating webhook으로 자동화. 4) sidecar가 많아지면 리소스 오버헤드가 커지므로 eBPF 기반 서비스 메시(Cilium)로 sidecar-less 전환도 트렌드.",
+    "deepDive": "K8s 1.28의 native sidecar container(restartPolicy: Always를 가진 init container)가 기존 sidecar 패턴과 다른 점은? → 기존: 일반 containers[] 배열에 사이드카를 넣으면 메인 앱과 생명주기가 독립적이라 종료 순서 미보장. Native sidecar: init container로 정의하되 restartPolicy: Always로 계속 실행. Pod 종료 시 메인 앱 먼저 종료 후 사이드카가 정리됨. → sidecar의 리소스 requests/limits를 어떻게 설정해야 HPA에 영향을 최소화하나? → 사이드카의 CPU requests가 크면 HPA의 target utilization 계산에 포함되어 스케일 타이밍이 왜곡됨. container-level 메트릭으로 HPA를 설정하면 해결. → Ambient mesh(Istio)가 sidecar를 제거하는 방식은? → L4는 노드의 ztunnel(DaemonSet)이 처리, L7이 필요할 때만 waypoint proxy를 배포. Pod별 sidecar 오버헤드 제거.",
+    "tags": [
+      "multi-container",
+      "sidecar",
+      "ambassador",
+      "adapter",
+      "native-sidecar",
+      "service-mesh"
+    ]
+  },
+  {
+    "id": "k8s-057",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s Job의 parallelism, completions, backoffLimit, activeDeadlineSeconds를 설명하고 대량 메시지 처리 시나리오를 설계하라.",
+    "answer": "completions: 성공해야 할 총 횟수. parallelism: 동시 실행 Pod 수. backoffLimit: 실패 허용 횟수. activeDeadlineSeconds: Job 전체 타임아웃. 대량 처리 시 indexed completion mode로 각 Pod에 작업 인덱스를 할당한다",
+    "explanation": "Job 실행 패턴: 1) 단일 실행: completions: 1, parallelism: 1. 2) 고정 작업 수 병렬: completions: 10, parallelism: 3 → 한 번에 3개 Pod, 총 10개 성공 시 완료. 3) 작업 큐: completions 미설정, parallelism: 5 → 각 Pod가 큐에서 작업을 가져와 처리, 모든 Pod가 성공 종료하면 Job 완료. backoffLimit 초과 시 Job이 Failed 상태로 전환.",
+    "seniorTip": "니콘내콘 대량 쿠폰 발급 시나리오: 1) Indexed Job(completionMode: Indexed): 100만 쿠폰을 1000개 인덱스로 분할, parallelism: 50으로 50개 Pod 동시 처리. JOB_COMPLETION_INDEX 환경변수로 각 Pod가 담당 범위를 알 수 있음. 2) activeDeadlineSeconds: 3600(1시간 내 미완료 시 전체 실패). 3) ttlSecondsAfterFinished: 86400(24시간 후 완료된 Job 자동 정리). 4) CronJob으로 정기적인 batch 실행: spec.concurrencyPolicy로 동시 실행 방지(Forbid).",
+    "deepDive": "Job의 Pod가 OOMKilled되면 backoffLimit에 포함되나? → OOMKilled는 컨테이너 실패로 Pod 재시작(restartPolicy에 따라). Pod 자체가 실패 상태(Failed phase)가 되면 backoffLimit에 카운트. restartPolicy: OnFailure면 Pod 내에서 재시작되어 backoffLimit 소모 안 됨. → CronJob의 startingDeadlineSeconds는 어떤 문제를 해결하나? → controller 장애로 스케줄이 밀렸을 때, startingDeadlineSeconds 이내의 밀린 스케줄만 실행. 너무 오래 밀린 것은 무시하여 갑자기 대량의 Job이 생성되는 것을 방지. → Indexed Job에서 특정 인덱스만 실패하면? → 실패한 인덱스에 대해서만 Pod를 재생성. 성공한 인덱스는 재실행하지 않아 멱등성이 보장되면 효율적인 재시도 가능.",
+    "tags": [
+      "job",
+      "parallelism",
+      "completions",
+      "cronjob",
+      "batch-processing",
+      "indexed-job"
+    ]
+  },
+  {
+    "id": "k8s-058",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "PersistentVolume의 accessModes 중 ReadWriteOncePod(RWOP)가 ReadWriteOnce(RWO)와 다른 점은?",
+    "options": [
+      "RWOP는 여러 노드에서 동시에 마운트할 수 있다",
+      "RWO는 하나의 노드에서만 읽기/쓰기 가능하지만 같은 노드의 여러 Pod에서 접근 가능하고, RWOP는 단일 Pod에서만 읽기/쓰기 가능하다",
+      "RWOP는 읽기 전용 모드이다",
+      "RWO와 RWOP는 완전히 동일하다"
+    ],
+    "answer": 1,
+    "explanation": "Access Modes: 1) ReadWriteOnce(RWO): 하나의 노드에서만 마운트 가능하지만 그 노드의 여러 Pod가 접근 가능. 2) ReadWriteOncePod(RWOP, K8s 1.27 GA): 정확히 하나의 Pod에서만 마운트 가능. 더 강력한 격리. 3) ReadOnlyMany(ROX): 여러 노드에서 읽기 전용으로 마운트. 4) ReadWriteMany(RWX): 여러 노드에서 동시 읽기/쓰기. EFS/NFS만 지원.",
+    "seniorTip": "니콘내콘 스토리지 전략: 1) 대부분의 stateless 서비스: PV 불필요, emptyDir로 임시 데이터만 사용. 2) StatefulSet(DB, Redis): EBS gp3 + RWO. AZ 간 이동 불가하므로 topology constraint 설정 필수. 3) 로그 수집기, 공유 데이터: EFS + RWX. 4) reclaim policy: Retain(PVC 삭제 시 PV와 데이터 보존) vs Delete(PVC 삭제 시 PV와 EBS도 삭제). 프로덕션 DB는 반드시 Retain으로 설정. 5) dynamic provisioning: StorageClass에 provisioner(ebs.csi.aws.com)를 지정하면 PVC 생성 시 자동으로 EBS 볼륨 생성.",
+    "deepDive": "PV의 reclaim policy를 Delete에서 Retain으로 변경할 수 있는가? → kubectl patch pv <name> -p '{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}' 으로 런타임 변경 가능. 반대(Retain→Delete)도 가능하지만 데이터 유실 위험. → StorageClass의 volumeBindingMode: WaitForFirstConsumer의 역할은? → PVC 생성 시 즉시 PV를 바인딩하지 않고, Pod가 스케줄될 때까지 대기. Pod의 nodeAffinity/AZ를 고려하여 올바른 AZ에 볼륨을 생성. EBS는 AZ에 종속되므로 이 설정이 필수. → CSI snapshot으로 PV를 복원할 때 원본 PV와의 관계는? → snapshot에서 새 PV가 생성되며 원본과 독립적. EBS snapshot과 동일한 COW(Copy-on-Write) 메커니즘. 복원된 PV는 별도의 EBS 볼륨으로 존재.",
+    "tags": [
+      "persistent-volume",
+      "access-modes",
+      "rwop",
+      "storage-class",
+      "dynamic-provisioning",
+      "reclaim-policy"
+    ]
+  },
+  {
+    "id": "k8s-059",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s Service 타입별(ClusterIP, NodePort, LoadBalancer, ExternalName, Headless) 사용 사례와 차이를 설명하라.",
+    "answer": "ClusterIP: 클러스터 내부 통신. NodePort: 노드 IP:Port로 외부 노출. LoadBalancer: 클라우드 LB 생성. ExternalName: 외부 DNS CNAME. Headless(clusterIP: None): DNS로 Pod IP 직접 반환, StatefulSet에 사용",
+    "explanation": "ClusterIP(기본): 클러스터 내부에서만 접근 가능한 가상 IP. kube-proxy가 iptables/IPVS 규칙으로 Pod에 분배. NodePort: ClusterIP + 모든 노드의 30000-32767 포트로 외부 노출. LoadBalancer: NodePort + 클라우드 LB(ALB/NLB) 자동 생성. ExternalName: 외부 서비스를 K8s Service처럼 사용(CNAME). Headless: clusterIP: None으로 설정하면 DNS 조회 시 Pod IP 목록을 직접 반환.",
+    "seniorTip": "니콘내콘 서비스 네트워킹: 1) 서비스 간 통신: ClusterIP. 2) 외부 노출: Ingress(ALB) + ClusterIP. NodePort 직접 사용은 보안상 비권장. 3) gRPC 로드밸런싱: Headless Service + 클라이언트 사이드 밸런싱 또는 Istio/Linkerd. HTTP/2 기반 gRPC는 connection-level 밸런싱(LB)이 아닌 request-level 밸런싱 필요. 4) StatefulSet: Headless Service로 pod-0.svc.cluster.local처럼 개별 Pod DNS 제공. 5) ExternalName: 마이그레이션 중 외부 DB를 K8s Service처럼 참조하다가 나중에 ClusterIP로 전환.",
+    "deepDive": "Headless Service에서 DNS 조회 결과의 TTL은? → CoreDNS의 기본 TTL은 30초. 클라이언트가 DNS를 캐시하면 Pod가 교체되어도 이전 IP로 트래픽을 보낼 수 있음. 짧은 TTL 또는 DNS 캐시 비활성화 필요. → Service의 internalTrafficPolicy: Local은 어떤 효과가 있나? → 같은 노드의 Pod에만 트래픽을 라우팅. 크로스 노드 트래픽을 줄여 레이턴시 감소와 데이터 전송 비용 절감. 단, 같은 노드에 backend Pod가 없으면 트래픽 드롭. → externalTrafficPolicy: Local과 Cluster의 차이와 source IP 보존은? → Local: 트래픽을 수신한 노드의 Pod에만 전달. source IP 보존. 해당 노드에 Pod 없으면 드롭. Cluster(기본): 모든 노드에 분배하지만 SNAT로 source IP 유실. AWS NLB에서는 Local이 일반적.",
+    "tags": [
+      "service",
+      "clusterip",
+      "nodeport",
+      "loadbalancer",
+      "headless",
+      "externalname"
+    ]
+  },
+  {
+    "id": "k8s-060",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "cert-manager로 Let's Encrypt 인증서를 자동 발급/갱신하는 아키텍처와 EKS에서의 구성을 설명하라.",
+    "answer": "cert-manager가 Certificate CRD를 감시하여 ACME 프로토콜로 Let's Encrypt에서 인증서를 자동 발급. 갱신은 만료 30일 전 자동 실행. DNS-01 또는 HTTP-01 challenge로 도메인 소유권을 증명한다",
+    "explanation": "구성 요소: 1) ClusterIssuer/Issuer: ACME 서버(Let's Encrypt) 정보와 challenge 방식 정의. 2) Certificate: 원하는 인증서(도메인, 비밀키)를 선언. 3) cert-manager가 자동으로 ACME challenge 수행 → 인증서 발급 → K8s Secret에 저장 → Ingress에서 사용. 갱신은 만료 30일 전 자동 실행.",
+    "seniorTip": "니콘내콘 EKS 인증서 전략: 1) 퍼블릭 도메인: ACM(AWS Certificate Manager)이 ALB와 네이티브 통합되어 무료이므로 ACM 사용이 더 간편. Terraform으로 aws_acm_certificate + DNS validation 자동화. 2) cert-manager가 유용한 경우: 내부 서비스 간 mTLS, 비AWS 리소스의 인증서, 멀티클라우드. 3) DNS-01 challenge + Route53: cert-manager에 Route53 접근 권한(IRSA/Pod Identity)을 부여하면 와일드카드 인증서 발급 가능. 4) HTTP-01: Ingress를 통한 challenge. 와일드카드 인증서 불가. 5) staging ACME 서버로 먼저 테스트(rate limit 방지).",
+    "deepDive": "cert-manager의 DNS-01 challenge에서 Route53 레코드 생성 권한을 최소화하려면? → IAM policy에서 route53:ChangeResourceRecordSets를 특정 hosted zone ID로 제한. route53:GetChange와 route53:ListHostedZonesByName만 추가. Pod Identity로 cert-manager Pod에만 이 권한 부여. → 인증서 갱신 실패 시 어떻게 모니터링하나? → cert-manager는 Certificate 리소스의 status.conditions에 Ready: False를 설정하고, certmanager_certificate_ready_status Prometheus 메트릭을 노출. kube-prometheus-stack의 alert rule로 갱신 실패 알림. → ACM 인증서와 cert-manager 인증서를 같은 도메인에 사용할 때 충돌은? → ACM은 ALB에, cert-manager는 Ingress Controller(Nginx/Traefik) 내부 TLS에 각각 사용 가능. ALB → Ingress Controller → Pod 구조에서 ALB에서 TLS 종료(ACM)하고 내부는 HTTP, 또는 end-to-end TLS로 cert-manager 인증서를 Ingress Controller에 적용하는 두 가지 패턴.",
+    "tags": [
+      "cert-manager",
+      "lets-encrypt",
+      "acme",
+      "tls",
+      "certificate",
+      "route53",
+      "dns-challenge"
+    ]
   }
 ]

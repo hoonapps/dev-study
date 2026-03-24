@@ -1024,5 +1024,296 @@
       "monitoring",
       "microservices"
     ]
+  },
+  {
+    "id": "mysql-051",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "EXPLAIN ANALYZE에서 actual rows와 estimated rows 사이의 큰 괴리가 발생하는 원인과 해결 방법을 설명하라.",
+    "answer": "옵티마이저의 통계 정보가 부정확하거나 히스토그램이 없을 때 추정 행 수와 실제 행 수가 괴리된다. ANALYZE TABLE로 통계를 갱신하거나, CREATE HISTOGRAM으로 컬럼 분포 정보를 제공하면 추정 정확도가 높아진다.",
+    "explanation": "MySQL 옵티마이저는 인덱스의 cardinality와 테이블 통계를 기반으로 쿼리 실행 계획을 세운다. 통계가 실제 데이터 분포와 다르면 비효율적인 실행 계획을 선택하게 된다. EXPLAIN ANALYZE는 MySQL 8.0.18+에서 실제 실행하며 actual time과 rows를 보여준다.",
+    "deepDive": "니콘내콘에서 기프티콘 상품 테이블에 SELECT * FROM products WHERE brand_id = 7 AND status = 'active' ORDER BY created_at DESC LIMIT 20을 실행한다. EXPLAIN ANALYZE 결과에서 estimated rows=50000인데 actual rows=120이면? 옵티마이저가 인덱스를 타지 않고 풀스캔을 선택했을 가능성이 높다. 왜 이런 괴리가 생기나? → InnoDB의 통계는 랜덤 샘플링 기반이다. innodb_stats_persistent_sample_pages(기본 20)만큼의 페이지만 읽어 cardinality를 추정한다. 데이터가 편향되어 있으면 샘플이 대표성이 없다. 그러면 히스토그램은 어떻게 도움이 되나? → ANALYZE TABLE products UPDATE HISTOGRAM ON brand_id WITH 100 BUCKETS를 실행하면 brand_id의 실제 분포를 저장한다. 'brand_id=7이 전체의 0.1%'라는 정보가 있으면 옵티마이저가 인덱스를 선택한다. 그러면 히스토그램이 항상 좋은가? → 히스토그램은 정적이다. 데이터 분포가 자주 바뀌면 주기적으로 재생성해야 한다. 또한 등높이(equi-height) 히스토그램의 버킷 수가 너무 적으면 오히려 부정확할 수 있다. 실전에서는 ANALYZE TABLE을 배치 스케줄러로 주기적 실행하고, 슬로우 쿼리 로그에서 rows_examined vs rows_sent 비율이 큰 쿼리를 찾아 개별 히스토그램을 추가한다.",
+    "seniorTip": "EXPLAIN ANALYZE는 실제로 쿼리를 실행하므로 프로덕션에서 무거운 쿼리에 사용할 때 주의하라. 슬레이브에서 실행하거나, EXPLAIN FORMAT=TREE로 실행 없이 계획만 확인하는 것이 안전하다.",
+    "tags": [
+      "explain-analyze",
+      "optimizer-statistics",
+      "histogram",
+      "query-tuning"
+    ]
+  },
+  {
+    "id": "mysql-052",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL 8.0의 Index Skip Scan이 동작하는 조건으로 올바른 것은?",
+    "options": [
+      "복합 인덱스의 첫 번째 컬럼을 WHERE 절에서 사용하지 않아도 두 번째 컬럼으로 인덱스를 활용할 수 있다",
+      "인덱스의 마지막 컬럼만 사용해야 한다",
+      "FORCE INDEX 힌트를 반드시 지정해야 한다",
+      "테이블에 파티션이 설정되어 있어야 한다"
+    ],
+    "answer": 0,
+    "explanation": "Index Skip Scan은 복합 인덱스 (A, B)에서 A를 건너뛰고 B만으로 검색할 때 사용된다. A의 고유 값이 적으면 옵티마이저가 A의 각 값에 대해 B 범위를 개별 검색하여 풀스캔을 피한다.",
+    "deepDive": "니콘내콘에서 인덱스 (gender, age)가 있고, SELECT * FROM users WHERE age = 25를 실행한다. 8.0 이전에는 gender가 WHERE에 없으니 이 인덱스를 못 탔다. Skip Scan은 어떻게 동작하나? → gender의 고유값이 'M', 'F' 2개뿐이라는 것을 통계로 안다. 그러면 내부적으로 (gender='M' AND age=25) UNION (gender='F' AND age=25)처럼 분할하여 인덱스를 탄다. 그러면 gender의 고유값이 1000개면? → Skip Scan이 오히려 비효율적이다. 1000번의 인덱스 탐색이 발생하므로 풀스캔보다 느릴 수 있다. 옵티마이저가 cardinality를 보고 Skip Scan 사용 여부를 판단한다. 그러면 Skip Scan을 강제로 끌 수 있나? → SET optimizer_switch = 'skip_scan=off'로 비활성화하거나, NO_SKIP_SCAN 힌트를 사용할 수 있다. EXPLAIN에서 'Using index for skip scan'이 Extra에 표시되면 동작 중이다. 실무에서는 선행 컬럼의 cardinality가 낮을 때(10 이하)만 효과적이라고 보면 된다.",
+    "seniorTip": "Skip Scan이 도입되었다고 해서 복합 인덱스 설계를 소홀히 하면 안 된다. 쿼리 패턴에 맞는 인덱스를 직접 만드는 것이 항상 Skip Scan보다 빠르다. Skip Scan은 기존 인덱스를 최대한 활용하는 보조 수단이다.",
+    "tags": [
+      "index-skip-scan",
+      "mysql-8",
+      "composite-index",
+      "optimizer"
+    ]
+  },
+  {
+    "id": "mysql-053",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "서브쿼리가 dependent subquery로 실행되면 왜 느려지는지 설명하고, JOIN으로 변환하여 성능을 개선하는 방법을 설명하라.",
+    "answer": "dependent subquery는 외부 쿼리의 각 행마다 서브쿼리를 반복 실행하므로 O(N*M) 복잡도를 가진다. JOIN으로 변환하면 옵티마이저가 해시 조인 등 효율적인 전략을 선택하여 O(N+M)으로 줄일 수 있다.",
+    "explanation": "EXPLAIN에서 select_type이 DEPENDENT SUBQUERY이면 외부 쿼리의 매 행마다 내부 서브쿼리가 실행된다. 외부 100만 행 x 내부 10만 행이면 실질적으로 수십억 번의 비교가 발생할 수 있다.",
+    "deepDive": "니콘내콘에서 '주문이 있는 사용자 목록'을 뽑는다고 해보자. SELECT * FROM users WHERE user_id IN (SELECT user_id FROM orders WHERE created_at > '2024-01-01')을 실행했다. EXPLAIN을 보니 DEPENDENT SUBQUERY. 왜? → MySQL이 IN 서브쿼리를 EXISTS로 내부 변환하면서 상관 서브쿼리가 되었기 때문이다. users 테이블의 각 행마다 orders에서 해당 user_id를 찾는다. 210만 사용자 x orders 테이블 풀스캔 = 재앙. 어떻게 고치나? → 방법 1: JOIN으로 변환. SELECT DISTINCT u.* FROM users u INNER JOIN orders o ON u.user_id = o.user_id WHERE o.created_at > '2024-01-01'. → 방법 2: MySQL 8.0은 세미조인 최적화로 이를 자동으로 처리할 수 있다. optimizer_switch에서 semijoin=on(기본값)인지 확인. → 그러면 모든 서브쿼리를 JOIN으로 바꿔야 하나? → 아니다. MySQL 8.0의 세미조인 최적화가 잘 동작하면 IN 서브쿼리도 빠르다. EXPLAIN에서 DEPENDENT SUBQUERY가 아닌 SUBQUERY나 MATERIALIZED로 표시되면 괜찮다. 문제는 최적화가 실패하여 DEPENDENT SUBQUERY가 되는 경우만 수동 변환이 필요하다.",
+    "seniorTip": "TypeORM의 QueryBuilder에서 서브쿼리를 사용할 때 .where('user_id IN ' + subQuery)로 작성하면 dependent subquery가 될 수 있다. createQueryBuilder().innerJoin()으로 변환하거나, getQuery()로 생성된 SQL을 EXPLAIN으로 반드시 확인하라.",
+    "tags": [
+      "dependent-subquery",
+      "join-optimization",
+      "semi-join",
+      "query-tuning"
+    ]
+  },
+  {
+    "id": "mysql-054",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL 8.0의 Derived Condition Pushdown 최적화란?",
+    "options": [
+      "WHERE 조건을 파생 테이블(서브쿼리) 안으로 밀어넣어 불필요한 행을 먼저 제거한다",
+      "JOIN 조건을 인덱스 레벨로 내려보낸다",
+      "HAVING 절을 GROUP BY 이전에 실행한다",
+      "ORDER BY를 인덱스 스캔으로 대체한다"
+    ],
+    "answer": 0,
+    "explanation": "Derived Condition Pushdown은 외부 쿼리의 WHERE 조건을 파생 테이블(FROM 절의 서브쿼리) 내부로 밀어넣는 최적화다. 파생 테이블이 먼저 전체 결과를 만들고 나서 필터링하는 대신, 조건을 안으로 넣어 처리할 행 수를 줄인다.",
+    "deepDive": "예를 들어 SELECT * FROM (SELECT product_id, SUM(amount) AS total FROM order_items GROUP BY product_id) AS summary WHERE summary.total > 1000000을 실행한다. Pushdown이 없으면? → 먼저 모든 product_id에 대해 SUM(amount)를 계산하여 임시 테이블을 만들고, 그다음 total > 1000000을 필터링한다. 상품이 50만 개면 50만 행을 모두 집계한 후 필터링. Pushdown이 되면? → HAVING total > 1000000이 내부로 들어가 집계 과정에서 바로 필터링. 실제로 8.0.22+에서는 EXPLAIN에서 'Rematerialize'가 사라지고 직접 조건이 적용된다. 그러면 항상 Pushdown이 동작하나? → 아니다. 파생 테이블에 LIMIT, UNION, 윈도우 함수가 있으면 Pushdown이 불가능하다. 또한 조건이 집계 함수 결과에 대한 것이어야 한다. 그러면 동작 여부를 어떻게 확인하나? → EXPLAIN FORMAT=JSON에서 'pushed_condition' 필드가 있으면 Pushdown이 적용된 것이다. optimizer_switch의 derived_condition_pushdown 플래그로 제어할 수 있다.",
+    "seniorTip": "TypeORM에서 복잡한 서브쿼리를 FROM 절에 사용할 때, 외부 WHERE 조건이 Pushdown되는지 EXPLAIN으로 확인하라. Pushdown이 안 되면 서브쿼리 내부에 조건을 직접 넣는 것이 성능에 유리하다.",
+    "tags": [
+      "derived-table",
+      "condition-pushdown",
+      "mysql-8",
+      "optimizer"
+    ]
+  },
+  {
+    "id": "mysql-055",
+    "category": "mysql",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Multi-Range Read(MRR) 최적화는 랜덤 디스크 I/O를 순차 I/O로 변환하여 보조 인덱스를 통한 테이블 접근 성능을 향상시킨다.",
+    "answer": "O",
+    "explanation": "MRR은 보조 인덱스에서 읽은 행의 Primary Key를 정렬한 후, PK 순서대로 테이블 데이터를 읽어 랜덤 I/O를 순차 I/O로 변환한다. EXPLAIN의 Extra에 'Using MRR'로 표시된다.",
+    "deepDive": "왜 보조 인덱스 조회가 랜덤 I/O가 되는 걸까? → InnoDB의 보조 인덱스 리프 노드에는 PK 값이 저장된다. 보조 인덱스 순서와 PK 순서는 다르다. 예를 들어 (brand_id) 인덱스로 brand_id=5인 행 1000개를 찾으면, 각 행의 PK가 [42, 8891, 123, 55012, ...]로 뒤섞여 있다. 이 PK로 클러스터드 인덱스를 조회하면 디스크의 여기저기를 왔다 갔다 한다(랜덤 I/O). MRR은 이 PK 목록을 먼저 정렬해서 [42, 123, 8891, 55012, ...]로 만든 후 순서대로 읽는다. 그러면 MRR의 버퍼 크기는? → read_rnd_buffer_size(기본 256KB)가 MRR 버퍼로 사용된다. 이 버퍼에 PK를 모아서 정렬한다. 버퍼가 클수록 한 번에 더 많은 PK를 정렬할 수 있다. 그러면 SSD에서도 MRR이 효과가 있나? → SSD는 랜덤 I/O와 순차 I/O의 성능 차이가 HDD보다 작지만, 여전히 순차 읽기가 빠르다. 또한 MRR은 운영체제의 read-ahead 캐시 효과를 극대화한다.",
+    "seniorTip": "MRR은 기본적으로 비용 기반으로 사용 여부가 결정된다. optimizer_switch에서 mrr=on, mrr_cost_based=on이 기본값이다. 강제로 항상 사용하려면 mrr_cost_based=off로 설정하지만, 소량의 행에서는 오히려 정렬 오버헤드가 발생할 수 있으니 주의하라.",
+    "tags": [
+      "mrr",
+      "random-io",
+      "sequential-io",
+      "index-scan",
+      "performance"
+    ]
+  },
+  {
+    "id": "mysql-056",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Index Condition Pushdown(ICP)이 동작하는 원리를 설명하고, 실제로 적용되었는지 확인하는 방법을 설명하라.",
+    "answer": "ICP는 스토리지 엔진 레벨에서 인덱스에 포함된 컬럼에 대한 WHERE 조건을 먼저 평가하여, 조건에 맞지 않는 행은 테이블 데이터를 읽지 않고 건너뛴다. EXPLAIN의 Extra에 'Using index condition'으로 표시된다.",
+    "explanation": "ICP가 없으면 스토리지 엔진은 인덱스에서 범위 조건에 맞는 모든 행의 전체 데이터를 읽어서 MySQL 서버 레이어에 전달하고, 서버가 나머지 조건을 필터링한다. ICP가 있으면 스토리지 엔진이 인덱스 내 컬럼으로 미리 필터링하여 불필요한 테이블 접근을 줄인다.",
+    "deepDive": "구체적인 예시로 보자. 인덱스 (brand_id, price, created_at)가 있고, SELECT * FROM products WHERE brand_id = 5 AND price > 10000 AND description LIKE '%스타벅스%'를 실행한다. ICP 없이는? → 인덱스에서 brand_id=5인 행을 모두 찾아 테이블 데이터를 읽고, 서버에서 price > 10000과 LIKE를 필터링. brand_id=5인 행이 10만 개면 10만 번 테이블 접근. ICP가 있으면? → 인덱스에서 brand_id=5인 행 중 price > 10000인 것만 필터링(인덱스에 price가 있으므로). 결과가 5000개면 5000번만 테이블 접근. description은 인덱스에 없으므로 테이블에서 확인. 그러면 ICP가 안 되는 경우는? → 1) 커버링 인덱스면 이미 테이블 접근이 없으므로 ICP 불필요. 2) 가상 컬럼(generated column)의 인덱스. 3) 서브쿼리를 포함한 조건. 4) ref 타입이 아닌 접근(system, const 등)에서는 이미 최적. 그러면 ICP 효과를 수치로 확인하려면? → Handler_read_next 상태 변수를 비교하라. ICP가 동작하면 이 값이 줄어든다.",
+    "seniorTip": "ICP는 MySQL 5.6+에서 기본 활성화(optimizer_switch의 index_condition_pushdown=on)다. 비활성화할 일은 거의 없지만, 성능 비교 테스트 시 SET optimizer_switch='index_condition_pushdown=off'로 끄고 비교해볼 수 있다.",
+    "tags": [
+      "icp",
+      "index-condition-pushdown",
+      "storage-engine",
+      "query-tuning"
+    ]
+  },
+  {
+    "id": "mysql-057",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL의 세미조인(Semi-Join) 최적화 전략 중, IN 서브쿼리를 가장 효율적으로 처리하는 방식은?",
+    "options": [
+      "서브쿼리 결과를 임시 테이블로 구체화(Materialization)하여 조인한다",
+      "서브쿼리를 무조건 EXISTS로 변환한다",
+      "서브쿼리를 항상 풀스캔한다",
+      "서브쿼리 결과를 파일에 저장한 후 조인한다"
+    ],
+    "answer": 0,
+    "explanation": "MySQL 8.0은 IN/EXISTS 서브쿼리에 대해 세미조인 최적화를 수행한다. 대표적으로 Materialization(서브쿼리 결과를 임시 테이블에 구체화 후 조인), FirstMatch(첫 매칭 발견 시 중단), LooseScan(인덱스 스캔으로 중복 제거), DuplicateWeedout(임시 테이블로 중복 제거) 전략이 있다.",
+    "deepDive": "각 전략이 언제 선택되는지 보자. FirstMatch: SELECT * FROM users WHERE user_id IN (SELECT user_id FROM orders)에서 users의 각 행에 대해 orders에서 첫 매칭만 찾으면 되므로 전체 조인 없이 빠르게 끝난다. 작은 외부 테이블에 효과적. Materialization: 서브쿼리 결과를 임시 해시 테이블로 만들어 O(1) 조회. 서브쿼리 결과가 작고 외부 테이블이 클 때 유리. LooseScan: 서브쿼리의 조인 컬럼에 인덱스가 있을 때 인덱스 스캔으로 중복 없이 매칭. 그러면 어떤 전략이 선택되는지 어떻게 확인하나? → EXPLAIN의 Extra에 'FirstMatch(users)', 'Materialize', 'LooseScan', 'Start temporary; End temporary'(DuplicateWeedout)로 표시된다. 그러면 강제로 전략을 변경할 수 있나? → optimizer_switch에서 firstmatch=off, materialization=off 등으로 개별 전략을 비활성화할 수 있다. 실무에서 특정 전략이 비효율적일 때 유용하다.",
+    "seniorTip": "안티 세미조인(NOT IN, NOT EXISTS)은 세미조인 최적화가 제한적이다. NOT IN에서 서브쿼리에 NULL이 포함되면 결과가 빈 집합이 되는 함정이 있으므로, NOT EXISTS를 사용하는 것이 안전하고 최적화도 잘 된다.",
+    "tags": [
+      "semi-join",
+      "materialization",
+      "firstmatch",
+      "subquery-optimization"
+    ]
+  },
+  {
+    "id": "mysql-058",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "USE INDEX, FORCE INDEX, IGNORE INDEX의 차이점과 각각을 사용해야 하는 상황을 설명하라.",
+    "answer": "USE INDEX는 옵티마이저에게 특정 인덱스 사용을 권장(풀스캔 선택 가능), FORCE INDEX는 강제(풀스캔보다 비용이 높아도 인덱스 사용), IGNORE INDEX는 특정 인덱스 제외. 옵티마이저가 잘못된 인덱스를 선택할 때 사용한다.",
+    "explanation": "비용 기반 옵티마이저가 통계 부정확이나 데이터 분포 특이성으로 잘못된 인덱스를 선택할 때, 힌트로 교정할 수 있다. USE INDEX는 '이 인덱스를 고려해줘'라는 제안이고, FORCE INDEX는 '반드시 이 인덱스를 써라'는 명령이다.",
+    "deepDive": "니콘내콘에서 실제 발생한 시나리오를 보자. products 테이블에 idx_category(category_id), idx_created(created_at), idx_brand(brand_id) 인덱스가 있다. SELECT * FROM products WHERE category_id = 3 AND created_at > '2024-01-01' ORDER BY created_at DESC LIMIT 20. 옵티마이저가 idx_created를 선택했다. 왜? → ORDER BY created_at DESC + LIMIT 20이니까 정렬 없이 최신순으로 20개만 읽으면 된다고 판단. 하지만 category_id=3인 데이터가 전체의 0.1%라면? → idx_created로 스캔하면서 category_id=3을 만날 때까지 수만 행을 건너뛰어야 한다. 이때 FORCE INDEX(idx_category)를 쓰면? → category_id=3인 행만 바로 찾고, filesort로 정렬. 수백 행만 정렬하면 되니 훨씬 빠르다. 그러면 FORCE INDEX의 위험은? → 데이터 분포가 바뀌면 원래 최적이던 힌트가 독이 된다. category_id=3의 비율이 50%로 늘면 FORCE INDEX(idx_category)가 오히려 느려진다. 그래서 힌트는 최후의 수단이고, 히스토그램이나 복합 인덱스(category_id, created_at)로 근본 해결하는 것이 좋다.",
+    "seniorTip": "TypeORM에서 인덱스 힌트를 사용하려면 createQueryBuilder().from('products', 'p').useIndex('idx_category')가 아닌, 직접 쿼리를 작성해야 할 수 있다. query() 메서드로 raw SQL을 실행하거나, addSelect에서 힌트를 포함하라. 힌트를 사용한 쿼리는 반드시 주석을 남겨 이유를 기록해야 한다.",
+    "tags": [
+      "index-hints",
+      "force-index",
+      "use-index",
+      "optimizer-override"
+    ]
+  },
+  {
+    "id": "mysql-059",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL 쿼리 프로파일링에서 SHOW PROFILE과 performance_schema의 차이점, 그리고 각각의 활용법을 설명하라.",
+    "answer": "SHOW PROFILE은 deprecated되었으며 세션 단위로 단순한 단계별 시간을 보여준다. performance_schema는 MySQL 서버 전체의 이벤트를 수집하며, events_statements_*, events_stages_*로 쿼리의 각 실행 단계별 소요 시간을 상세히 분석할 수 있다.",
+    "explanation": "SET profiling = 1 후 쿼리 실행 → SHOW PROFILE FOR QUERY N으로 단계별 시간을 확인할 수 있지만, MySQL 5.7부터 deprecated다. performance_schema의 events_statements_history와 events_stages_history_long이 대체한다.",
+    "deepDive": "performance_schema로 슬로우 쿼리를 분석하는 실전 과정을 보자. 니콘내콘에서 특정 API가 간헐적으로 3초 이상 걸린다. 1단계: 어떤 쿼리가 느린지 찾기. SELECT * FROM performance_schema.events_statements_summary_by_digest ORDER BY SUM_TIMER_WAIT DESC LIMIT 10. 쿼리 다이제스트별 총 실행 시간 Top 10을 볼 수 있다. 2단계: 해당 쿼리의 실행 단계 분석. events_stages_history에서 NESTING_EVENT_ID로 연결하면 'Sending data', 'Creating sort index', 'Creating tmp table' 등 각 단계의 소요 시간을 본다. 그러면 'Creating tmp table'이 오래 걸린다면? → 쿼리가 임시 테이블을 생성하고 있다. tmp_table_size를 초과하면 디스크 기반 임시 테이블이 생성되어 느려진다. 그러면 performance_schema의 오버헤드는? → 기본 설정에서 약 5% 정도의 오버헤드가 있다. 프로덕션에서도 활성화해두는 것이 일반적이지만, 세부 계측(instruments)은 필요한 것만 활성화하여 오버헤드를 최소화한다.",
+    "seniorTip": "RDS에서는 Performance Insights가 performance_schema를 시각화해준다. Top SQL, Wait Events, DB Load를 실시간으로 모니터링할 수 있어 별도의 쿼리 없이도 병목을 파악할 수 있다. 단, Performance Insights는 추가 비용이 발생할 수 있으니 확인 필요.",
+    "tags": [
+      "query-profiling",
+      "performance-schema",
+      "show-profile",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "mysql-060",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL 8.0 Optimizer Hints 중 JOIN_ORDER 힌트의 역할은?",
+    "options": [
+      "조인 순서를 명시적으로 지정하여 옵티마이저의 조인 순서 결정을 오버라이드한다",
+      "조인 시 사용할 알고리즘(Hash, Nested Loop)을 지정한다",
+      "조인 결과의 정렬 순서를 지정한다",
+      "조인 시 병렬 처리 스레드 수를 지정한다"
+    ],
+    "answer": 0,
+    "explanation": "/*+ JOIN_ORDER(t1, t2, t3) */는 옵티마이저에게 t1 → t2 → t3 순서로 조인하도록 지시한다. 옵티마이저가 비효율적인 조인 순서를 선택할 때 이를 교정할 수 있다.",
+    "deepDive": "MySQL 8.0의 주요 Optimizer Hints를 살펴보자. SELECT /*+ JOIN_ORDER(o, u, p) */ ... FROM orders o JOIN users u ON ... JOIN products p ON .... 이 경우 orders를 드라이빙 테이블로 시작하여 users, products 순으로 조인한다. 왜 조인 순서가 중요한가? → Nested Loop Join에서 드라이빙 테이블의 행 수가 전체 성능을 좌우한다. orders에 WHERE created_at > '2024-01-01' 필터가 있으면 결과가 1000행인데, 옵티마이저가 users(210만)를 드라이빙으로 선택하면 210만 x N번의 조인이 발생한다. 다른 유용한 힌트들은? → /*+ INDEX(t1 idx_name) */: 특정 인덱스 사용 지시. /*+ NO_INDEX(t1 idx_name) */: 특정 인덱스 사용 금지. /*+ SET_VAR(sort_buffer_size=16M) */: 해당 쿼리에서만 시스템 변수 변경. /*+ MAX_EXECUTION_TIME(5000) */: 5초 타임아웃. 그러면 힌트와 FORCE INDEX의 차이는? → 힌트는 주석 형태라 구버전 MySQL에서도 에러 없이 무시된다. FORCE INDEX는 문법 오류가 발생할 수 있다. 힌트가 더 안전하고 유연하다.",
+    "seniorTip": "SET_VAR 힌트는 특정 쿼리에서만 변수를 변경하므로 세션 전체에 영향을 주지 않는다. 대량 정렬이 필요한 배치 쿼리에서 /*+ SET_VAR(sort_buffer_size=64M) */를 사용하면 전체 시스템 설정을 건드리지 않고도 해당 쿼리의 성능을 개선할 수 있다.",
+    "tags": [
+      "optimizer-hints",
+      "join-order",
+      "set-var",
+      "mysql-8"
+    ]
+  },
+  {
+    "id": "mysql-061",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "대량 데이터 페이지네이션에서 OFFSET 방식의 문제점과 커서 기반 페이지네이션, Deferred Join의 원리를 설명하라.",
+    "answer": "OFFSET N은 내부적으로 N개 행을 읽고 버리므로 깊은 페이지일수록 느려진다. 커서 기반은 WHERE id > last_id로 인덱스를 타서 O(log N). Deferred Join은 커버링 인덱스로 PK만 먼저 추출하고, 해당 PK로 원본 테이블을 조인하여 불필요한 행 읽기를 최소화한다.",
+    "explanation": "SELECT * FROM products ORDER BY id LIMIT 10 OFFSET 100000은 100010개 행을 읽고 앞의 100000개를 버린다. 페이지가 깊어질수록 선형적으로 느려진다.",
+    "deepDive": "니콘내콘에서 기프티콘 목록 API의 페이지네이션을 설계한다. 상품 200만 개. 방식 1 - OFFSET: SELECT * FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 50000. 50020행을 읽고 50000행 버림. 페이지 2500번째. 방식 2 - 커서: SELECT * FROM products WHERE created_at < '2024-01-15 10:30:00' ORDER BY created_at DESC LIMIT 20. 인덱스로 바로 해당 위치를 찾아 20개만 읽음. 하지만 커서 방식의 문제는? → 특정 페이지로 바로 점프가 불가능하다(1페이지 → 50페이지 직접 이동 불가). 이때 Deferred Join: SELECT p.* FROM products p INNER JOIN (SELECT id FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 50000) AS tmp ON p.id = tmp.id. 서브쿼리는 커버링 인덱스(created_at, id)로 id만 추출하여 50000행을 빠르게 스킵한다. 전체 행 데이터를 읽지 않으므로 I/O가 대폭 줄어든다. 그러면 무한 스크롤 vs 페이지 번호 방식에서 어떤 것을 선택하나? → 무한 스크롤은 커서 기반이 최적. 페이지 번호가 필요하면 Deferred Join + 전체 count 캐싱 조합. 실무에서 count(*)도 느리므로 Redis에 총 개수를 캐싱하고 주기적으로 갱신한다.",
+    "seniorTip": "TypeORM에서 .skip().take()는 내부적으로 OFFSET/LIMIT을 사용한다. 깊은 페이지네이션이 예상되면 QueryBuilder로 커서 기반 쿼리를 직접 작성하라. Deferred Join은 TypeORM에서 서브쿼리 + innerJoin으로 구현할 수 있다.",
+    "tags": [
+      "pagination",
+      "cursor-based",
+      "deferred-join",
+      "offset",
+      "performance"
+    ]
+  },
+  {
+    "id": "mysql-062",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "대량 INSERT/UPDATE 최적화 기법과 적절한 배치 크기를 결정하는 방법을 설명하라.",
+    "answer": "Multi-row INSERT(INSERT INTO ... VALUES (...), (...), ...)로 네트워크 라운드트립을 줄이고, LOAD DATA INFILE로 최대 속도를 얻는다. 배치 크기는 max_allowed_packet과 innodb_log_file_size를 고려하여 1000~5000행이 일반적이다.",
+    "explanation": "단건 INSERT를 10만 번 실행하면 10만 번의 네트워크 왕복과 10만 번의 트랜잭션 커밋이 발생한다. Multi-row INSERT는 한 번의 통신으로 여러 행을 삽입하고, LOAD DATA INFILE은 텍스트 파일에서 직접 로딩하여 가장 빠르다.",
+    "deepDive": "니콘내콘에서 매일 새벽에 기프티콘 재고 10만 건을 일괄 업데이트한다고 해보자. 방법 1: 단건 UPDATE 10만 번. 30분 소요. 방법 2: CASE문으로 배치 UPDATE. UPDATE products SET stock = CASE id WHEN 1 THEN 50 WHEN 2 THEN 30 ... END WHERE id IN (1, 2, ...). 한 번의 쿼리로 1000건 처리. 방법 3: 임시 테이블 + JOIN UPDATE. CREATE TEMPORARY TABLE tmp_stock (id BIGINT, stock INT); LOAD DATA INFILE로 tmp_stock에 로딩 → UPDATE products p JOIN tmp_stock t ON p.id = t.id SET p.stock = t.stock. 가장 빠르다. 배치 크기는 왜 중요한가? → 너무 크면 max_allowed_packet(기본 64MB)을 초과하거나, 하나의 트랜잭션이 너무 커서 undo log가 폭발한다. 너무 작으면 오버헤드가 크다. 그러면 최적 크기는? → 벤치마크가 최선이지만, 경험적으로 INSERT는 1000~5000행, UPDATE는 500~2000행이 적당하다. innodb_buffer_pool_size와 redo log 크기도 고려해야 한다. RDS에서 LOAD DATA INFILE을 쓰려면? → RDS는 로컬 파일 접근이 불가하므로 LOAD DATA LOCAL INFILE을 사용하거나, S3에서 직접 로딩하는 Aurora의 LOAD DATA FROM S3를 활용한다.",
+    "seniorTip": "TypeORM에서 대량 삽입 시 .insert().values(array).execute()를 사용하면 multi-row INSERT가 생성된다. 하지만 배열이 너무 크면 메모리 문제가 발생하므로 chunk 단위로 분할하라. lodash의 chunk() 함수로 1000개씩 나누어 처리하는 것이 일반적이다.",
+    "tags": [
+      "bulk-insert",
+      "bulk-update",
+      "load-data-infile",
+      "batch-size",
+      "performance"
+    ]
+  },
+  {
+    "id": "mysql-063",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "MySQL에서 내부 임시 테이블이 디스크에 생성되는 조건으로 올바르지 않은 것은?",
+    "options": [
+      "결과에 BLOB이나 TEXT 컬럼이 포함될 때",
+      "임시 테이블 크기가 tmp_table_size 또는 max_heap_table_size를 초과할 때",
+      "GROUP BY 결과가 10행 이하일 때",
+      "UNION에서 중복 제거가 필요할 때"
+    ],
+    "answer": 2,
+    "explanation": "내부 임시 테이블이 디스크로 전환되는 조건은 크기 초과, BLOB/TEXT 포함, UNION의 중복 제거 등이다. GROUP BY 결과가 10행 이하라는 것은 디스크 전환 조건이 아니다.",
+    "deepDive": "내부 임시 테이블이 왜 문제인가? → MySQL은 GROUP BY, DISTINCT, UNION, 복잡한 ORDER BY 등에서 내부적으로 임시 테이블을 생성한다. 메모리(MEMORY 엔진)에 생성되면 빠르지만, 특정 조건에서 디스크(기본적으로 InnoDB, 8.0.16+에서 TempTable 엔진)로 전환되면 급격히 느려진다. 어떤 조건에서 디스크로 가나? → 1) 임시 테이블 크기가 MIN(tmp_table_size, max_heap_table_size)를 초과. 2) BLOB, TEXT, JSON 컬럼 포함(MEMORY 엔진이 지원하지 않음). 3) 512바이트 이상의 VARCHAR. 그러면 MySQL 8.0의 TempTable 엔진은? → 8.0에서 도입된 내부 임시 테이블 전용 엔진이다. temptable_max_ram(기본 1GB)까지 메모리에 저장하고 초과 시 디스크로 overflow. MEMORY 엔진과 달리 VARCHAR를 가변 길이로 저장하여 메모리 효율이 높다. 그러면 임시 테이블 사용을 어떻게 모니터링하나? → SHOW STATUS LIKE 'Created_tmp%'로 Created_tmp_tables(생성 횟수)와 Created_tmp_disk_tables(디스크 생성 횟수)를 확인한다. 비율이 높으면 tmp_table_size 증가를 고려한다.",
+    "seniorTip": "RDS에서 tmp_table_size와 max_heap_table_size를 파라미터 그룹에서 조정할 수 있다. 기본 16MB는 대부분의 OLTP에 충분하지만, 복잡한 리포트 쿼리가 있으면 64MB~256MB로 늘려라. 단, 커넥션마다 할당되므로 max_connections과의 곱을 고려해야 한다.",
+    "tags": [
+      "temp-table",
+      "tmp-table-size",
+      "memory-engine",
+      "temptable-engine",
+      "performance"
+    ]
+  },
+  {
+    "id": "mysql-064",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL의 filesort 알고리즘(Two-pass vs Single-pass)의 차이와 sort_buffer_size 튜닝 방법을 설명하라.",
+    "answer": "Two-pass(original)는 정렬 키와 PK만 정렬한 후 PK로 테이블을 다시 읽는다. Single-pass(modified)는 정렬 키와 필요한 모든 컬럼을 함께 정렬하여 테이블 재접근이 없다. sort_buffer_size는 세션별 정렬 버퍼 크기로, 초과 시 디스크 기반 정렬이 발생한다.",
+    "explanation": "ORDER BY가 인덱스를 사용하지 못할 때 filesort가 발생한다. EXPLAIN의 Extra에 'Using filesort'로 표시된다. sort_buffer_size를 넘으면 임시 파일을 사용한 외부 정렬(merge sort)이 수행된다.",
+    "deepDive": "Two-pass vs Single-pass를 구체적으로 보자. SELECT id, name, price, description FROM products ORDER BY price에서 description이 TEXT라면? → Single-pass는 모든 컬럼(id, name, price, description)을 sort buffer에 넣고 정렬한다. TEXT 컬럼 때문에 한 행의 크기가 커져 sort buffer에 적은 행만 들어간다. Two-pass는 price와 id만 정렬한 후, 정렬된 id로 테이블을 다시 읽어 나머지 컬럼을 가져온다. 어떤 것이 더 빠른가? → max_sort_length와 max_length_for_sort_data(deprecated in 8.0.20)에 따라 MySQL이 자동 선택한다. 행 크기가 작으면 Single-pass, 크면 Two-pass. 그러면 sort_buffer_size를 무한정 늘리면? → 세션별 할당이므로 동시 연결 1000개 x sort_buffer_size 256MB = 256GB 메모리가 필요해진다. 또한 리눅스에서 256KB 이상은 malloc 대신 mmap을 사용하여 할당/해제 오버헤드가 증가한다. 그래서 기본 256KB ~ 최대 수 MB가 적절하다. 근본적으로는 filesort가 발생하지 않도록 ORDER BY 컬럼을 포함한 인덱스를 설계하는 것이 최선이다.",
+    "seniorTip": "filesort 발생 횟수와 디스크 사용 여부를 모니터링하려면 Sort_merge_passes 상태 변수를 확인하라. 이 값이 높으면 sort_buffer_size 증가를 고려한다. 또한 SELECT에서 필요한 컬럼만 명시하여 행 크기를 줄이면 sort buffer 효율이 높아진다.",
+    "tags": [
+      "filesort",
+      "sort-buffer",
+      "two-pass",
+      "single-pass",
+      "performance"
+    ]
+  },
+  {
+    "id": "mysql-065",
+    "category": "mysql",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL의 Query Rewrite Plugin을 사용하여 애플리케이션 코드 변경 없이 쿼리를 투명하게 최적화하는 방법을 설명하라.",
+    "answer": "Query Rewrite Plugin은 MySQL 서버가 쿼리를 파싱한 후, 사전 등록된 규칙에 따라 쿼리를 변환하여 실행한다. 애플리케이션 코드를 수정할 수 없는 상황(ORM 생성 쿼리 등)에서 인덱스 힌트 추가, 쿼리 구조 변경 등을 서버 레벨에서 수행할 수 있다.",
+    "explanation": "INSTALL PLUGIN rewriter SONAME 'rewriter.so'로 설치하고, rewriter.rewrite_rules 테이블에 패턴과 대체 쿼리를 등록한다. MySQL이 파싱된 쿼리의 다이제스트를 규칙과 매칭하여 자동 변환한다.",
+    "deepDive": "니콘내콘에서 TypeORM이 생성하는 쿼리가 비효율적이지만 ORM 코드를 바꾸기 어려운 상황을 보자. TypeORM이 SELECT * FROM products WHERE category_id = ? ORDER BY id를 생성하는데, ORDER BY created_at DESC가 되어야 성능이 좋다. Query Rewrite Plugin으로 해결: INSERT INTO query_rewrite.rewrite_rules (pattern, replacement) VALUES ('SELECT * FROM products WHERE category_id = ? ORDER BY id', 'SELECT * FROM products FORCE INDEX(idx_category_created) WHERE category_id = ? ORDER BY created_at DESC'). CALL query_rewrite.flush_rewrite_rules()로 적용. 그러면 이 방식의 위험은? → 1) 쿼리 패턴이 정확히 일치해야 한다. 공백이나 대소문자가 다르면 매칭 실패. MySQL 8.0에서는 정규화된 다이제스트 기반이라 이 문제가 줄었다. 2) 변환 규칙이 많아지면 관리가 어렵다. 3) 서버 업그레이드 시 플러그인 호환성 확인 필요. 그러면 언제 쓰는 게 적절한가? → 핫픽스 상황에서 즉시 쿼리 성능을 개선해야 하지만 배포가 불가능할 때. 장기적으로는 코드를 수정하고 플러그인 규칙은 제거해야 한다. 프로덕션에서 임시방편으로만 사용하는 것이 원칙이다.",
+    "seniorTip": "RDS에서는 Query Rewrite Plugin을 커스텀 파라미터 그룹에서 활성화할 수 있다. 단, Aurora에서는 지원되지 않을 수 있으므로 확인이 필요하다. 대안으로 ProxySQL의 Query Rules 기능이 더 유연하고 관리가 쉽다.",
+    "tags": [
+      "query-rewrite",
+      "plugin",
+      "transparent-optimization",
+      "orm",
+      "hotfix"
+    ]
   }
 ]
