@@ -17,7 +17,9 @@ export type Category =
   | "ncnc"
   | "monitoring"
   | "argocd"
-  | "opensearch";
+  | "opensearch"
+  | "algorithm"
+  | "design-pattern";
 
 export interface Question {
   id: string;
@@ -64,6 +66,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   monitoring: "Monitoring",
   argocd: "ArgoCD/GitOps",
   opensearch: "OpenSearch",
+  algorithm: "Algorithm/DS",
+  "design-pattern": "Design Pattern",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -84,6 +88,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   monitoring: "#a855f7",
   argocd: "#ef6c35",
   opensearch: "#005eb8",
+  algorithm: "#e11d48",
+  "design-pattern": "#0891b2",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

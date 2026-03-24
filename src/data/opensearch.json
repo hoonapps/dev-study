@@ -1,1 +1,579 @@
-[]
+[
+  {
+    "id": "os-001",
+    "category": "opensearch",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "OpenSearch는 어떤 프로젝트에서 포크(fork)되었으며, 포크된 주요 이유는 무엇인가?",
+    "options": [
+      "Apache Solr에서 포크, 성능 문제 때문에",
+      "Elasticsearch 7.10에서 포크, Elastic의 라이선스 변경(SSPL) 때문에",
+      "Elasticsearch 8.0에서 포크, AWS와의 계약 분쟁 때문에",
+      "Lucene에서 포크, 한국어 지원 부재 때문에"
+    ],
+    "answer": 1,
+    "explanation": "2021년 Elastic이 Elasticsearch와 Kibana의 라이선스를 Apache 2.0에서 SSPL(Server Side Public License)로 변경하자, AWS가 Elasticsearch 7.10을 기반으로 OpenSearch를 포크했다. SSPL은 OSI 인증 오픈소스 라이선스가 아니라 클라우드 서비스 제공자가 상업적으로 사용하기 어렵기 때문이다.",
+    "deepDive": "라이선스가 왜 그렇게 중요할까? SSPL은 해당 소프트웨어를 SaaS 형태로 제공하려면 서비스 전체 스택의 소스코드를 공개해야 한다는 조건이 있다. AWS 입장에서는 자사 관리형 서비스인 Amazon Elasticsearch Service 전체를 오픈소스로 공개해야 하는 상황이 되기 때문에 사실상 상업적 운영이 불가능해진다. 그래서 AWS는 포크를 선택했고, 이름도 'Amazon OpenSearch Service'로 변경했다. 현재 OpenSearch는 Apache 2.0 라이선스로 관리되며 OpenSearch Software Foundation 산하에서 독립적으로 운영된다. 니콘내콘처럼 AWS 인프라를 쓰는 회사 입장에서는 Amazon OpenSearch Service가 네이티브 통합(IAM, VPC, CloudWatch 등)을 지원하므로 Elastic Cloud보다 운영 부담이 적다.",
+    "seniorTip": "Elasticsearch와 OpenSearch는 API 레벨에서 상당 부분 호환되지만, 버전이 올라갈수록 기능 차이가 커지고 있다. 예를 들어 OpenSearch 2.x의 k-NN, PPL(Piped Processing Language), ML Commons 등은 Elasticsearch에 없는 독자 기능이다. 마이그레이션 시 SDK나 클라이언트 라이브러리도 opensearch-js, opensearch-py 등 전용 클라이언트로 교체해야 한다.",
+    "tags": [
+      "opensearch",
+      "elasticsearch",
+      "fork",
+      "license",
+      "sspl"
+    ]
+  },
+  {
+    "id": "os-002",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "기존에 Elasticsearch 클라이언트(SDK)를 사용하던 서비스를 OpenSearch로 마이그레이션할 때 주의해야 할 호환성 이슈를 설명하라.",
+    "answer": "API 엔드포인트는 대부분 호환되지만 전용 opensearch-js/opensearch-py 클라이언트 사용을 권장하며, 버전 간 매핑·쿼리 DSL 차이 및 보안 플러그인(x-pack vs security plugin) 인증 방식 차이를 확인해야 한다.",
+    "explanation": "OpenSearch는 Elasticsearch 7.10 호환 API를 유지하지만 8.x 이후 Elasticsearch에서 도입된 기능(예: 새 인증 모델, EQL 일부 문법)은 없다. 또한 Elastic의 상용 기능인 X-Pack 대신 OpenSearch Security 플러그인을 사용하며 설정 방식이 다르다.",
+    "deepDive": "실제 마이그레이션에서 가장 많이 걸리는 포인트는 무엇일까? 첫째, 인덱스 매핑 타입(type)이다. Elasticsearch 7.x에서 이미 type이 제거됐지만, 6.x 시절 코드가 남아 있으면 '/index/type/id' 패턴이 에러를 낸다. 둘째, 보안 설정이다. Amazon OpenSearch Service는 기본적으로 Fine-grained access control(FGAC)을 강제하는데, 내부 사용자 DB나 IAM 인증을 올바르게 구성하지 않으면 403이 떨어진다. 셋째, 플러그인 생태계다. Elasticsearch 전용 플러그인(예: 커스텀 분석기 플러그인)은 OpenSearch 환경에서 설치 불가다. 넷째, Kibana에서 OpenSearch Dashboards로 전환 시 저장된 객체(Saved Objects) 형식이 다를 수 있어 export/import 과정에서 누락이 생긴다.",
+    "seniorTip": "마이그레이션 전에 반드시 '_cat/nodes?v', '_cluster/settings', '_template' API로 현재 클러스터 상태를 덤프해두자. Snapshot & Restore API를 써서 원본 클러스터 스냅샷을 S3에 저장하고 OpenSearch 클러스터에서 복원하는 방식이 가장 안전한 대용량 데이터 이전 방법이다.",
+    "tags": [
+      "opensearch",
+      "elasticsearch",
+      "migration",
+      "compatibility",
+      "sdk"
+    ]
+  },
+  {
+    "id": "os-003",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "OpenSearch 인덱스 매핑(mapping)에서 dynamic mapping과 explicit mapping의 차이를 설명하고, 프로덕션에서 어느 방식을 써야 하는 이유를 설명하라.",
+    "answer": "dynamic mapping은 문서를 색인할 때 필드 타입을 자동 추론하고, explicit mapping은 사전에 스키마를 명시적으로 정의한다. 프로덕션에서는 explicit mapping을 사용해야 의도치 않은 필드 타입 추론, mapping explosion, 불필요한 필드 색인을 방지할 수 있다.",
+    "explanation": "dynamic mapping이 켜진 상태에서 새 문서의 숫자처럼 보이는 문자열 필드가 'long' 타입으로 추론되면, 이후 실제 문자열이 들어올 때 색인 실패가 발생한다. 또한 JSON 중첩 객체에 다양한 키가 들어오면 매핑 필드 수가 폭발적으로 증가(mapping explosion)해 클러스터 메모리 부담이 커진다.",
+    "deepDive": "니콘내콘의 기프티콘 상품 인덱스를 설계한다면 어떤 필드 타입을 써야 할까? brand_name은 text(검색용) + keyword(정렬/집계용) 멀티필드로 설정해야 한다. price는 integer 또는 scaled_float. category_id는 정확한 값 필터링이 목적이므로 keyword. description은 nori 분석기를 적용한 text. created_at은 date 타입에 format: 'strict_date_optional_time'. is_available은 boolean. 이렇게 명시적으로 설계하면 불필요한 분석(예: ID 필드에 분석기 적용)을 막고 색인 속도와 쿼리 성능 모두 향상된다. dynamic: 'strict' 설정으로 정의되지 않은 필드 색인 시 에러를 내도록 강제하는 것도 프로덕션 안전장치로 좋다.",
+    "seniorTip": "매핑은 한 번 설정하면 기존 필드의 타입을 변경할 수 없다. 필드 타입을 바꾸려면 새 인덱스를 만들고 reindex API로 데이터를 옮겨야 한다. 따라서 초기 설계가 매우 중요하며, index template을 사용해 인덱스 생성 시 자동으로 올바른 매핑이 적용되도록 관리해야 한다.",
+    "tags": [
+      "mapping",
+      "dynamic-mapping",
+      "field-types",
+      "index-design",
+      "schema"
+    ]
+  },
+  {
+    "id": "os-004",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "기프티콘 상품명을 저장하는 필드에서 '검색'과 '정렬/집계'를 모두 지원하려면 어떤 필드 설정이 올바른가?",
+    "options": [
+      "{ \"type\": \"text\" } 단독 사용",
+      "{ \"type\": \"keyword\" } 단독 사용",
+      "{ \"type\": \"text\", \"fields\": { \"keyword\": { \"type\": \"keyword\", \"ignore_above\": 256 } } }",
+      "{ \"type\": \"text\", \"index\": false }"
+    ],
+    "answer": 2,
+    "explanation": "text 타입은 분석기를 통해 토큰화되어 전문 검색(full-text search)을 지원하지만 정렬·집계에는 사용할 수 없다. keyword 타입은 원문 그대로 저장되어 정렬·집계·exact match에 적합하다. multi-field 설정으로 두 타입을 동시에 지원하는 것이 표준 패턴이다.",
+    "deepDive": "ignore_above: 256은 왜 설정할까? keyword 타입은 Lucene 내부적으로 원문을 그대로 저장하는데, 너무 긴 문자열은 Terms aggregation 등에서 메모리를 많이 차지한다. 256바이트를 초과하는 값은 색인하지 않도록 제한하는 안전장치다. 니콘내콘의 기프티콘 상품명은 보통 짧으니 문제없지만, 상품 설명(description)처럼 긴 텍스트에 keyword 서브필드를 만들면 이 제한이 중요해진다. 또한 normalizer를 keyword 타입에 적용하면 소문자 변환, 공백 제거 등의 정규화를 집계 전에 수행할 수 있어 '스타벅스'와 ' 스타벅스'가 다른 버킷에 들어가는 문제를 방지한다.",
+    "seniorTip": "검색 필드에 nori 분석기를 적용할 때는 analyzer(색인 시)와 search_analyzer(검색 시)를 분리 설정할 수 있다. 색인 시 decompound 모드를 적극적으로 쓰되, 검색 시에는 user_dictionary를 반영한 분석기를 쓰면 정밀도와 재현율을 균형 있게 맞출 수 있다.",
+    "tags": [
+      "mapping",
+      "text",
+      "keyword",
+      "multi-field",
+      "aggregation"
+    ]
+  },
+  {
+    "id": "os-005",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "nori 분석기의 구성 요소(tokenizer, token filter)를 설명하고, 기프티콘 상품 검색에서 nori_decompound 모드를 사용하는 이유를 설명하라.",
+    "answer": "nori_tokenizer가 형태소 분석으로 한국어를 분리하고, nori_part_of_speech로 불필요한 품사를 제거하며, nori_readingform으로 한자를 한글로 변환한다. nori_decompound는 복합어를 분해해 '아이스아메리카노'를 '아이스', '아메리카노'로 나눠 부분 검색을 가능하게 한다.",
+    "explanation": "한국어는 교착어 특성상 '스타벅스아이스아메리카노'처럼 붙여쓰거나 복합어가 많다. decompound 없이 색인하면 '아메리카노' 검색 시 '스타벅스아이스아메리카노'가 히트하지 않는다. mixed 모드(원문 + 분해어 모두 색인)가 재현율을 높이는 데 유리하다.",
+    "deepDive": "nori_decompound의 세 가지 모드 차이를 실제로 보자. none: 복합어 분해 안 함 → '삼성전자' 그대로 색인. discard: 원문 버리고 분해어만 색인 → '삼성', '전자'. mixed: 원문과 분해어 모두 색인 → '삼성전자', '삼성', '전자'. 니콘내콘에서 '스타벅스 아메리카노 기프티콘'을 검색할 때, 브랜드명이 합쳐진 상품명도 찾으려면 mixed 모드가 적합하다. 단 mixed 모드는 색인 크기가 커지는 단점이 있다. user_dictionary에 자주 쓰이는 고유명사(브랜드명, 상품명)를 등록하면 잘못된 형태소 분해를 방지할 수 있다 — 예: '베스킨라빈스'가 '베스킨', '라빈스'로 분해되는 것을 막기 위해 사전에 등록.",
+    "seniorTip": "nori user_dictionary는 파일 형태로 플러그인 디렉토리에 올려야 하는데, Amazon OpenSearch Service에서는 커스텀 패키지(Custom Package) 기능을 통해 S3에 올린 사전 파일을 클러스터에 연결할 수 있다. 사전 업데이트 후 인덱스를 close→open 하거나 reload_search_analyzers API를 호출해야 새 사전이 반영된다.",
+    "tags": [
+      "nori",
+      "korean-analyzer",
+      "decompound",
+      "tokenizer",
+      "morpheme"
+    ]
+  },
+  {
+    "id": "os-006",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘에서 '스타벅스', '스벅', 'Starbucks' 세 가지 표현으로 같은 상품이 검색되게 하려면 nori 분석기 설정을 어떻게 구성해야 하는가?",
+    "answer": "synonym token filter에 '스벅,스타벅스,Starbucks => 스타벅스' 등의 동의어 규칙을 정의하고, asciifolding filter로 영문 처리를 보완하며, 이를 nori_tokenizer 체인에 추가한 커스텀 분석기를 만든다.",
+    "explanation": "동의어 처리는 색인 시(index-time synonyms)와 검색 시(search-time synonyms)에 모두 적용할 수 있다. 검색 시 동의어 처리는 색인을 변경하지 않아도 되므로 유연하지만, 색인 시 적용보다 쿼리가 무거워질 수 있다.",
+    "deepDive": "동의어 필터를 색인 시 vs 검색 시 어디에 두는 게 나을까? 색인 시 적용: 동의어가 실제 색인에 저장되므로 쿼리 성능이 좋다. 단점은 동의어 목록을 바꿀 때마다 전체 재색인이 필요하다. 검색 시 적용: 분석기를 search_analyzer에만 붙이므로 재색인 없이 동의어 업데이트가 가능하다. 단점은 쿼리 분석 시 오버헤드가 있고, phrase 쿼리와 조합하면 복잡해진다. 니콘내콘처럼 브랜드 동의어가 자주 변하는 서비스라면 search-time synonym이 운영 편의성에서 우위다. 또한 한국어 초성 검색(ㅅㅂ → 스타벅스) 같은 기능은 OpenSearch의 기본 nori로는 지원되지 않으며, 별도의 Edge N-gram 필터나 커스텀 플러그인이 필요하다.",
+    "seniorTip": "Amazon OpenSearch Service에서 동의어 파일도 커스텀 패키지로 관리할 수 있다. synonyms_path에 패키지 ID를 지정하면 되고, 업데이트 후 reload_search_analyzers로 반영한다. 브랜드 팀이 주기적으로 동의어를 업데이트할 수 있도록 S3 → OpenSearch 배포 파이프라인을 자동화하면 운영 부담이 크게 줄어든다.",
+    "tags": [
+      "nori",
+      "synonym",
+      "user-dictionary",
+      "korean-search",
+      "analyzer"
+    ]
+  },
+  {
+    "id": "os-007",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch ILM(Index Lifecycle Management)의 hot-warm-cold 아키텍처를 설명하고, 기프티콘 거래 로그 인덱스에 적용하는 예시를 들어라.",
+    "answer": "hot 노드는 활발한 색인·검색, warm 노드는 검색은 하되 색인 없는 오래된 데이터, cold 노드(또는 UltraWarm)는 거의 조회 안 하는 데이터를 저비용 스토리지에 보관한다. 거래 로그는 최근 7일 hot, 30일까지 warm, 그 이후 cold로 이동하는 정책을 설정할 수 있다.",
+    "explanation": "ILM 정책은 rollover(크기·문서수·기간 기준으로 새 인덱스 생성), shrink(샤드 수 축소), force_merge(세그먼트 병합), freeze/delete 단계를 조합해 데이터 수명 주기를 자동화한다.",
+    "deepDive": "실제로 ILM 정책을 어떻게 설정할까? PUT _ilm/policy/gifticonlog-policy 로 정책을 만들고, hot phase: max_age: 7d 또는 max_size: 50gb에 rollover 액션 추가. warm phase: min_age: 7d에 allocate(warm 노드로 이동), shrink(샤드 수 절반으로), force_merge(1 segment). cold phase: min_age: 30d에 allocate(cold/UltraWarm), freeze. delete phase: min_age: 90d에 delete. 이 정책을 index template에 연결하면 자동으로 모든 신규 인덱스에 적용된다. 니콘내콘에서 기프티콘 거래 이력 로그는 컴플라이언스 요건상 1년 이상 보관해야 할 수 있으므로, delete 대신 cold storage나 S3 스냅샷으로 장기 보관하는 방안도 고려해야 한다.",
+    "seniorTip": "Amazon OpenSearch Service의 UltraWarm은 S3 기반 warm 스토리지로, 일반 EBS 대비 약 90% 비용 절감이 가능하다. 단 UltraWarm 노드로 이동된 인덱스는 read-only가 되며, 검색 성능이 hot 노드보다 낮다. 콜드 데이터 접근 빈도와 비용 목표를 함께 고려해 UltraWarm 이동 기준을 정해야 한다.",
+    "tags": [
+      "ilm",
+      "hot-warm-cold",
+      "lifecycle",
+      "rollover",
+      "ultraWarm"
+    ]
+  },
+  {
+    "id": "os-008",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "OpenSearch에서 rollover API를 사용하는 주요 목적으로 가장 적절한 것은?",
+    "options": [
+      "인덱스의 매핑을 변경하기 위해",
+      "특정 조건(문서 수, 크기, 기간)이 충족되면 새 인덱스로 자동 전환하기 위해",
+      "클러스터의 마스터 노드를 교체하기 위해",
+      "샤드를 다른 노드로 강제 이동하기 위해"
+    ],
+    "answer": 1,
+    "explanation": "rollover는 alias를 통해 쓰기 대상 인덱스를 자동으로 새 인덱스로 전환한다. 예를 들어 logs-000001이 50GB에 도달하면 logs-000002를 생성하고 alias의 write index를 변경한다. 이를 통해 개별 인덱스가 너무 커지는 것을 방지한다.",
+    "deepDive": "rollover를 쓰지 않으면 어떤 문제가 생길까? 단일 인덱스에 계속 데이터를 쌓으면 샤드 크기가 수백 GB를 넘어 복구 시간이 길어지고, 샤드 분할을 위한 재색인이 불가피해진다. rollover + alias 패턴을 사용하면 애플리케이션 코드는 항상 'logs-current' alias로 쓰기를 하고, 실제로 어떤 인덱스에 쓰이는지는 OpenSearch가 관리한다. ILM과 결합하면 rollover → shrink → freeze → delete가 완전 자동화된다. 인덱스 이름 규칙은 '-000001' 같은 숫자 접미사를 붙여야 rollover가 다음 번호로 자동 증가한다.",
+    "seniorTip": "rollover API는 alias가 write index를 명시적으로 지정하고 있어야 동작한다. POST /alias/_rollover 호출 시 조건을 전달하거나 ILM 정책에 조건을 설정할 수 있다. is_write_index: true 플래그를 alias 설정에 반드시 포함해야 한다.",
+    "tags": [
+      "rollover",
+      "ilm",
+      "alias",
+      "index-lifecycle",
+      "shard-sizing"
+    ]
+  },
+  {
+    "id": "os-009",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "기프티콘 상품 검색에서 최신 상품과 인기 상품에 더 높은 점수를 주려면 function_score 쿼리를 어떻게 구성해야 하는가?",
+    "answer": "function_score 쿼리에서 gauss/exp decay 함수로 created_at 기준 최신성 점수를 부여하고, field_value_factor로 purchase_count 필드 값을 가중치로 사용하며, score_mode와 boost_mode로 기본 텍스트 점수와 결합 방식을 설정한다.",
+    "explanation": "function_score는 기본 쿼리 점수(_score)에 추가 함수들을 결합해 최종 관련도 점수를 재계산한다. decay 함수는 날짜나 거리에 따라 점수를 서서히 낮추고, field_value_factor는 특정 숫자 필드를 점수에 곱하거나 더한다.",
+    "deepDive": "실제 function_score 쿼리를 작성해보자. gauss decay 설정: origin을 'now', scale을 '7d', decay를 0.5로 설정하면 7일 이내 상품은 높은 점수, 이후 급격히 감소한다. field_value_factor에서 log1p modifier를 사용하면 구매수 100이 10의 점수를 99배 앞서는 과도한 왜곡을 막기 위해 로그 변환을 적용한다. score_mode: 'sum'은 여러 함수의 점수를 합산하고, boost_mode: 'multiply'는 원본 쿼리 점수와 곱한다. 니콘내콘에서 재고 있는 상품만 노출하려면 filter 조건도 함께 적용해야 한다.",
+    "seniorTip": "function_score의 score_mode(함수들끼리 합산/곱산/평균 등)와 boost_mode(원래 쿼리 점수와 결합 방식)를 잘 구분해야 한다. 점수 튜닝은 explain API로 각 문서의 점수 계산 과정을 확인하며 반복적으로 조정해야 한다. 너무 복잡한 function_score는 쿼리 성능에도 영향을 주므로 캐싱 전략을 함께 고려해야 한다.",
+    "tags": [
+      "function-score",
+      "relevance",
+      "decay",
+      "boost",
+      "ranking"
+    ]
+  },
+  {
+    "id": "os-010",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "OpenSearch에서 boost를 사용해 '브랜드명' 필드를 '상품 설명' 필드보다 검색 점수에서 높게 가중치를 주는 방법을 설명하라.",
+    "answer": "multi_match 쿼리나 bool 쿼리의 should 절에서 fields 파라미터에 'brand_name^3, description^1'처럼 캐럿(^) 뒤에 boost 값을 지정하거나, 각 match 쿼리에 boost 파라미터를 개별적으로 설정한다.",
+    "explanation": "boost 값은 점수에 직접 곱해지는 승수가 아니라 관련도 계산 시 가중치 역할을 한다. brand_name^3은 brand_name 필드 점수를 3배로 높인다. boost는 필드 수준, 쿼리 절 수준, 인덱스 매핑 수준에서 적용할 수 있다.",
+    "deepDive": "니콘내콘 검색에서 사용자가 '스타벅스 아메리카노'를 입력했을 때 이상적인 쿼리 구조는? multi_match 쿼리에서 type을 'best_fields'로 설정하면 여러 필드 중 가장 높은 점수 필드를 선택하되 tie_breaker로 나머지 필드도 일부 반영한다. type을 'cross_fields'로 설정하면 쿼리 단어를 여러 필드에 걸쳐 찾는 방식으로, '스타벅스'는 brand_name에서, '아메리카노'는 product_name에서 각각 찾을 때 유리하다. fields에 ['brand_name^3', 'product_name^2', 'description^1', 'category^1.5']처럼 지정하면 각 필드의 중요도를 반영한 검색이 가능하다. 어떤 type이 더 나은지는 실제 데이터로 A/B 테스트를 해봐야 한다.",
+    "seniorTip": "boost 값은 상대적이다. 절대적인 최적값이 없으므로 검색 품질 평가(Search Quality Evaluation)를 위한 판정 데이터셋(judgment list)을 만들고, NDCG나 Precision@K 같은 지표로 boost 값을 측정하며 튜닝해야 한다.",
+    "tags": [
+      "boost",
+      "multi-match",
+      "relevance",
+      "fields",
+      "search-quality"
+    ]
+  },
+  {
+    "id": "os-011",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "기프티콘 상품 목록 페이지에서 브랜드별 상품 수, 카테고리별 상품 수, 가격 구간별 분포를 한 번의 요청으로 가져오려면 어떤 집계(aggregation)를 사용해야 하는가?",
+    "answer": "브랜드별: terms aggregation on brand_name.keyword, 카테고리별: terms aggregation on category.keyword, 가격 구간: range aggregation 또는 histogram aggregation on price 필드를 사용하며, 이를 aggs 블록에 병렬로 정의해 단일 쿼리로 실행한다.",
+    "explanation": "OpenSearch는 하나의 검색 요청에 여러 집계를 병렬로 실행할 수 있다. terms aggregation은 필드 값별로 버킷을 만들어 문서 수를 세고, histogram은 지정한 간격(interval)마다 버킷을 생성한다.",
+    "deepDive": "이것이 바로 '패싯 검색(faceted search)'의 구현 방법이다. 검색 결과와 함께 필터 옵션(패싯)을 계산해 사용자에게 보여주는 방식인데, 전통적인 RDBMS에서는 카테고리 수 × 쿼리 실행이 필요하지만 OpenSearch에서는 단 한 번의 요청으로 해결된다. 주의할 점은 terms aggregation의 size 파라미터다. 기본값이 10이므로 브랜드가 100개라면 size: 200 같이 충분히 크게 설정해야 한다. 또한 카디널리티가 매우 높은 필드(예: 상품 ID)에 terms aggregation을 쓰면 메모리를 많이 쓰므로 cardinality aggregation으로 근사 집계를 하는 것이 효율적이다.",
+    "seniorTip": "글로벌 집계(global aggregation)를 사용하면 현재 쿼리 필터를 무시하고 전체 인덱스에 대한 집계를 구할 수 있다. 예를 들어 '스타벅스' 필터를 적용 중이어도 '전체 브랜드 목록'을 사이드바에 보여주고 싶을 때 유용하다. filter aggregation과 조합하면 특정 조건에 맞는 서브셋만 집계하는 것도 가능하다.",
+    "tags": [
+      "aggregation",
+      "terms",
+      "histogram",
+      "faceted-search",
+      "range"
+    ]
+  },
+  {
+    "id": "os-012",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "기프티콘 상품에 여러 옵션 객체가 배열로 저장되어 있을 때, 옵션 타입별 평균 가격을 구하려면 nested aggregation이 필요한 이유를 설명하라.",
+    "answer": "일반 배열 필드는 내부 객체들 사이의 관계가 평탄화(flattened)되어 cross-object 매칭 문제가 발생한다. nested 타입으로 매핑하면 내부 객체들이 별도의 숨겨진 문서로 관리되어 올바른 집계와 필터링이 가능하다.",
+    "explanation": "예: 상품에 [{option: 'hot', price: 5000}, {option: 'ice', price: 3000}]이 있을 때 일반 object 타입이면 'hot'과 3000이 잘못 연결될 수 있다. nested 타입은 각 요소를 독립 문서로 색인해 이 문제를 해결한다.",
+    "deepDive": "nested 타입의 비용은 무엇인가? 각 중첩 문서가 별도 Lucene 문서로 저장되므로 색인 공간이 늘어나고, nested 쿼리는 join 연산이 필요해 성능이 더 느리다. 또한 nested 집계는 nested → agg → reverse_nested 구조로 작성해야 한다. nested path를 'options'로 지정하고, 그 안에서 terms 집계로 option.type별 버킷을 만든 뒤, reverse_nested로 상위 문서의 price 필드에 avg 집계를 적용한다. 니콘내콘에서 상품의 옵션(용량, 색상 등)을 nested로 관리하면 '300ml 옵션이 있는 스타벅스 상품의 평균 가격' 같은 정밀한 집계가 가능해진다.",
+    "seniorTip": "nested 문서 수가 많아지면 성능 저하가 심해진다. 중첩 문서 수가 많다면 parent-child 관계(join 필드)를 고려하되, join은 같은 샤드에 있어야 한다는 제약이 있다. 설계 단계에서 쿼리 패턴을 먼저 파악하고 데이터 구조를 결정해야 한다.",
+    "tags": [
+      "nested",
+      "aggregation",
+      "data-modeling",
+      "object-vs-nested",
+      "join"
+    ]
+  },
+  {
+    "id": "os-013",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "OpenSearch bool 쿼리의 must, should, filter, must_not의 차이를 설명하고, 기프티콘 검색에서 각각의 적절한 사용 예시를 들어라.",
+    "answer": "must: 점수에 영향, 필수 조건 (예: 키워드 매칭). filter: 점수 무관, 필수 조건, 캐시 가능 (예: 카테고리=커피). should: 점수에 영향, 선택 조건 (예: 프리미엄 브랜드면 가중). must_not: 점수 무관, 제외 조건 (예: 품절 상품 제외).",
+    "explanation": "filter 컨텍스트는 캐싱되므로 반복적인 필터(카테고리, 가격 범위 등)에 사용하면 성능이 크게 향상된다. must는 관련도 점수(_score) 계산에 포함되므로 텍스트 검색에 적합하다.",
+    "deepDive": "실전 기프티콘 검색 쿼리를 작성해보자. bool 쿼리에서 must에 multi_match(키워드 검색), filter에 term(category: 커피), range(price: 3000~10000), term(is_available: true)를 넣고, should에 is_premium에 boost: 1.5를 주며, must_not에 is_deleted: true를 넣는다. filter 절의 조건들은 Lucene 레벨에서 비트셋으로 캐싱되어 반복 쿼리 시 매우 빠르다. 반면 must의 match 쿼리는 TF-IDF/BM25 점수를 계산하므로 캐싱되지 않는다.",
+    "seniorTip": "minimum_should_match 파라미터를 bool 쿼리에 설정하면 should 조건 중 최소 몇 개를 만족해야 하는지 제어할 수 있다. 예를 들어 여러 키워드 중 최소 2개 이상 포함된 문서를 찾고 싶을 때 유용하다.",
+    "tags": [
+      "bool-query",
+      "must",
+      "filter",
+      "should",
+      "query-dsl"
+    ]
+  },
+  {
+    "id": "os-014",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "OpenSearch에서 정확한 키워드 매칭(exact match)과 전문 검색(full-text search)에 각각 올바른 쿼리 타입은?",
+    "options": [
+      "exact match: match, full-text: term",
+      "exact match: term, full-text: match",
+      "exact match: range, full-text: multi_match",
+      "exact match: match_phrase, full-text: term"
+    ],
+    "answer": 1,
+    "explanation": "term 쿼리는 분석기를 거치지 않고 역색인에서 정확한 값을 찾는다. keyword 타입 필드에 사용한다. match 쿼리는 입력값을 분석기로 처리한 후 역색인을 검색하므로 text 타입 필드의 전문 검색에 적합하다.",
+    "deepDive": "흔한 실수: text 타입 필드에 term 쿼리를 사용하면 결과가 안 나온다. 예를 들어 product_name이 text 타입으로 저장되어 있으면, 색인 시 nori 분석기가 '스타벅스', '아메리카노'로 분리해 저장한다. 이때 term: { product_name: '스타벅스 아메리카노' }는 '스타벅스 아메리카노' 전체 문자열을 역색인에서 찾으므로 결과가 없다. 반드시 match 쿼리를 써야 한다. 반대로 category_id나 brand_code처럼 keyword 타입 필드에는 term을 써야 효율적이다. terms 쿼리(복수형)는 여러 값 중 하나라도 일치하면 반환하는 SQL IN 연산자와 같다.",
+    "seniorTip": "terms lookup을 사용하면 다른 인덱스의 문서 ID 목록을 동적으로 참조해 terms 필터링을 할 수 있다. 예를 들어 '즐겨찾기 브랜드' 목록을 저장한 인덱스를 참조해 해당 브랜드 상품만 필터링하는 용도로 활용 가능하다.",
+    "tags": [
+      "term",
+      "match",
+      "query-dsl",
+      "keyword",
+      "text"
+    ]
+  },
+  {
+    "id": "os-015",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "대량의 기프티콘 상품 데이터를 OpenSearch에 초기 색인할 때 성능을 최대화하기 위한 bulk indexing 최적화 방법을 설명하라.",
+    "answer": "Bulk API로 배치 처리, refresh_interval을 -1로 설정해 색인 중 자동 refresh 비활성화, number_of_replicas를 0으로 줄여 복제 부담 제거, translog.durability를 async로 변경, 색인 완료 후 설정 원복 및 force_merge 실행.",
+    "explanation": "OpenSearch의 색인 성능 병목은 주로 refresh(세그먼트 생성), 복제(replica 동기화), translog fsync이다. 초기 대량 색인 시 이를 일시적으로 비활성화하면 처리량이 수배 향상된다.",
+    "deepDive": "각 설정의 의미를 이해해보자. refresh_interval: -1 → 수동으로 _refresh 호출할 때만 검색 가능한 세그먼트 생성. 기본값 1s 대비 색인 CPU 부담 대폭 감소. number_of_replicas: 0 → 원본 샤드에만 색인하고 복제 샤드 없음. 색인 중 노드 장애 시 데이터 손실 위험 있으므로 초기 마이그레이션에만 사용. translog.durability: async → 매 요청마다 fsync하지 않고 5초마다 flush. 디스크 I/O 감소. Bulk API의 적정 배치 크기는 5MB~15MB 또는 1000~5000 문서가 일반적이나, 실제 문서 크기에 따라 달라진다. 색인 완료 후 반드시 설정을 원복(refresh_interval: 1s, number_of_replicas: 1)하고 _forcemerge?max_num_segments=1 을 실행해 세그먼트를 통합해야 한다.",
+    "seniorTip": "니콘내콘처럼 RDS에서 OpenSearch로 초기 동기화할 때는 DB 스냅샷 기준으로 bulk 색인 후, 스냅샷 이후 변경 사항을 CDC(Change Data Capture)로 처리하는 '스냅샷 + CDC' 패턴이 안전하다. 색인 중에는 서비스에 임시 alias를 구 인덱스로 유지하고 완료 후 alias를 교체하면 다운타임 없이 초기화가 가능하다.",
+    "tags": [
+      "bulk-indexing",
+      "performance",
+      "refresh-interval",
+      "translog",
+      "replica"
+    ]
+  },
+  {
+    "id": "os-016",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "OpenSearch에서 refresh_interval이 색인 성능과 검색 지연(near real-time)에 어떤 영향을 미치는지 설명하라.",
+    "answer": "refresh_interval은 메모리 버퍼의 데이터를 Lucene 세그먼트로 변환해 검색 가능하게 만드는 주기다. 값이 작을수록 색인 직후 검색 가능 시간이 짧아지지만(낮은 지연), 잦은 세그먼트 생성으로 색인 CPU/I/O 부담이 증가한다.",
+    "explanation": "OpenSearch는 Near Real-Time(NRT) 검색 엔진이다. 문서를 색인해도 refresh가 일어나기 전까지는 검색되지 않는다. 기본값 1초는 대부분의 서비스에서 충분하지만, 실시간성이 덜 중요한 배치 색인에서는 늘려야 한다.",
+    "deepDive": "refresh와 flush의 차이를 알아야 한다. refresh: 메모리 버퍼 → Lucene 세그먼트(검색 가능). 가벼운 작업이지만 빈번하면 많은 세그먼트가 생성된다. flush: Lucene 세그먼트 → 디스크 커밋 + translog 비움. 훨씬 무거운 작업. merge: 여러 세그먼트를 하나로 합치는 백그라운드 작업. 세그먼트가 많으면 검색 시 모든 세그먼트를 스캔해야 하므로 성능이 저하된다. force_merge(max_num_segments=1)는 단 하나의 세그먼트로 통합하므로 검색 성능이 최적화되지만, 읽기 전용 인덱스에만 적합하다(병합 중 기존 세그먼트를 삭제할 수 없어 디스크가 일시적으로 2배 필요). 니콘내콘의 상품 인덱스처럼 업데이트가 빈번하지 않다면 refresh_interval을 5s~30s로 늘려 색인 성능을 개선할 수 있다.",
+    "seniorTip": "index.translog.flush_threshold_size(기본 512mb)를 늘리면 flush 빈도가 줄어 대량 색인 성능이 향상된다. 단 이 크기만큼 복구 시 재처리해야 하므로 노드 장애 후 시작 시간이 길어질 수 있다.",
+    "tags": [
+      "refresh-interval",
+      "translog",
+      "nrt",
+      "segment",
+      "performance"
+    ]
+  },
+  {
+    "id": "os-017",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch에서 검색 성능을 높이기 위한 라우팅(routing) 전략을 설명하고, 기프티콘 상품 인덱스에 어떻게 적용할 수 있는지 설명하라.",
+    "answer": "custom routing은 특정 값(예: brand_id)을 기준으로 문서를 특정 샤드에 집중시켜, 검색 시 모든 샤드가 아닌 해당 샤드만 조회하게 한다. 브랜드별로 라우팅하면 브랜드 필터 검색 시 샤드 조회 수를 대폭 줄일 수 있다.",
+    "explanation": "기본적으로 OpenSearch는 문서 ID를 해시해 샤드를 결정한다. custom routing은 색인·검색 시 routing 파라미터로 동일 값을 지정해 해당 샤드에만 읽기 쓰기를 유도한다.",
+    "deepDive": "routing의 장단점과 주의사항을 살펴보자. 장점: 검색 시 fan-out(모든 샤드로 요청 분산) 없이 특정 샤드만 조회 → 지연 시간 감소, 클러스터 부하 감소. 단점: 특정 routing 값에 문서가 몰리면 샤드 크기 불균형(hot shard) 발생. 검색 시 routing 값을 모르면 전체 샤드 조회해야 함. 니콘내콘 적용 예: 스타벅스 기프티콘을 자주 검색한다면 routing=starbucks로 색인하고, 스타벅스 관련 검색 시 routing 파라미터를 전달해 단일 샤드 조회. 주의: _routing 필드를 required: true로 설정하면 routing 없는 색인 시 에러를 내어 안전하다. 색인과 검색/업데이트/삭제 시 항상 동일 routing 값을 전달해야 한다.",
+    "seniorTip": "routing 값이 몇 개 없을 때(예: 10개 브랜드) 문서가 10개 샤드로만 집중된다. 나머지 샤드는 비어 있어 클러스터 자원이 낭비된다. routing alias나 _routing + num_routing_shards 설정으로 단일 routing 값을 여러 샤드에 분산할 수 있다.",
+    "tags": [
+      "routing",
+      "performance",
+      "shard",
+      "fan-out",
+      "hot-shard"
+    ]
+  },
+  {
+    "id": "os-018",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "OpenSearch의 query cache(filter cache)와 request cache의 차이를 설명하고, 어떤 상황에서 각각 효과적인지 설명하라.",
+    "answer": "query cache(filter cache)는 filter 컨텍스트의 쿼리 결과를 비트셋으로 샤드 레벨에서 캐싱한다. request cache는 집계나 쿼리 결과 전체를 노드 레벨에서 캐싱한다. filter cache는 반복적인 필터 쿼리에, request cache는 동일한 집계 요청이 반복되는 대시보드에 효과적이다.",
+    "explanation": "query cache는 인덱스가 변경(refresh)되면 무효화된다. request cache는 인덱스 segment가 변경될 때 무효화된다. 둘 다 캐시 크기 제한이 있으며 LRU 방식으로 관리된다.",
+    "deepDive": "니콘내콘 서비스에서 캐시 전략을 어떻게 설계해야 할까? 상품 목록 페이지에서 카테고리=커피, 가격<=10000, is_available=true 필터를 매번 적용한다면, 이 세 조건은 filter 컨텍스트에 두어야 query cache의 이점을 받는다. 대시보드에서 매 분 브랜드별 판매량 집계를 요청한다면 request cache가 효과적이지만, 1분마다 새 문서가 색인된다면 캐시가 자주 무효화된다. 캐시 히트율은 _nodes/stats/indices/query_cache,request_cache API로 모니터링할 수 있다. 캐시 히트율이 낮다면 쿼리 구조를 점검해 filter 컨텍스트를 최대한 활용해야 한다.",
+    "seniorTip": "request cache는 size: 0(결과 없이 집계만 반환)인 요청에만 기본 활성화된다. 집계 요청에 request_cache: true를 명시적으로 설정하면 결과가 있어도 캐싱된다. 단 캐시가 인덱스 갱신 시 무효화되므로 갱신이 잦은 인덱스에서는 효과가 제한된다.",
+    "tags": [
+      "query-cache",
+      "request-cache",
+      "filter-context",
+      "performance",
+      "caching"
+    ]
+  },
+  {
+    "id": "os-019",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "OpenSearch 클러스터에서 cluster manager(master) 노드의 주요 역할로 올바른 것은?",
+    "options": [
+      "실제 문서 데이터 저장 및 색인 처리",
+      "클러스터 상태 관리, 샤드 할당, 인덱스 생성/삭제 조율",
+      "클라이언트 요청 수신 및 데이터 노드로 라우팅",
+      "데이터 변환 및 파이프라인 처리"
+    ],
+    "answer": 1,
+    "explanation": "cluster manager(구 master) 노드는 클러스터 메타데이터(인덱스 설정, 매핑, 샤드 할당 정보)를 관리하고 클러스터 상태 변경을 조율한다. 실제 데이터 처리는 data 노드, 요청 라우팅은 coordinating 노드, 데이터 변환은 ingest 노드가 담당한다.",
+    "deepDive": "OpenSearch 2.x에서 master → cluster manager로 이름이 변경됐다. 각 노드 타입을 분리해야 하는 이유는? 소규모 클러스터(3노드)는 모든 노드가 모든 역할을 겸해도 되지만, 대규모에서는 분리가 필수다. cluster manager 전용 노드: 데이터 처리 없이 클러스터 상태 관리에만 집중. 가용성을 위해 3개(또는 5개) 홀수 운영. data 노드: 실제 색인·검색 처리. 메모리와 디스크가 중요. coordinating only 노드: 로드밸런서 역할, 대규모 집계의 중간 결과 취합. OOM 위험이 있어 메모리를 넉넉하게. ingest 노드: 색인 전 처리(grok, date, rename 등 pipeline 처리). Amazon OpenSearch Service에서는 전용 마스터(Dedicated master)를 별도로 설정할 수 있다.",
+    "seniorTip": "split-brain 문제(클러스터가 두 개로 분리되는 현상)를 방지하려면 cluster manager 노드를 홀수로 운영하고, cluster.initial_cluster_manager_nodes 설정이 올바르게 되어 있는지 확인해야 한다. 짝수 노드 구성은 split-brain 시 과반수 합의가 불가능해 클러스터 중단으로 이어진다.",
+    "tags": [
+      "cluster-manager",
+      "node-roles",
+      "architecture",
+      "dedicated-master",
+      "split-brain"
+    ]
+  },
+  {
+    "id": "os-020",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch 클러스터에서 coordinating only 노드(클라이언트 노드)를 별도로 두는 이유와 주의사항을 설명하라.",
+    "answer": "coordinating 노드는 클라이언트 요청을 받아 적절한 샤드에 분산하고 결과를 취합한다. 대형 집계나 msearch 요청의 중간 결과를 취합할 때 많은 메모리를 사용하므로, 전용 coordinating 노드를 두면 data 노드의 메모리 압박을 줄일 수 있다.",
+    "explanation": "모든 OpenSearch 노드는 기본적으로 coordinating 역할을 수행한다. 높은 트래픽 환경에서 data 노드들이 색인·검색·coordinating을 모두 처리하면 OOM 위험이 커진다. coordinating only 노드를 앞단에 두면 역할 분리가 가능하다.",
+    "deepDive": "coordinating 노드에서 OOM이 발생하는 시나리오: 사용자가 size: 10000인 검색 요청을 보낸다. coordinating 노드는 각 샤드에 size: 10000씩 요청을 보내고, 5개 샤드라면 최대 50000개 문서를 메모리에 올려 정렬한 후 상위 10000개를 반환한다. 이것이 '깊은 페이지네이션' 문제다. 따라서 coordinating 노드는 힙 메모리를 넉넉하게 설정해야 하며, 위험한 쿼리(매우 큰 size, 복잡한 집계)에는 Circuit Breaker가 작동해 OOM 전에 요청을 거부한다. 니콘내콘처럼 다양한 집계 쿼리가 많은 서비스라면 coordinating 노드에 많은 메모리를 할당하는 것이 안정적이다.",
+    "seniorTip": "Amazon OpenSearch Service에서 대형 클러스터는 인스턴스 수를 늘려 coordinating 부하를 분산할 수 있다. 비용과 안정성 사이의 트레이드오프를 클러스터 부하 패턴에 맞게 결정해야 한다. ingest 노드도 별도로 분리하면 색인 파이프라인 처리 부하가 data 노드에 영향을 주지 않는다.",
+    "tags": [
+      "coordinating-node",
+      "architecture",
+      "oom",
+      "circuit-breaker",
+      "memory"
+    ]
+  },
+  {
+    "id": "os-021",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch에서 '너무 많은 작은 샤드'와 '너무 적은 큰 샤드' 문제가 각각 어떤 성능 이슈를 일으키는지 설명하라.",
+    "answer": "너무 많은 작은 샤드: 각 샤드마다 Lucene 인스턴스 오버헤드가 있어 JVM 힙 사용량 증가(샤드당 약 수십 MB), 클러스터 상태(cluster state) 크기 증가로 cluster manager 부하 증가. 너무 큰 샤드: 복구 시간 증가, 노드 간 재분배 시간 증가, 단일 샤드 검색의 병렬화 불가.",
+    "explanation": "Elastic/AWS의 일반적인 권고는 샤드당 10~50GB, 노드당 힙 1GB당 최대 20개 샤드다. 기프티콘 상품 인덱스처럼 데이터가 크지 않다면 샤드 수를 줄여도 충분하다.",
+    "deepDive": "샤드 수를 잘못 설계한 실제 사례를 생각해보자. 기프티콘 상품이 100만 개인 인덱스를 primary shard 10, replica 1로 만들었다면 총 20개 샤드다. 상품당 평균 1KB라면 총 약 1GB → 샤드당 100MB로 너무 작다. 반대로 primary 1, replica 1로 만들면 2개 샤드, 샤드당 500MB로 더 합리적이다. 하지만 검색 시 병렬화가 2개 샤드로 제한된다. 일반적으로 데이터 크기와 병렬 처리 요구를 함께 고려해 primary shard 수를 결정하고, 나중에 늘리려면 split API, 줄이려면 shrink API를 사용한다. 단 매핑이 설정되면 primary shard 수는 변경 불가이므로 초기 설계가 중요하다.",
+    "seniorTip": "샤드 수는 '_cat/shards?v' API로 확인하고, 노드당 힙 대비 샤드 비율은 '_cat/nodes?v&h=name,heap.percent,shards'로 점검할 수 있다. 클러스터 상태 크기가 커지면 cluster manager 처리 속도가 떨어지므로 샤드 총 개수 관리는 운영의 핵심이다.",
+    "tags": [
+      "shard-sizing",
+      "performance",
+      "cluster-state",
+      "jvm",
+      "small-shards"
+    ]
+  },
+  {
+    "id": "os-022",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Amazon OpenSearch Service에서 권고하는 노드당 힙 1GB당 최대 샤드 수 가이드라인은?",
+    "options": [
+      "힙 1GB당 최대 5개 샤드",
+      "힙 1GB당 최대 20개 샤드",
+      "힙 1GB당 최대 100개 샤드",
+      "힙 크기와 샤드 수는 무관하다"
+    ],
+    "answer": 1,
+    "explanation": "Elasticsearch/OpenSearch 공식 가이드라인은 힙 1GB당 최대 20개 샤드를 권고한다. 예를 들어 노드 힙이 30GB라면 최대 600개 샤드. 이 이상이 되면 샤드 메타데이터 오버헤드가 GC 압박을 유발하고 클러스터 안정성에 영향을 준다.",
+    "deepDive": "왜 힙 대비 샤드 수가 중요한가? 각 샤드는 Lucene 인덱스 하나에 해당하며, 세그먼트 메타데이터, 필드 데이터 캐시, 열린 파일 핸들 등 상당한 메모리를 차지한다. 샤드가 많아지면 JVM GC가 더 빈번하게 발생하고, 긴 GC stop-the-world는 클러스터 반응성을 저하시킨다. 또한 cluster manager가 클러스터 상태(모든 인덱스·샤드 정보)를 전체 노드에 동기화하는데, 상태 크기가 크면 이 동기화가 느려진다. 니콘내콘에서 로그용 인덱스를 일별로 생성하면 한 달이면 30개 인덱스, 샤드 수도 빠르게 늘어난다. ILM과 rollover로 인덱스 수를 통제하는 것이 필수다.",
+    "seniorTip": "Amazon OpenSearch Service는 클러스터당 허용 최대 샤드 수 제한도 있다. 이 한도에 도달하면 새 인덱스 생성이나 샤드 재할당이 실패할 수 있다. GET _cluster/stats에서 indices.shards.total로 현재 샤드 총수를 확인하자.",
+    "tags": [
+      "shard-sizing",
+      "heap",
+      "jvm",
+      "cluster-state",
+      "limits"
+    ]
+  },
+  {
+    "id": "os-023",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "기프티콘 상품 인덱스의 매핑을 변경하거나 새 분석기를 적용할 때 다운타임 없이 재색인(reindexing)하는 방법을 단계별로 설명하라.",
+    "answer": "1) 새 매핑으로 새 인덱스(v2) 생성, 2) Reindex API로 기존 인덱스(v1) → v2 데이터 복사, 3) Reindex 완료 후 delta 처리(신규 변경 문서 추가 색인), 4) 검색 alias를 v1 → v2로 원자적으로 교체(alias swap), 5) 구 인덱스 v1 삭제.",
+    "explanation": "alias swap은 POST _aliases에 remove(v1)와 add(v2) 액션을 동시에 전달해 원자적으로 교체한다. 클라이언트는 항상 alias를 통해 접근하므로 코드 변경 없이 인덱스 교체가 가능하다.",
+    "deepDive": "실전에서 맞닥뜨리는 문제들을 살펴보자. 첫째, Reindex 속도다. 상품이 수백만 개라면 Reindex API도 오래 걸린다. slices 파라미터로 병렬 처리 가능하며, wait_for_completion=false로 비동기 실행하고 Task API로 진행 상황을 모니터링한다. 둘째, Reindex 중 발생하는 신규/업데이트 문서 처리다. 가장 단순한 방법은 DB의 updated_at 기준으로 변경 문서만 추가로 색인(delta reindex). 셋째, alias 교체 직전 순간의 검색 결과 일관성이다. v1과 v2가 동시에 존재하는 짧은 순간을 alias swap이 원자적으로 해결한다. 넷째, Reindex 실패 시 롤백이다. v1이 살아있으므로 alias를 다시 v1으로 변경하면 즉시 롤백 완료.",
+    "seniorTip": "Reindex API의 source와 dest에 script를 추가하면 데이터 변환도 동시에 수행할 수 있다. 예: 필드 이름 변경, 값 변환, 필드 추가/삭제. 이를 통해 마이그레이션과 데이터 정제를 한 번에 처리할 수 있다.",
+    "tags": [
+      "reindex",
+      "zero-downtime",
+      "alias-swap",
+      "migration",
+      "mapping-change"
+    ]
+  },
+  {
+    "id": "os-024",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "기프티콘 상품 검색창에 자동완성(autocomplete) 기능을 구현할 때 completion suggester와 edge_ngram 방식의 차이를 설명하고, 각각 어떤 상황에 적합한지 설명하라.",
+    "answer": "completion suggester는 FST(Finite State Transducer) 자료구조를 힙에 올려 매우 빠른 prefix 자동완성을 제공하지만, 오타 교정이나 중간 단어 매칭이 안 된다. edge_ngram은 접두어 토큰을 색인에 저장해 일반 match 쿼리로 자동완성을 구현하며 더 유연하지만 색인 크기가 커진다.",
+    "explanation": "completion suggester는 _source에 저장된 데이터 구조를 메모리에 올리므로 응답이 빠르고 weight로 우선순위 지정이 가능하다. 반면 edge_ngram은 기존 검색 파이프라인과 통합이 쉽고 오타 허용(fuzzy), 필터 결합이 자연스럽다.",
+    "deepDive": "니콘내콘 자동완성을 edge_ngram으로 구현한다면 분석기 설정이 핵심이다. 색인 시에는 edge_ngram tokenizer(min_gram: 1, max_gram: 20)를 사용하고, 검색 시에는 standard tokenizer만 사용해야 한다. 검색 시에도 edge_ngram을 적용하면 각 글자마다 개별 토큰으로 쪼개져 관련 없는 결과도 나오기 때문이다. 한국어 자동완성은 min_gram: 1로 한 글자부터 지원하면 좋지만, 색인 크기가 커지므로 트레이드오프가 있다. completion suggester는 브랜드명이나 카테고리처럼 목록이 고정된 자동완성에 적합하고, edge_ngram은 상품명처럼 다양한 텍스트에 적합하다.",
+    "seniorTip": "completion suggester는 contexts를 지원해 카테고리나 브랜드 컨텍스트를 필터링할 수 있다. 예: 스타벅스 카테고리 내에서만 자동완성. 단 contexts마다 FST가 별도 생성되므로 컨텍스트 조합이 많으면 메모리 사용량이 급증한다.",
+    "tags": [
+      "autocomplete",
+      "completion-suggester",
+      "edge-ngram",
+      "search-ux",
+      "prefix"
+    ]
+  },
+  {
+    "id": "os-025",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "한국어 검색에서 동의어(synonyms)와 불용어(stop words) 처리가 필요한 이유를 설명하고, OpenSearch에서 각각 어떻게 설정하는지 설명하라.",
+    "answer": "동의어는 '스벅=스타벅스', '아아=아이스아메리카노'처럼 다양한 표현을 같은 의미로 처리하기 위해 필요하다. 불용어는 '의', '을', '이', '가' 같은 조사처럼 검색 의미에 기여하지 않는 토큰을 제거해 노이즈를 줄인다. 각각 synonym token filter와 stop token filter로 커스텀 분석기에 추가한다.",
+    "explanation": "nori_part_of_speech 필터가 형태소 분석 시 조사/어미를 이미 제거해주므로, nori를 사용할 때는 별도 stop filter가 덜 필요할 수 있다. 하지만 '그것', '이것' 같은 의존형태소 외의 불용어는 별도 stop filter로 처리해야 한다.",
+    "deepDive": "동의어 처리의 미묘한 함정이 있다. 단방향 동의어(=>)와 양방향 동의어(,)의 차이다. '스벅 => 스타벅스'는 검색어 '스벅'을 '스타벅스'로만 변환하고, '스벅, 스타벅스'는 양쪽 모두를 공통 토큰으로 변환한다. 동의어 파일 예시: '스벅, 스타벅스', '아아, 아이스아메리카노', '따아, 따뜻한 아메리카노'. 이 파일을 Amazon OpenSearch Service의 Custom Package로 등록하면 클러스터 재시작 없이 배포할 수 있다. 불용어의 경우 '커피 한 잔'에서 '한'을 불용어로 처리하면 정확도가 높아지지만, '한식' 같은 단어에서 '한'이 중요 토큰인 경우 의도치 않게 제거될 수 있어 신중하게 설계해야 한다.",
+    "seniorTip": "동의어는 search-time에 적용하는 것이 유지보수 측면에서 유리하다. 동의어 목록이 변경될 때마다 재색인 없이 분석기를 reload하는 것만으로 반영된다. POST /index/_reload_search_analyzers API를 활용하자.",
+    "tags": [
+      "synonyms",
+      "stop-words",
+      "korean",
+      "analyzer",
+      "nori"
+    ]
+  },
+  {
+    "id": "os-026",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch에서 대량의 검색 결과를 페이지네이션할 때 scroll API와 search_after의 차이를 설명하고, 각각 어떤 상황에 적합한지 설명하라.",
+    "answer": "scroll은 검색 시점의 스냅샷을 유지해 일관된 결과를 반환하지만 서버에 컨텍스트를 보관해 메모리 부담이 크고 실시간 변경을 반영하지 못한다. search_after는 마지막 결과의 sort 값을 커서로 사용해 stateless하며 실시간 데이터를 반영하고 메모리 부담이 없어 프로덕션 페이지네이션에 권장된다.",
+    "explanation": "from/size 방식의 deep pagination은 N+K 문서를 메모리에 올린 후 K개를 버리는 방식으로, from 값이 커질수록 메모리·CPU 낭비가 심해진다. scroll과 search_after는 이 문제를 해결하기 위한 방식이다.",
+    "deepDive": "실제 사용 패턴을 비교해보자. scroll: scroll 파라미터에 유지 시간(예: 5m)을 설정하고, 반환된 scroll_id를 다음 요청에 전달하며 반복한다. 배치 데이터 추출, 전체 인덱스 스캔에 적합하다. 단 OpenSearch 2.x에서 scroll은 deprecated 방향으로 가고 있으며 point-in-time(PIT) + search_after 조합이 권장된다. search_after: sort 값의 마지막 항목을 다음 쿼리의 search_after에 전달하는 방식. 실시간 피드, 무한 스크롤 UI에 적합하다. PIT(Point-in-Time): POST /index/_search/point_in_time?keep_alive=5m으로 일관된 뷰를 만들고 search_after와 조합하면 scroll의 일관성과 search_after의 효율성을 모두 얻을 수 있다. 니콘내콘의 어드민 데이터 내보내기 기능에는 PIT+search_after, 사용자 검색 결과 무한 스크롤에는 search_after(PIT 없이)를 사용하는 것이 적절하다.",
+    "seniorTip": "search_after의 sort 필드는 반드시 유니크해야 한다. _id를 sort에 추가하면 유니크를 보장할 수 있다. 정렬 필드 값이 null인 문서가 있으면 missing 파라미터로 처리 방식을 명시해야 한다.",
+    "tags": [
+      "pagination",
+      "scroll",
+      "search-after",
+      "pit",
+      "deep-pagination"
+    ]
+  },
+  {
+    "id": "os-027",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘의 기프티콘 상품 DB(MySQL)와 OpenSearch를 동기화할 때 CDC, dual write, batch sync 방식의 장단점을 비교하고, 어떤 방식을 추천하는지 설명하라.",
+    "answer": "CDC(Debezium 등)는 DB binlog를 실시간 캡처해 가장 안정적이고 지연이 낮지만 인프라 복잡도가 높다. dual write는 DB와 OpenSearch에 동시 쓰기해 간단하지만 부분 실패 시 불일치 가능. batch sync는 구현이 쉽지만 주기적 지연과 대량 처리 부하가 있다. 대부분의 프로덕션에서는 CDC를 추천한다.",
+    "explanation": "eventual consistency(최종 일관성)는 세 방식 모두에 내재된 특성이다. OpenSearch가 순간적으로 DB와 다른 상태일 수 있음을 아키텍처 레벨에서 수용해야 한다.",
+    "deepDive": "각 방식의 실패 시나리오를 생각해보자. Dual write: 애플리케이션이 MySQL 저장에 성공했지만 OpenSearch 저장에 실패하면 상품이 DB에는 있지만 검색에서는 안 보인다. 이를 해결하려면 outbox pattern(DB에 변경 이벤트를 함께 저장하고 별도 프로세스가 OpenSearch에 전달)이나 2PC가 필요하다. CDC: Debezium + Kafka 조합이 일반적. MySQL binlog_format=ROW 설정 필요. Kafka로 변경 이벤트를 발행하고 OpenSearch sink connector가 소비. 이벤트 순서 보장을 위해 상품 ID 기반 파티셔닝 필요. 실패 시 Kafka offset을 재처리해 멱등성 있게 OpenSearch에 반영. Batch sync: 매 1분마다 updated_at > last_sync_time인 레코드만 가져와 bulk 색인. 삭제된 상품 처리가 어려움(소프트 딜리트 + is_deleted 플래그 필요). 니콘내콘처럼 상품 상태 변경(품절, 가격 변경)이 잦은 서비스라면 CDC가 가장 신뢰성이 높다.",
+    "seniorTip": "CDC 파이프라인을 구축할 때 OpenSearch의 색인 실패(매핑 오류, 클러스터 장애 등)를 처리하는 DLQ(Dead Letter Queue)를 반드시 구성해야 한다. 실패한 이벤트를 DLQ에 보관하고 알람으로 운영팀이 확인해 재처리하는 흐름이 필수다.",
+    "tags": [
+      "cdc",
+      "dual-write",
+      "sync",
+      "eventual-consistency",
+      "debezium"
+    ]
+  },
+  {
+    "id": "os-028",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘의 기프티콘 상품 검색 페이지에서 브랜드, 카테고리, 가격 필터를 동시에 지원하는 패싯 검색(faceted search)을 OpenSearch로 구현할 때 성능 최적화 포인트를 설명하라.",
+    "answer": "필터 조건은 bool.filter 컨텍스트에 두어 query cache를 최대 활용하고, 집계는 post_filter와 함께 사용해 전체 패싯 카운트와 필터된 결과를 분리하며, 자주 쓰는 필터 조합은 routing이나 인덱스 분리로 샤드 접근을 최적화한다.",
+    "explanation": "패싯 검색의 핵심 패턴은 검색 결과(필터 적용)와 패싯 카운트(전체 카운트) 분리다. post_filter는 검색 결과에만 필터를 적용하고 집계는 필터 전 전체 데이터 기준으로 계산하므로, 사용자가 '커피' 필터를 선택해도 다른 카테고리 카운트가 정확히 표시된다.",
+    "deepDive": "실제 쿼리 구조를 살펴보자. query에 multi_match로 키워드 검색을 수행하고, post_filter에 category: 커피와 price 범위 조건을 적용한다. aggs에는 all_brands(terms on brand.keyword), all_categories(terms on category.keyword)로 전체 패싯 카운트를 구하고, filtered_brands는 category: 커피 filter 집계 내에서 brands terms 집계를 중첩해 현재 카테고리 필터 기준의 브랜드 카운트를 구한다. post_filter는 패싯 카운트에 영향 없이 검색 결과만 필터링하므로 사용자가 여러 필터를 조합해도 다른 패싯의 카운트가 정확하게 유지된다. 이 패턴이 OpenSearch에서 패싯 검색의 정석이다.",
+    "seniorTip": "패싯 검색에서 캐싱 전략이 중요하다. '커피' 카테고리의 브랜드 목록은 상품이 추가되지 않는 한 변하지 않으므로, Redis에 집계 결과를 캐싱(TTL 5분)하면 OpenSearch 부하를 크게 줄일 수 있다. 단 캐시 무효화 로직을 CDC 파이프라인과 연동해야 한다.",
+    "tags": [
+      "faceted-search",
+      "post-filter",
+      "aggregation",
+      "filter-context",
+      "gifticonSearch"
+    ]
+  },
+  {
+    "id": "os-029",
+    "category": "opensearch",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Amazon OpenSearch Service에서 제공하는 UltraWarm과 Cold Storage의 특징을 비교하고, 비용 최적화 관점에서 언제 각각을 사용해야 하는지 설명하라.",
+    "answer": "UltraWarm은 S3 + 캐시 레이어로 일반 EBS 대비 약 90% 비용 절감, 검색은 가능하지만 색인은 불가. Cold Storage는 S3에만 저장해 가장 저렴하지만 검색 전 인덱스를 먼저 UltraWarm으로 이동해야 한다. 접근 빈도가 낮을수록 더 저렴한 계층으로 이동한다.",
+    "explanation": "Amazon OpenSearch Service의 스토리지 계층: Hot(EBS) → UltraWarm(S3+캐시) → Cold(S3). 각 계층은 read-only이며 색인 후 이동할 수 있다. ILM 정책의 cold phase에 UltraWarm 이동을 설정한다.",
+    "deepDive": "실제 비용을 비교해보자. 서울 리전 기준(대략): Hot(EBS gp3): $0.114/GB/월. UltraWarm: $0.024/GB/월. Cold: $0.01/GB/월 이하. 1TB 데이터 기준으로 Hot에 두면 약 $114, UltraWarm이면 약 $24, Cold면 약 $10. 니콘내콘의 거래 로그가 월 100GB 쌓인다면, 최근 3개월은 Hot, 3~12개월은 UltraWarm, 1년 이후는 Cold 또는 S3 직접 아카이브로 구성하면 상당한 비용 절감이 가능하다. 인스턴스 타입도 워크로드에 맞게 선택해야 한다. 검색 집중(CPU/메모리) → r6g/c6g, 저장 집중 → im4gn(NVMe). Reserved Instance로 1~3년 약정 시 40~60% 추가 절감. 또한 UltraWarm으로 이동하면 해당 인덱스는 read-only로 전환되므로, 사전에 forcemerge(max_num_segments=1)를 실행해 검색 성능을 최적화해두는 것이 좋다.",
+    "seniorTip": "Amazon OpenSearch Service에서 스토리지 비용 외에 숨겨진 비용 요소: 데이터 전송 비용(VPC 외부 통신), 스냅샷 S3 비용, UltraWarm 인덱스의 읽기 요청당 비용(UltraWarm 노드가 없으면 캐시 미스 시 S3 읽기 발생). 비용 태깅과 Cost Explorer로 OpenSearch 관련 비용을 별도로 추적하는 것을 권장한다.",
+    "tags": [
+      "aws",
+      "ultrawarm",
+      "cold-storage",
+      "cost-optimization",
+      "ilm"
+    ]
+  },
+  {
+    "id": "os-030",
+    "category": "opensearch",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "OpenSearch 클러스터의 운영 안정성을 위해 모니터링해야 할 핵심 지표와 알람 기준을 설명하라.",
+    "answer": "클러스터 상태(green/yellow/red), JVM 힙 사용률(>85% 위험), pending tasks 수, 검색/색인 지연 시간, circuit breaker 트리핑 횟수, slow logs(임계값 초과 쿼리), unassigned shard 수를 모니터링하고 이상 시 알람을 설정해야 한다.",
+    "explanation": "cluster health가 yellow는 replica shard 미할당(기능은 정상), red는 primary shard 미할당(데이터 손실 또는 접근 불가)을 의미한다. JVM 힙이 85%를 넘으면 GC 압박으로 성능이 급격히 저하되고 circuit breaker가 작동하기 시작한다.",
+    "deepDive": "각 지표를 어떻게 수집하고 알람을 설정해야 할까? Amazon OpenSearch Service는 CloudWatch에 주요 지표를 자동 발행한다. 핵심 CloudWatch 지표: ClusterStatus.red=1(즉시 알람), KibanaHealthyNodes 감소(노드 장애), JVMMemoryPressure>85(5분 지속 시 알람), CPUUtilization>80, SearchLatency p99>500ms, IndexingLatency p99>100ms, AutomatedSnapshotFailure=1. Circuit breaker 종류: parent(전체 힙), field data(필드 데이터 캐시), request(단일 요청 메모리), inflight requests(진행 중 요청). circuit breaker가 트리핑되면 429(Too Many Requests) 에러가 발생하므로 클라이언트에서 retry + exponential backoff를 구현해야 한다. Slow log는 색인 slow log(index.indexing.slowlog.threshold)와 검색 slow log(index.search.slowlog.threshold)를 설정해 임계값 초과 시 로그 기록. OpenSearch Dashboards에서 slow log를 분석해 문제 쿼리를 찾아 최적화한다. 정기적으로 _cat/pending_tasks, _nodes/hot_threads, _cluster/allocation/explain API로 클러스터 상태를 점검하는 운영 루틴도 필요하다.",
+    "seniorTip": "JVM 힙 크기는 OS 메모리의 절반(최대 32GB)으로 설정하는 것이 원칙이다. 32GB를 초과하면 JVM의 Compressed Ordinary Object Pointer(CompressedOOP)가 비활성화되어 힙 효율이 오히려 떨어진다. Amazon OpenSearch Service는 인스턴스 메모리 기준으로 자동 설정하지만, 직접 운영 시 반드시 확인해야 한다.",
+    "tags": [
+      "monitoring",
+      "cluster-health",
+      "jvm",
+      "circuit-breaker",
+      "slow-logs",
+      "cloudwatch"
+    ]
+  }
+]

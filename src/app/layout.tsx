@@ -44,9 +44,9 @@ export default function RootLayout({
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               <span className="text-[10px]">Browse</span>
             </a>
-            <a href="/review" className="flex flex-col items-center gap-0.5 px-2 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-              <span className="text-[10px]">Review</span>
+            <a href="/bookmarks" className="flex flex-col items-center gap-0.5 px-2 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span className="text-[10px]">Saved</span>
             </a>
           </div>
         </nav>

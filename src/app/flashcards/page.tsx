@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getRandomQuestions } from "@/lib/questions";
-import { markFlashcardSeen } from "@/lib/storage";
+import { markFlashcardSeen, isBookmarked, toggleBookmark } from "@/lib/storage";
 import { Question, Category, CATEGORY_LABELS, CATEGORY_COLORS } from "@/types/question";
 
 export default function FlashcardsPage() {
@@ -11,6 +11,7 @@ export default function FlashcardsPage() {
   const [flipped, setFlipped] = useState(false);
   const [depth, setDepth] = useState<"light" | "deep" | "senior">("light");
   const [category, setCategory] = useState<Category | undefined>();
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
     setCards(getRandomQuestions(999, category));
@@ -19,6 +20,18 @@ export default function FlashcardsPage() {
   }, [category]);
 
   const card = cards[current];
+
+  useEffect(() => {
+    if (card) setBookmarked(isBookmarked(card.id));
+  }, [card]);
+
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (card) {
+      const added = toggleBookmark(card.id);
+      setBookmarked(added);
+    }
+  };
 
   const next = () => {
     if (card) markFlashcardSeen(card.id);
@@ -89,6 +102,9 @@ export default function FlashcardsPage() {
               #{tag}
             </span>
           ))}
+          <button onClick={handleBookmark} className="ml-auto text-lg" title="Bookmark">
+            {bookmarked ? <span style={{color: "var(--warning)"}}>&#9733;</span> : <span style={{color: "var(--muted)"}}>&#9734;</span>}
+          </button>
         </div>
 
         {!flipped ? (

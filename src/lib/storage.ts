@@ -68,3 +68,28 @@ export function setApiKey(key: string) {
 export function clearAllProgress() {
   localStorage.removeItem(STORAGE_KEY);
 }
+
+const BOOKMARK_KEY = "devsenior_bookmarks";
+
+export function getBookmarks(): string[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(BOOKMARK_KEY);
+  if (!raw) return [];
+  return JSON.parse(raw);
+}
+
+export function toggleBookmark(questionId: string): boolean {
+  const bookmarks = getBookmarks();
+  const idx = bookmarks.indexOf(questionId);
+  if (idx >= 0) {
+    bookmarks.splice(idx, 1);
+  } else {
+    bookmarks.push(questionId);
+  }
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(bookmarks));
+  return idx < 0; // true if added, false if removed
+}
+
+export function isBookmarked(questionId: string): boolean {
+  return getBookmarks().includes(questionId);
+}

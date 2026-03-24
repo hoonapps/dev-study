@@ -804,5 +804,417 @@
       "chicken-and-egg",
       "argocd-integration"
     ]
+  },
+  {
+    "id": "tf-041",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 EKS 모듈을 설계할 때 node groups, addons, Pod Identity를 어떻게 구성하는가?",
+    "answer": "EKS 모듈에서 cluster 리소스 + managed node groups(spot/on-demand 분리) + EKS addons(coredns, vpc-cni 등) + Pod Identity associations를 선언적으로 관리. aws_eks_pod_identity_association으로 ServiceAccount와 IAM Role을 매핑한다",
+    "explanation": "EKS 모듈 구조: 1) aws_eks_cluster: 클러스터 본체(버전, VPC, 로깅). 2) aws_eks_node_group: managed node group(인스턴스 타입, capacity_type, scaling_config). 3) aws_eks_addon: coredns, kube-proxy, vpc-cni, aws-ebs-csi-driver. 4) aws_eks_pod_identity_association: namespace/serviceAccount와 IAM role_arn 매핑. IRSA보다 설정이 간단하고 OIDC provider 없이 동작.",
+    "seniorTip": "니콘내콘 17개 모듈 중 EKS 모듈 설계 원칙: 1) node group을 map(object)로 variable 처리: node_groups = { general = { instance_types = [\"m5.xlarge\"], capacity_type = \"ON_DEMAND\", min = 3 }, spot = { instance_types = [\"m5.xlarge\", \"m5.2xlarge\", \"c5.xlarge\"], capacity_type = \"SPOT\", min = 0 } }. 2) addon 버전을 variable로 관리하여 클러스터 업그레이드와 독립적으로 버전업. 3) Pod Identity association을 별도 모듈로 분리하면 서비스팀이 self-service로 IAM 권한을 요청/관리 가능. 4) launch_template으로 EBS 볼륨 크기, user_data 커스터마이징.",
+    "deepDive": "EKS addon과 self-managed addon(Helm)의 차이는? → EKS addon은 AWS가 버전 호환성을 보장하고 자동 업데이트 옵션 제공. 하지만 설정 커스터마이징이 제한적(configuration_values JSON). self-managed Helm은 values.yaml로 완전한 커스터마이징 가능하지만 버전 관리는 직접 해야 함. → Pod Identity와 IRSA를 동시에 사용할 수 있나? → 가능. 기존 IRSA 서비스를 유지하면서 새 서비스만 Pod Identity로 설정. 점진적 마이그레이션 전략. Pod Identity가 우선순위가 높아 양쪽 다 설정되면 Pod Identity가 사용됨. → EKS node group의 update_config에서 max_unavailable과 max_unavailable_percentage의 차이는? → max_unavailable: 동시에 업데이트할 최대 노드 수(절대값). max_unavailable_percentage: 전체 대비 비율. 대규모 node group에서는 percentage가 업그레이드 속도와 안정성의 균형에 유리.",
+    "tags": [
+      "eks",
+      "module-design",
+      "node-groups",
+      "pod-identity",
+      "addons",
+      "managed-node-group"
+    ]
+  },
+  {
+    "id": "tf-042",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform으로 RDS blue-green deployment를 구성할 때 올바른 설명은?",
+    "options": [
+      "Terraform이 자동으로 blue-green 전환을 수행한다",
+      "aws_rds_blue_green_deployment 리소스로 blue 환경(현재)의 복제본(green)을 만들고, 변경 적용 후 switchover하면 green이 새 프로덕션이 된다. Terraform은 이 리소스를 관리하지만 switchover 자체의 타이밍은 신중해야 한다",
+      "blue-green은 Aurora에서만 지원된다",
+      "parameter group 변경은 blue-green 없이도 다운타임이 없다"
+    ],
+    "answer": 1,
+    "explanation": "RDS Blue-Green Deployment: green 환경(복제본)을 생성하여 엔진 버전 업그레이드, parameter group 변경 등을 적용하고 테스트한 후, switchover로 green을 프로덕션으로 전환한다. 다운타임을 1분 미만으로 줄일 수 있다. Terraform에서 aws_db_instance의 engine_version을 변경하면 기본적으로 in-place 업그레이드(다운타임 발생)이므로 blue-green을 명시적으로 활용해야 한다.",
+    "seniorTip": "Terraform + RDS 실전 패턴: 1) parameter_group: aws_db_parameter_group으로 별도 관리. family 변경(mysql5.7 → mysql8.0)은 새 parameter group 필요. 2) option_group: aws_db_option_group으로 엔진 기능 활성화. 3) lifecycle { prevent_destroy = true }로 실수 삭제 방지. 4) apply_immediately = false(기본)로 유지보수 윈도우에 변경 적용. 5) Terraform에서 password를 관리할 때 random_password + aws_secretsmanager_secret으로 생성하고, manage_master_user_password = true로 AWS가 자동 관리하도록 위임하는 것이 보안상 최선.",
+    "deepDive": "parameter group의 dynamic parameter와 static parameter의 차이는? → dynamic: 즉시 적용(max_connections 등). static: DB 재부팅 필요(innodb_buffer_pool_size 등). Terraform에서 static parameter를 변경하면 apply_immediately = true여도 재부팅을 별도로 트리거해야 함. → Terraform에서 RDS 엔진 버전을 올릴 때 allowed_major_version_upgrade가 필요한 이유는? → 메이저 버전 업그레이드는 호환성 위험이 크므로 기본 차단. Terraform에서 이 플래그를 true로 설정해야 plan에서 업그레이드를 허용. → multi-AZ RDS에서 failover 시 Terraform state에 영향이 있나? → 없음. endpoint가 CNAME이라 primary가 바뀌어도 endpoint는 동일. Terraform state의 aws_db_instance는 endpoint를 추적하므로 drift 없음.",
+    "tags": [
+      "rds",
+      "blue-green",
+      "parameter-group",
+      "option-group",
+      "engine-upgrade",
+      "prevent-destroy"
+    ]
+  },
+  {
+    "id": "tf-043",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 ElastiCache Redis 클러스터를 구성할 때 cluster mode, failover, parameter tuning을 어떻게 관리하는가?",
+    "answer": "aws_elasticache_replication_group으로 cluster mode(num_node_groups, replicas_per_node_group), automatic_failover_enabled, aws_elasticache_parameter_group으로 maxmemory-policy 등을 선언적으로 관리한다",
+    "explanation": "ElastiCache Terraform 리소스: 1) aws_elasticache_replication_group: 클러스터 본체. cluster_mode에서 num_node_groups(샤드 수), replicas_per_node_group(샤드당 복제본 수) 설정. 2) aws_elasticache_parameter_group: maxmemory-policy, cluster-enabled 등 Redis 파라미터. 3) aws_elasticache_subnet_group: 서브넷 배치. automatic_failover_enabled = true로 primary 장애 시 자동 승격.",
+    "seniorTip": "니콘내콘 Redis 설정: 1) 세션/캐시용: cluster mode disabled, 1 primary + 2 replicas, r6g.large. 2) 대규모 캐시: cluster mode enabled, 3 shards x 2 replicas = 9 노드. 3) parameter tuning: maxmemory-policy = allkeys-lru(캐시), volatile-lru(세션). notify-keyspace-events = Ex(만료 이벤트 구독). 4) Terraform에서 node_type 변경은 다운타임 발생 → 별도의 유지보수 윈도우 필요. 5) snapshot_retention_limit: 7(7일간 백업 보존). snapshot_window로 백업 시간대 지정.",
+    "deepDive": "ElastiCache cluster mode를 enabled에서 disabled로 또는 그 반대로 변경할 수 있나? → 불가. cluster mode 변경은 새 클러스터를 생성하고 데이터를 마이그레이션해야 함. Terraform에서 이 변경을 하면 destroy + create가 발생하므로 lifecycle { prevent_destroy = true }로 실수 방지. → num_node_groups(샤드 수)를 변경하면 어떻게 되나? → online resharding이 지원되어 다운타임 없이 샤드 추가/제거 가능. 하지만 키가 재분배되는 동안 성능 저하. Terraform apply 시 시간이 오래 걸릴 수 있으므로 timeout 설정 필요. → ElastiCache Global Datastore와 Terraform 관리는? → aws_elasticache_global_replication_group으로 cross-region 복제 설정. primary region에서 생성하고 secondary region에서 member로 등록. DR 시 secondary를 promote하는 것은 수동 또는 자동화 스크립트.",
+    "tags": [
+      "elasticache",
+      "redis",
+      "cluster-mode",
+      "failover",
+      "parameter-group",
+      "replication"
+    ]
+  },
+  {
+    "id": "tf-044",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 SQS FIFO 큐를 구성할 때 DLQ, 암호화, 액세스 정책을 어떻게 관리하는가?",
+    "answer": "aws_sqs_queue에서 fifo_queue = true, content_based_deduplication, redrive_policy(DLQ ARN + maxReceiveCount), sqs_managed_sse_enabled 또는 kms_master_key_id, aws_sqs_queue_policy로 IAM 기반 접근 제어를 설정한다",
+    "explanation": "SQS FIFO Terraform 구성: 1) FIFO: fifo_queue = true, 큐 이름은 .fifo 접미사 필수. 2) DLQ: 별도의 aws_sqs_queue(DLQ)를 생성하고, 메인 큐의 redrive_policy에 deadLetterTargetArn과 maxReceiveCount(처리 실패 허용 횟수) 설정. 3) 암호화: sqs_managed_sse_enabled = true(AWS 관리 키) 또는 kms_master_key_id(CMK). 4) 정책: aws_sqs_queue_policy로 어떤 IAM principal이 SendMessage/ReceiveMessage 가능한지 제어.",
+    "seniorTip": "니콘내콘 비동기 처리 패턴: 1) 쿠폰 발급 요청을 FIFO 큐에 넣어 순서 보장 + 중복 방지. message_group_id로 사용자별 순서 보장. 2) DLQ maxReceiveCount: 3(3번 실패 시 DLQ로). DLQ에 CloudWatch Alarm을 설정하여 처리 실패 모니터링. 3) visibility_timeout_seconds: consumer 처리 시간의 6배로 설정(AWS 권장). 4) Terraform에서 SQS + Lambda trigger: aws_lambda_event_source_mapping으로 연결. 5) cross-service 메시징: 서비스A의 Terraform output으로 큐 URL을 내보내고 서비스B에서 data source로 참조.",
+    "deepDive": "content_based_deduplication과 message deduplication ID의 차이는? → content_based_deduplication: 메시지 본문의 SHA-256 해시로 5분간 중복 감지. message deduplication ID: 발신자가 명시적으로 고유 ID를 지정. 같은 ID를 가진 메시지는 5분간 중복으로 처리. content_based는 동일 본문이면 무조건 중복, deduplication ID는 같은 본문이라도 다른 ID면 별개 메시지. → FIFO 큐의 처리량 제한은? → 기본: 300 TPS (배치 시 3000 msg/s). high throughput FIFO: deduplication_scope = messageGroup, fifo_throughput_limit = perMessageGroupId로 message group당 300 TPS. Terraform에서 이 설정 추가 가능. → SQS에서 Terraform으로 redrive_allow_policy를 설정하는 이유는? → DLQ로 메시지를 보낼 수 있는 source 큐를 제한. 아무 큐나 DLQ로 사용하는 것을 방지하여 보안 강화.",
+    "tags": [
+      "sqs",
+      "fifo",
+      "dlq",
+      "encryption",
+      "access-policy",
+      "deduplication"
+    ]
+  },
+  {
+    "id": "tf-045",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform으로 VPC를 설계할 때 NAT Gateway 고가용성을 구성하는 방법으로 올바른 것은?",
+    "options": [
+      "NAT Gateway 하나를 모든 AZ에서 공유하면 비용과 가용성 모두 최적이다",
+      "각 AZ에 NAT Gateway를 배치하고 해당 AZ의 private subnet route table에서 자기 AZ의 NAT Gateway로 라우팅하면, 하나의 AZ 장애 시에도 다른 AZ의 아웃바운드 트래픽에 영향이 없다",
+      "NAT Instance가 NAT Gateway보다 항상 가용성이 높다",
+      "VPC Endpoints를 사용하면 NAT Gateway가 필요 없다"
+    ],
+    "answer": 1,
+    "explanation": "NAT Gateway HA 구성: 1) 각 AZ에 public subnet + NAT Gateway 배치. 2) 각 AZ의 private subnet route table에서 0.0.0.0/0 → 해당 AZ의 NAT Gateway. 3) AZ-a의 NAT Gateway 장애 시 AZ-b, AZ-c의 아웃바운드는 영향 없음. 단일 NAT Gateway 구성은 해당 AZ 장애 시 전체 아웃바운드가 중단된다.",
+    "seniorTip": "니콘내콘 VPC 설계: 1) 3 AZ × (public + private + database) = 9 subnets. 2) NAT Gateway 3개(각 AZ). 비용: ~$100/월/개 × 3 = $300/월. dev 환경에서는 단일 NAT로 비용 절감. 3) VPC Endpoints로 S3, ECR, SQS, Secrets Manager 트래픽을 NAT를 우회하여 비용 절감. Gateway endpoint(S3, DynamoDB)는 무료, Interface endpoint(나머지)는 $7.2/월/AZ. 4) flow_logs를 S3로 전송하여 네트워크 트러블슈팅. 5) CIDR 설계: /16 VPC, /20 subnet(4096 IPs). EKS Pod IP 소진을 고려한 충분한 크기.",
+    "deepDive": "VPC Endpoints를 사용할 때 DNS 해석은 어떻게 변경되나? → Interface endpoint 생성 시 private DNS가 활성화되면 s3.ap-northeast-2.amazonaws.com이 VPC 내부 IP로 해석됨. 앱 코드 변경 없이 트래픽이 endpoint를 통과. → VPC peering과 Transit Gateway의 선택 기준은? → VPC 수가 적으면(2-3개) peering. 많으면(10+) Transit Gateway. peering은 transitive routing 불가, TGW는 가능. Terraform에서 aws_ec2_transit_gateway + aws_ec2_transit_gateway_vpc_attachment로 구성. → secondary CIDR을 추가하는 시나리오는? → EKS Pod IP가 primary CIDR을 소진할 때. aws_vpc_ipv4_cidr_block_association으로 100.64.0.0/16(RFC 6598) 대역을 추가하고 VPC CNI custom networking으로 Pod에 이 대역 할당.",
+    "tags": [
+      "vpc",
+      "nat-gateway",
+      "multi-az",
+      "vpc-endpoints",
+      "flow-logs",
+      "cidr-design"
+    ]
+  },
+  {
+    "id": "tf-046",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 ALB를 구성할 때 target groups, listener rules, WAF 연동을 어떻게 관리하는가?",
+    "answer": "aws_lb(ALB) + aws_lb_target_group(IP/instance 타입) + aws_lb_listener(HTTP→HTTPS redirect, 기본 action) + aws_lb_listener_rule(path/host 기반 라우팅) + aws_wafv2_web_acl_association(WAF 연결)으로 구성한다",
+    "explanation": "ALB Terraform 구성: 1) aws_lb: internal/internet-facing, subnets, security_groups. 2) aws_lb_target_group: target_type = ip(EKS Pod 직접), instance(NodePort 경유). health_check 설정. 3) aws_lb_listener: port 443, ssl_policy, certificate_arn(ACM). 기본 action: forward/fixed-response. 4) aws_lb_listener_rule: conditions(path_pattern, host_header)에 따라 다른 target_group으로 라우팅. priority로 우선순위 지정.",
+    "seniorTip": "니콘내콘 ALB 관리: 1) EKS에서 AWS LB Controller가 Ingress/Service 기반으로 ALB를 자동 생성하므로 Terraform 직접 관리 vs Controller 자동 관리를 결정해야 함. 2) 권장: 공용 ALB는 Terraform으로 관리하고, Ingress에서 alb.ingress.kubernetes.io/group.name으로 기존 ALB에 규칙만 추가. 3) WAF: aws_wafv2_web_acl에 AWS managed rule groups(AWSManagedRulesCommonRuleSet, AWSManagedRulesSQLiRuleSet) + custom rate limiting rule 적용 후 ALB에 연결. 4) access_logs를 S3로 전송하여 트래픽 분석.",
+    "deepDive": "ALB의 target_type: ip와 instance의 성능 차이는? → ip 타입: ALB가 Pod IP로 직접 트래픽 전달. kube-proxy 건너뛰어 1홉 절감. 하지만 Pod 수가 많으면 ALB target 등록/해제 API 호출 빈도가 높아짐. instance 타입: NodePort를 통해 전달. 추가 네트워크 홉이지만 target 수가 노드 수로 제한되어 관리 간편. → listener rule의 priority 충돌을 Terraform에서 어떻게 방지하나? → 각 rule에 고유한 priority(1-50000)를 명시. for_each로 rule을 생성할 때 index * 10으로 간격을 두면 사이에 추가 가능. → ALB idle timeout과 backend 애플리케이션의 keep-alive 설정의 관계는? → ALB idle timeout(기본 60초)보다 backend keep-alive가 짧으면 ALB가 이미 닫힌 연결로 요청을 보내 502 발생. backend keep-alive를 ALB timeout보다 길게 설정(예: 65초).",
+    "tags": [
+      "alb",
+      "target-group",
+      "listener-rule",
+      "waf",
+      "ssl",
+      "ingress"
+    ]
+  },
+  {
+    "id": "tf-047",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 CloudFront를 구성할 때 origins, behaviors, OAC, cache policies를 어떻게 설계하는가?",
+    "answer": "aws_cloudfront_distribution에서 origin(S3, ALB), ordered_cache_behavior(path 패턴별 캐시 정책), origin_access_control(OAC)로 S3 직접 접근 차단, aws_cloudfront_cache_policy로 캐시 키 설정을 관리한다",
+    "explanation": "CloudFront Terraform 구성: 1) origin: S3 bucket(정적 콘텐츠), ALB(API). domain_name과 origin_id 설정. 2) default_cache_behavior: viewer_protocol_policy = redirect-to-https, cache_policy_id. 3) ordered_cache_behavior: path_pattern으로 /api/*는 캐시 없이 ALB로, /static/*는 S3에서 캐시. 4) OAC: origin_access_control_id로 S3에 CloudFront만 접근 허용. 구 OAI 대신 OAC 사용 권장.",
+    "seniorTip": "니콘내콘 CDN 설계: 1) S3 origin: 정적 자산(이미지, JS/CSS). OAC로 S3 버킷 정책에 CloudFront만 허용. 2) ALB origin: API 요청. custom_origin_config에 HTTP/HTTPS port, protocol_policy 설정. 3) cache_policy: 쿠폰 이미지는 max_ttl = 86400(24h), API 응답은 CachingDisabled. 4) viewer_certificate: ACM 인증서(us-east-1 리전 필수!). 5) Terraform으로 관리하면 cache invalidation을 aws_cloudfront_distribution 변경 시 자동으로 트리거 가능하지만, 콘텐츠 변경 시 수동 invalidation은 local-exec 또는 별도 파이프라인.",
+    "deepDive": "CloudFront의 cache key에 query string을 포함할지 여부가 캐시 히트율에 미치는 영향은? → query string을 모두 포함하면 ?v=1과 ?v=2가 다른 캐시 엔트리. 캐시 히트율 하락. 필요한 query string만 whitelist로 포함하는 것이 최적. Terraform에서 aws_cloudfront_cache_policy의 query_strings_config로 설정. → OAC와 OAI의 기술적 차이는? → OAI: CloudFront 전용 special user. 한 origin에 하나만. PUT 요청 지원 안 됨. OAC: IAM 기반 SigV4 서명. S3, MediaStore, Lambda Function URL 등 다양한 origin 지원. SSE-KMS 암호화된 S3도 접근 가능. → CloudFront Functions와 Lambda@Edge를 Terraform에서 관리할 때 주의점은? → Lambda@Edge는 us-east-1에서만 생성 가능. Terraform provider alias로 us-east-1 provider를 별도 설정해야 함. CloudFront Functions는 리전 제한 없음.",
+    "tags": [
+      "cloudfront",
+      "cdn",
+      "oac",
+      "cache-policy",
+      "s3-origin",
+      "alb-origin"
+    ]
+  },
+  {
+    "id": "tf-048",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform으로 ECR lifecycle policy를 설정하는 주요 목적은?",
+    "options": [
+      "이미지 빌드를 자동화하기 위해",
+      "오래되거나 불필요한 이미지를 자동 삭제하여 스토리지 비용을 절감하고 리포지토리를 정리하기 위해",
+      "이미지 보안 스캔을 자동으로 실행하기 위해",
+      "ECR 접근 권한을 관리하기 위해"
+    ],
+    "answer": 1,
+    "explanation": "ECR lifecycle policy는 규칙에 따라 이미지를 자동 정리한다. aws_ecr_lifecycle_policy 리소스에 JSON 규칙을 정의: 1) countType: sinceImagePushed(일수 기반) 또는 imageCountMoreThan(개수 기반). 2) tagStatus: tagged/untagged/any. 예: untagged 이미지는 1일 후 삭제, tagged 이미지는 최근 30개만 유지.",
+    "seniorTip": "니콘내콘 179개 서비스 ECR 관리: 1) 모든 리포지토리에 동일한 lifecycle policy를 for_each로 적용: untagged 이미지 1일 후 삭제, 최근 50개 tagged 이미지만 유지. 2) image_tag_mutability = IMMUTABLE로 태그 덮어쓰기 방지. 3) scan_on_push = true로 보안 스캔 자동 실행. 4) cross-account 접근: aws_ecr_repository_policy로 다른 계정의 EKS에서 이미지 pull 허용. 5) ECR replication: aws_ecr_replication_configuration으로 DR 리전에 자동 복제.",
+    "deepDive": "lifecycle policy에서 여러 규칙의 우선순위는 어떻게 결정되나? → rulePriority 값이 낮을수록 먼저 평가. 한 이미지가 여러 규칙에 매칭되면 가장 낮은 priority 규칙이 적용. → ECR pull-through cache rule이란? → Docker Hub, GitHub Container Registry 등 외부 레지스트리의 이미지를 ECR에 캐시. 첫 pull 시 외부에서 가져오고 이후는 ECR에서 제공. Terraform에서 aws_ecr_pull_through_cache_rule로 설정. → ECR replication과 cross-account pull의 차이점은? → replication: 이미지를 다른 리전/계정의 ECR에 실제 복사. pull 성능 향상과 DR 보장. cross-account pull: 이미지를 복사하지 않고 원본 리전에서 pull. 네트워크 지연 발생 가능하지만 스토리지 비용 절감.",
+    "tags": [
+      "ecr",
+      "lifecycle-policy",
+      "image-management",
+      "cross-account",
+      "scan-on-push",
+      "replication"
+    ]
+  },
+  {
+    "id": "tf-049",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 IAM permission boundary의 역할과 assume role chain을 구성하는 방법을 설명하라.",
+    "answer": "permission boundary는 IAM entity의 최대 권한 범위를 제한하는 정책. assume role chain은 Role A → Role B → Role C로 연쇄적으로 역할을 전환. Terraform에서 aws_iam_role의 assume_role_policy에 chain 허용 조건을 설정한다",
+    "explanation": "Permission Boundary: IAM user/role이 가질 수 있는 권한의 상한선. identity policy와 boundary의 교집합만 유효. 예: 개발자에게 IAM 권한을 주되 boundary로 특정 리소스만 접근 허용. Assume Role Chain: STS AssumeRole을 연쇄 호출. 단, chain의 최대 길이와 세션 정책이 누적되어 권한이 축소된다.",
+    "seniorTip": "니콘내콘 IAM 전략: 1) Terraform 실행 Role에 permission boundary를 설정하여 Terraform이 만들 수 있는 리소스 범위를 제한. 2) CI/CD(GitHub Actions) → Terraform Role(OIDC) → 리소스 생성 Role(assume_role)로 2단계 chain. 3) Pod Identity: EKS Pod → IAM Role 매핑 시 trust policy에 pods.eks.amazonaws.com을 principal로 설정. 4) service-linked role: 일부 AWS 서비스(ELB, RDS)가 자동 생성하는 role. Terraform으로 직접 관리하지 않되 data source로 참조 가능. 5) aws_iam_policy_document data source로 JSON 대신 HCL로 정책을 작성하면 가독성과 재사용성이 향상.",
+    "deepDive": "permission boundary가 설정된 Role로 다른 Role을 assume할 때 boundary가 전파되나? → 아니오. assume된 Role의 boundary는 독립적. 하지만 assume 시 전달하는 session policy가 추가 제한 역할을 할 수 있음. → OIDC trust policy에서 StringEquals vs StringLike 조건의 차이는? → StringEquals: 정확히 일치. repo:org/repo:ref:refs/heads/main처럼 특정 브랜치만 허용. StringLike: 와일드카드(*) 사용 가능. repo:org/repo:*로 모든 브랜치 허용하면 보안 위험. → Terraform에서 aws_iam_policy의 policy JSON이 너무 길어질 때 분할 전략은? → aws_iam_policy_document의 source_policy_documents로 여러 document를 병합. 또는 managed policy 여러 개를 attach. 단일 policy 크기 제한은 6,144자.",
+    "tags": [
+      "iam",
+      "permission-boundary",
+      "assume-role",
+      "oidc",
+      "trust-policy",
+      "session-policy"
+    ]
+  },
+  {
+    "id": "tf-050",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 WAFv2를 구성할 때 managed rules, custom rules, rate limiting, IP sets를 어떻게 조합하는가?",
+    "answer": "aws_wafv2_web_acl에서 managed_rule_group_statement(AWS 관리 규칙), rate_based_statement(요청률 제한), ip_set_reference_statement(IP 화이트/블랙리스트)를 우선순위로 조합한다",
+    "explanation": "WAFv2 Terraform 구성: 1) aws_wafv2_web_acl: rule 목록과 default_action(allow/block). 2) managed rule groups: AWSManagedRulesCommonRuleSet(일반), AWSManagedRulesSQLiRuleSet(SQL 인젝션). override_action으로 count(모니터링만) 설정 후 검증 후 block으로 전환. 3) rate_based: 5분간 limit(예: 2000 요청) 초과 시 block. 4) aws_wafv2_ip_set: 허용/차단 IP 목록.",
+    "seniorTip": "니콘내콘 WAF 전략: 1) 쿠폰 이벤트 시 봇 공격 방지: rate_based_statement로 IP당 요청률 제한 + AWSManagedRulesBotControlRuleSet. 2) 배포 순서: 먼저 count 모드로 관리 규칙 적용 → CloudWatch 로그로 false positive 확인 → 정탐만 block. 3) custom rule로 특정 URI 패턴(/admin/*)에 IP whitelist 적용. 4) scope_down_statement로 rate limiting을 특정 경로에만 적용. 5) Terraform에서 rule priority를 명시적으로 지정하여 규칙 평가 순서를 제어. priority가 낮을수록 먼저 평가.",
+    "deepDive": "WAF rule의 action이 count일 때 후속 규칙에 미치는 영향은? → count는 요청을 차단하지 않고 로그만 기록. 해당 규칙을 통과하여 다음 규칙이 계속 평가됨. block은 즉시 요청을 차단하고 후속 규칙 평가 중지. → managed rule group에서 특정 규칙만 제외하려면? → excluded_rule에 rule 이름을 지정하면 해당 규칙만 count로 전환. 완전 비활성화가 아닌 모니터링은 유지하면서 차단만 해제. → WAF 로그를 S3에 저장할 때 Terraform 구성은? → aws_wafv2_web_acl_logging_configuration에 log_destination_configs로 Kinesis Firehose → S3 구성. 로그 필터링(redacted_fields)으로 민감 데이터 제외 가능. 직접 S3 연결은 불가하고 반드시 Firehose를 경유.",
+    "tags": [
+      "waf",
+      "managed-rules",
+      "rate-limiting",
+      "ip-set",
+      "bot-control",
+      "security"
+    ]
+  },
+  {
+    "id": "tf-051",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform으로 Route53 health check와 failover routing을 구성하는 올바른 방법은?",
+    "options": [
+      "Route53 health check 없이도 failover routing이 자동으로 동작한다",
+      "aws_route53_health_check로 primary endpoint를 모니터링하고, aws_route53_record에서 failover routing policy를 설정하여 health check 실패 시 secondary로 자동 전환한다",
+      "failover는 CloudFront에서만 가능하다",
+      "Route53은 active-active만 지원하고 active-passive는 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Route53 Failover 구성: 1) aws_route53_health_check: type = HTTP/HTTPS/TCP, FQDN, port, resource_path, failure_threshold. 2) Primary record: failover_routing_policy { type = \"PRIMARY\" }, health_check_id 연결. 3) Secondary record: failover_routing_policy { type = \"SECONDARY\" }. Health check 실패 시 자동으로 secondary record의 값으로 DNS 응답.",
+    "seniorTip": "니콘내콘 DNS 전략: 1) alias record: ALB, CloudFront, S3 website를 가리킬 때 alias 사용(쿼리 비용 무료, 자동 health check). 2) weighted routing: canary 배포 시 새 버전에 10% 트래픽. Terraform에서 weight를 variable로 관리. 3) latency-based routing: 멀티리전 배포 시 사용자에게 가장 가까운 리전으로 라우팅. 4) private hosted zone: VPC 내부 DNS. EKS 서비스 디스커버리와 별도로 내부 도메인 관리. 5) Terraform에서 TTL 설정: alias는 TTL 설정 불가(자동). 일반 record는 300(5분) 기본, failover 시 60으로 낮춰 전환 속도 향상.",
+    "deepDive": "Route53 health check가 endpoint와 다른 리전에 있을 때 네트워크 지연으로 false positive가 발생할 수 있나? → Route53은 여러 리전의 health checker에서 동시에 검사. failure_threshold(기본 3)만큼 연속 실패해야 unhealthy 판정. 단일 리전의 네트워크 문제로는 false positive가 발생하지 않음. → calculated health check란? → 여러 child health check를 조합(AND/OR/지정 수 이상)하여 판정. 예: 3개 중 2개 이상 healthy면 전체 healthy. Terraform에서 type = CALCULATED, child_health_checks로 구성. → alias record와 CNAME record의 차이는? → alias: zone apex(example.com)에 사용 가능, AWS 리소스만 대상, 쿼리 무료. CNAME: zone apex 불가, 아무 도메인 대상 가능, 쿼리 과금. ALB 연결 시 반드시 alias 사용.",
+    "tags": [
+      "route53",
+      "health-check",
+      "failover",
+      "alias",
+      "weighted-routing",
+      "dns"
+    ]
+  },
+  {
+    "id": "tf-052",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform Helm provider로 K8s에 차트를 배포할 때의 패턴과 depends_on 활용법을 설명하라.",
+    "answer": "helm_release 리소스로 차트를 배포하고, set/values로 오버라이드. depends_on으로 EKS 클러스터, node group 생성 후 차트 설치 순서를 보장한다. kubernetes_namespace와의 의존성도 명시 필요",
+    "explanation": "Helm provider 구성: 1) provider 설정: host = EKS endpoint, token = aws_eks_cluster_auth, cluster_ca_certificate. 2) helm_release: chart, repository, version, namespace, values(YAML), set(개별 값). 3) depends_on: [aws_eks_node_group.main]으로 노드가 준비된 후 차트 설치. 4) namespace가 없으면 create_namespace = true로 자동 생성.",
+    "seniorTip": "니콘내콘 Terraform Helm 배포 대상: 인프라성 컴포넌트만. 1) AWS LB Controller: ALB/NLB 자동 프로비저닝 필수. 2) External Secrets Operator: AWS Secrets Manager 연동. 3) kube-prometheus-stack: 모니터링 기반. 4) ArgoCD: 이후 179개 서비스 배포는 ArgoCD가 담당. 5) Helm provider의 values를 templatefile()로 동적 생성하면 Terraform variable을 Helm values에 주입 가능. 예: EKS cluster name, IRSA role ARN 등을 자동으로 전달.",
+    "deepDive": "helm_release의 atomic과 cleanup_on_failure는 Terraform apply 실패 시 어떻게 동작하나? → atomic = true면 Helm이 릴리스를 롤백. Terraform은 state에 이전 릴리스 상태를 유지. cleanup_on_failure = true면 새로 생성된 리소스를 정리. Terraform state와 실제 K8s 리소스가 불일치할 수 있어 terraform import가 필요할 수 있음. → Helm provider의 kubernetes config와 eks_cluster_auth token 만료 문제는? → token은 15분 유효. 장시간 apply(여러 helm_release)에서 만료 가능. exec 기반 인증으로 자동 갱신: exec { api_version, command = \"aws\", args = [\"eks\", \"get-token\", ...] }. → helm_release 업데이트 시 force_update = true의 위험은? → Helm --force와 동일하게 리소스를 delete/recreate. Deployment가 재생성되어 다운타임 발생. PVC가 삭제될 수 있어 데이터 유실 위험. 기본값 false를 유지하고 필요시에만 사용.",
+    "tags": [
+      "helm-provider",
+      "helm-release",
+      "depends-on",
+      "templatefile",
+      "infrastructure-charts"
+    ]
+  },
+  {
+    "id": "tf-053",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Terraform Kubernetes provider로 namespace, RBAC, ServiceAccount를 관리하는 방법과 주의점을 설명하라.",
+    "answer": "kubernetes_namespace, kubernetes_cluster_role_binding, kubernetes_service_account 리소스로 K8s 리소스를 Terraform으로 관리. 주의: K8s 리소스는 ArgoCD와 관리 영역이 겹칠 수 있으므로 인프라성 리소스만 Terraform으로 관리한다",
+    "explanation": "Kubernetes provider 활용: 1) kubernetes_namespace: 팀/환경별 namespace 생성. labels, annotations 관리. 2) kubernetes_cluster_role_binding: 팀별 RBAC 설정. cluster-admin은 제한하고 namespace 수준 권한만 부여. 3) kubernetes_service_account: Pod Identity/IRSA용 SA 생성. annotations에 IAM role ARN 매핑.",
+    "seniorTip": "관리 영역 분리 원칙: 1) Terraform: namespace, RBAC, StorageClass, PriorityClass 등 '인프라 기반' K8s 리소스. 2) ArgoCD: Deployment, Service, HPA 등 '애플리케이션' K8s 리소스. 3) 경계가 모호한 것: ServiceAccount → Pod Identity association이 Terraform에 있으므로 SA도 Terraform이 관리하는 것이 자연스러움. 4) kubernetes_manifest: 전용 리소스가 없는 CRD(ScaledObject, ServiceMonitor 등)를 관리할 때 사용하지만, CRD가 먼저 설치되어야 plan이 가능하다는 chicken-and-egg 문제 존재.",
+    "deepDive": "kubernetes_manifest와 kubectl_manifest(kubectl provider)의 차이는? → kubernetes_manifest: 공식 provider. server-side apply 사용. CRD가 plan 시점에 존재해야 함. kubectl_manifest: 3rd party provider. client-side apply. CRD 미존재 시에도 plan 가능하여 chicken-and-egg 해결. → Terraform으로 생성한 namespace를 ArgoCD도 관리하면? → 둘 다 같은 namespace를 수정하려 하면 drift가 발생. ArgoCD의 Application에서 namespace를 createNamespace: false로 설정하고 Terraform이 namespace를 관리하는 것이 깔끔. → RBAC에서 ClusterRole과 Role의 차이를 Terraform에서 어떻게 활용하나? → ClusterRole: 클러스터 전체 리소스 접근. kubernetes_cluster_role로 정의. Role: 특정 namespace 내 리소스만. kubernetes_role로 정의. 팀별로 namespace Role을 생성하고 RoleBinding으로 팀 그룹에 매핑.",
+    "tags": [
+      "kubernetes-provider",
+      "namespace",
+      "rbac",
+      "service-account",
+      "management-boundary"
+    ]
+  },
+  {
+    "id": "tf-054",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform으로 S3 버킷을 구성할 때 versioning, lifecycle rules, replication, encryption, bucket policy를 종합적으로 관리하는 방법을 설명하라.",
+    "answer": "aws_s3_bucket + 별도 리소스로 각 설정을 분리: aws_s3_bucket_versioning, aws_s3_bucket_lifecycle_configuration, aws_s3_bucket_replication_configuration, aws_s3_bucket_server_side_encryption_configuration, aws_s3_bucket_policy로 각각 관리한다",
+    "explanation": "Terraform AWS Provider v4+에서 S3 설정이 별도 리소스로 분리되었다: 1) versioning: enabled = true로 객체 버전 관리. 삭제 시 delete marker 추가. 2) lifecycle: transition(30일 후 IA, 90일 후 Glacier), expiration(365일 후 삭제). 3) replication: source bucket에서 destination bucket으로 cross-region 복제. IAM role 필요. 4) encryption: SSE-S3(기본), SSE-KMS(CMK). 5) bucket_policy: IAM 정책으로 접근 제어.",
+    "seniorTip": "니콘내콘 S3 관리: 1) 정적 자산: CloudFront OAC + bucket policy로 직접 접근 차단. lifecycle으로 이전 버전 90일 후 삭제. 2) 로그 버킷: lifecycle으로 30일 후 IA, 180일 후 Glacier, 365일 후 삭제. 3) Terraform state 버킷: versioning 필수, MFA delete 고려, lifecycle으로 이전 버전 30일 보존. 4) public_access_block: block_public_acls, block_public_policy 등 4개 모두 true로 기본 설정. 5) bucket_prefix로 환경별 이름 생성: ncnc-{env}-{purpose}.",
+    "deepDive": "S3 versioning이 활성화된 상태에서 lifecycle의 NoncurrentVersionExpiration은 어떻게 동작하나? → 현재 버전이 아닌 이전 버전을 NoncurrentDays 후 영구 삭제. 삭제 마커 자체는 DeleteMarkerExpiration으로 별도 정리. versioning + lifecycle 조합으로 실수 삭제 복구 + 스토리지 비용 관리를 동시에 달성. → S3 replication에서 기존 객체도 복제되나? → 기본적으로 replication 활성화 이후 새 객체만 복제. 기존 객체는 S3 Batch Replication으로 별도 복제. Terraform에서 aws_s3_batch_replication으로 관리 가능. → bucket policy와 IAM policy가 충돌하면? → 명시적 Deny가 항상 우선. 둘 중 하나라도 Deny면 접근 차단. 둘 다 Allow여야 접근 허용(교집합). bucket policy에서 특정 VPC endpoint만 허용하면 IAM에 S3 FullAccess가 있어도 VPC 외부에서 접근 불가.",
+    "tags": [
+      "s3",
+      "versioning",
+      "lifecycle",
+      "replication",
+      "encryption",
+      "bucket-policy"
+    ]
+  },
+  {
+    "id": "tf-055",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Terraform의 local-exec provisioner를 사용해야 하는 상황은?",
+    "options": [
+      "모든 리소스 생성 후 반드시 실행해야 하는 필수 단계이다",
+      "Terraform provider가 지원하지 않는 작업(예: kubectl apply, 외부 API 호출)을 리소스 생성 후 실행해야 할 때 최후의 수단으로 사용한다",
+      "remote-exec보다 항상 안전하므로 우선 사용한다",
+      "plan 단계에서 실행되어 변경사항을 미리 확인할 수 있다"
+    ],
+    "answer": 1,
+    "explanation": "local-exec: Terraform을 실행하는 로컬 머신에서 명령어를 실행한다. 리소스의 create/destroy 시점에 트리거. plan에서는 실행되지 않으므로 결과를 미리 확인할 수 없다. remote-exec: 생성된 리소스(EC2)에 SSH로 접속하여 명령어 실행. 둘 다 멱등성이 보장되지 않아 가능하면 피하는 것이 좋다.",
+    "seniorTip": "local-exec가 불가피한 실전 사례: 1) EKS 클러스터 생성 후 aws eks update-kubeconfig 실행. 2) helm_release 대신 helmfile을 실행해야 할 때. 3) CloudFront invalidation: aws cloudfront create-invalidation. 4) 대안 검토: null_resource + local-exec 대신 terraform-provider-shell 같은 커뮤니티 provider 사용. 5) 주의: local-exec는 CI/CD 환경에서 실행 환경(CLI 도구 설치 여부)에 의존하여 portable하지 않음. Dockerfile로 실행 환경을 표준화하는 것이 좋다.",
+    "deepDive": "local-exec가 실패하면 Terraform state에 어떻게 기록되나? → 리소스 자체는 생성되었지만 provisioner가 실패하면 리소스가 tainted 상태가 됨. 다음 apply 시 destroy 후 recreate를 시도. on_failure = continue로 실패를 무시할 수 있지만 상태 불일치 위험. → local-exec에서 self 참조로 현재 리소스의 attribute를 사용할 수 있나? → 가능. 예: command = \"echo ${self.id}\". 하지만 null_resource에서는 self에 의미 있는 attribute가 없으므로 triggers로 외부 값을 참조. → local-exec의 환경변수를 Terraform variable에서 주입하려면? → environment 블록으로 전달: environment = { CLUSTER_NAME = var.cluster_name }. 민감한 값은 sensitive로 마킹하여 로그에 노출 방지.",
+    "tags": [
+      "local-exec",
+      "remote-exec",
+      "provisioner",
+      "escape-hatch",
+      "idempotency"
+    ]
+  },
+  {
+    "id": "tf-056",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform에서 모듈 간 데이터를 공유하는 output과 data source 패턴을 설명하라.",
+    "answer": "같은 state 내: 모듈의 output을 module.name.output_name으로 직접 참조. 다른 state 간: terraform_remote_state data source로 다른 state의 output을 읽거나, data source(aws_eks_cluster 등)로 실제 리소스를 조회한다",
+    "explanation": "데이터 공유 패턴: 1) 같은 state: module \"vpc\" { ... } → module.vpc.vpc_id를 다른 모듈에서 참조. 2) 다른 state(같은 팀): terraform_remote_state로 S3 backend의 output 조회. 3) 다른 state(다른 팀): data source(aws_vpc, aws_eks_cluster)로 실제 리소스를 태그/이름으로 조회. 팀 간 결합도를 낮춤. 4) SSM Parameter Store에 값을 저장하고 data.aws_ssm_parameter로 읽는 매개 패턴.",
+    "seniorTip": "니콘내콘 모듈 간 데이터 흐름: 1) VPC 모듈 → output: vpc_id, subnet_ids, nat_gateway_ids. 2) EKS 모듈 → input: vpc_id, subnet_ids / output: cluster_name, oidc_provider_arn. 3) Helm 모듈 → input: cluster_name. 4) SSM 매개 패턴 활용: VPC 모듈이 ssm_parameter에 vpc_id를 저장 → EKS 모듈이 data.aws_ssm_parameter로 조회. state 간 직접 참조를 제거하여 모듈 독립성 향상. 5) output에 sensitive = true를 설정하면 plan 출력에서 값이 마스킹되지만, state 파일에는 평문으로 저장된다.",
+    "deepDive": "terraform_remote_state와 data source 조회의 trade-off는? → remote_state: state 파일에 직접 접근하므로 IAM 권한으로 접근 제어 필요. output이 변경되면 즉시 반영. data source: AWS API를 호출하므로 실제 리소스 상태를 반영. state 파일 접근 권한 불필요. → output의 depends_on은 언제 필요한가? → output 값이 리소스의 implicit dependency를 자동 추적하지 못할 때. 예: local-exec provisioner의 결과에 의존하는 output. depends_on으로 provisioner 완료 후 output이 평가되도록 보장. → 모듈 output에 object type을 사용하면 소비자가 필요한 값만 선택적으로 참조 가능한가? → 가능. output { value = { vpc_id = aws_vpc.main.id, cidr = aws_vpc.main.cidr_block } }. 소비자: module.vpc.output_name.vpc_id. 관련 값을 그룹화하여 인터페이스를 깔끔하게 유지.",
+    "tags": [
+      "output",
+      "data-source",
+      "remote-state",
+      "ssm-parameter",
+      "module-interface",
+      "data-sharing"
+    ]
+  },
+  {
+    "id": "tf-057",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform에서 count와 for_each의 edge case로 올바른 설명은?",
+    "options": [
+      "count와 for_each는 완전히 동일하며 호환된다",
+      "count는 index 기반이라 중간 리소스 삭제 시 뒤의 리소스가 재생성되지만, for_each는 key 기반이라 개별 리소스를 독립적으로 관리한다",
+      "for_each는 list를 직접 받을 수 없다",
+      "count는 dynamic block에서만 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "count의 문제: aws_subnet.main[0], [1], [2]에서 [1]을 삭제하면 [2]→[1]로 인덱스가 밀려 실제로는 [2]가 삭제/재생성됨. for_each: aws_subnet.main[\"az-a\"], [\"az-b\"], [\"az-c\"]에서 az-b를 삭제해도 az-a, az-c는 영향 없음. for_each는 set(string) 또는 map을 받으며, list는 toset()으로 변환 필요.",
+    "seniorTip": "실전 사용 가이드: 1) 동일한 리소스 N개(단순 복제): count 사용 가능하지만 for_each 권장. 2) 리소스별 다른 설정: for_each 필수. map을 전달하여 each.key, each.value로 접근. 3) conditional resource: count = var.create ? 1 : 0. for_each로는 for_each = var.create ? toset([\"this\"]) : toset([]). 4) for_each의 key가 unknown(plan 시 미결정)이면 에러. 예: aws_subnet.main의 id를 key로 사용하면 plan 실패. 해결: 예측 가능한 값(이름, AZ)을 key로 사용. 5) count와 for_each를 같은 리소스에 동시 사용 불가.",
+    "deepDive": "for_each에서 key가 sensitive value면 어떻게 되나? → Terraform이 에러를 발생시킴. for_each의 key는 state에 저장되므로 sensitive 값을 key로 사용할 수 없음. nonsensitive()로 감싸야 하지만 보안 위험을 인지해야 함. → dynamic block에서 for_each를 사용할 때 content 내부에서 each.key를 참조할 수 있나? → dynamic block에서는 each가 아닌 해당 block의 iterator(기본: block name)를 사용. dynamic \"ingress\" { for_each = var.rules / content { ... ingress.value.port } }. → count로 생성된 리소스를 for_each로 마이그레이션하려면? → moved 블록 사용: moved { from = aws_subnet.main[0], to = aws_subnet.main[\"az-a\"] }. 각 인덱스를 새 키로 매핑. 리소스 재생성 없이 state만 업데이트.",
+    "tags": [
+      "count",
+      "for-each",
+      "conditional",
+      "edge-case",
+      "state-management",
+      "moved"
+    ]
+  },
+  {
+    "id": "tf-058",
+    "category": "terraform",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Terraform null_resource와 triggers 패턴의 사용 사례를 설명하라.",
+    "answer": "null_resource는 실제 인프라를 생성하지 않는 논리적 리소스. triggers map의 값이 변경되면 리소스가 재생성되어 provisioner가 다시 실행된다. local-exec와 조합하여 외부 명령 실행 타이밍을 제어한다",
+    "explanation": "null_resource는 provider가 지원하지 않는 작업을 위한 escape hatch다. triggers: 특정 값이 변경될 때만 provisioner를 재실행. 예: triggers = { cluster_id = aws_eks_cluster.main.id }로 클러스터가 재생성될 때만 kubeconfig를 업데이트. Terraform 1.4+에서는 terraform_data 리소스가 null_resource를 대체한다.",
+    "seniorTip": "null_resource에서 terraform_data로의 전환: 1) terraform_data: hashicorp/null provider 의존성 없이 동일 기능. triggers_replace로 재생성 조건 설정. input/output으로 값 전달. 2) 실전 사용: helm_release 배포 후 terraform_data + local-exec로 smoke test 실행. triggers_replace = [helm_release.main.metadata[0].revision]으로 차트 업데이트 시만 실행. 3) 주의: null_resource/terraform_data의 남용은 Terraform의 선언적 특성을 해치므로 provider 지원 여부를 먼저 확인.",
+    "deepDive": "null_resource의 triggers 값이 모두 동일하면 다음 apply에서 재실행되나? → 아니오. triggers 값이 이전 state와 동일하면 변경 없음으로 판단하여 provisioner를 재실행하지 않음. 강제 재실행이 필요하면 triggers에 timestamp()를 포함하면 매번 변경되지만, 이는 매 apply마다 실행되어 멱등성 문제를 야기. → terraform_data의 input과 output은 어떻게 다른가? → input: 리소스 생성 시 저장되는 값. output: input과 동일한 값을 출력으로 제공. 다른 리소스에서 terraform_data.main.output으로 참조하면 이 리소스가 완료된 후에만 값이 사용됨. 암시적 의존성 생성. → null_resource를 여러 개 chain하여 순서를 보장하려면? → depends_on으로 연결: null_resource.step2 depends_on [null_resource.step1]. 하지만 이런 패턴이 많아지면 스크립트를 단일 local-exec로 통합하는 것이 관리상 유리.",
+    "tags": [
+      "null-resource",
+      "terraform-data",
+      "triggers",
+      "provisioner",
+      "escape-hatch"
+    ]
+  },
+  {
+    "id": "tf-059",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform moved 블록을 사용한 안전한 리팩토링 방법을 설명하라.",
+    "answer": "moved 블록은 리소스의 주소(이름, 모듈 경로)를 변경할 때 기존 리소스를 삭제/재생성하지 않고 state만 업데이트한다. from(이전 주소)과 to(새 주소)를 선언하면 plan에서 move로 표시된다",
+    "explanation": "moved 블록 사용 사례: 1) 리소스 이름 변경: moved { from = aws_s3_bucket.old_name, to = aws_s3_bucket.new_name }. 2) 모듈로 추출: moved { from = aws_vpc.main, to = module.vpc.aws_vpc.main }. 3) count → for_each 전환: moved { from = aws_subnet.main[0], to = aws_subnet.main[\"az-a\"] }. plan에서 'moved' 표시를 확인한 후 apply.",
+    "seniorTip": "니콘내콘 리팩토링 실전: 1) 17개 커스텀 모듈을 재구조화할 때 moved 블록으로 무중단 리팩토링. 2) moved는 같은 state 내에서만 동작. 다른 state로 이동하려면 terraform state mv 또는 import/state rm 조합. 3) moved 블록은 apply 후에도 코드에 남겨두는 것이 좋음. 다른 환경(dev→staging→prod)에서 순차 적용할 때 필요. 모든 환경에 적용 완료 후 제거. 4) 한 번에 여러 moved 블록 사용 가능. 5) moved는 plan에서만 확인 가능하고 실제 인프라 변경은 없으므로 안전하다.",
+    "deepDive": "moved 블록에서 from 주소가 state에 존재하지 않으면? → Terraform이 warning을 출력하지만 에러는 아님. 이미 적용된 환경에서는 무시됨. 따라서 moved 블록을 코드에 남겨두어도 안전. → moved로 모듈 간 리소스를 이동할 때 provider 설정이 다르면? → 같은 provider를 사용해야 함. 다른 provider(다른 리전 등)로의 이동은 불가. 이 경우 import + state rm을 사용해야 함. → removed 블록(Terraform 1.7+)과의 차이는? → moved: state의 주소를 변경(리소스 유지). removed: state에서 제거하지만 실제 리소스는 삭제하지 않음. lifecycle { prevent_destroy } + state rm의 대안으로, 코드에서 리소스를 제거하면서 인프라는 유지할 때 사용.",
+    "tags": [
+      "moved",
+      "refactoring",
+      "state-migration",
+      "rename",
+      "module-extraction",
+      "removed"
+    ]
+  },
+  {
+    "id": "tf-060",
+    "category": "terraform",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Terraform test framework(.tftest.hcl)의 구조와 활용법을 설명하라.",
+    "answer": "Terraform 1.6+의 내장 테스트 프레임워크. .tftest.hcl 파일에 run 블록으로 plan/apply 실행 후 assert로 expected 값을 검증. variables로 테스트 입력을 주입하고, mock_provider로 실제 인프라 없이 테스트 가능하다",
+    "explanation": "테스트 구조: 1) run 블록: command = plan 또는 apply. variables로 입력값 설정. 2) assert: condition(비교 조건)과 error_message를 정의. 예: assert { condition = aws_s3_bucket.main.versioning[0].enabled == true, error_message = \"versioning must be enabled\" }. 3) terraform test 명령으로 실행. apply 모드는 실제 리소스를 생성하고 테스트 후 자동 정리(destroy).",
+    "seniorTip": "니콘내콘 Terraform 테스트 전략: 1) 모듈별 tests/ 디렉토리에 .tftest.hcl 배치. 2) plan 모드 테스트: 리소스 생성 없이 output 값, 리소스 속성 검증. CI에서 빠르게 실행. 3) apply 모드 테스트: 전용 AWS 계정(sandbox)에서 실제 생성/검증/삭제. 비용과 시간이 들지만 실제 동작 보장. 4) mock_provider(Terraform 1.7+)로 AWS API 없이 로직 테스트. 5) 테스트 대상: 필수 태그 존재 여부, 암호화 활성화, 퍼블릭 접근 차단 등 컴플라이언스 규칙. 6) CI 파이프라인: PR마다 plan 테스트, merge 후 apply 테스트를 야간 배치로 실행.",
+    "deepDive": "terraform test의 apply 모드에서 생성된 리소스가 destroy에 실패하면? → 테스트가 실패로 표시되고 리소스가 남아있음. 수동 정리 또는 nuke 도구(aws-nuke)로 sandbox 계정 정리 필요. CI에서 정기적으로 sandbox를 정리하는 스케줄 설정 권장. → mock_provider에서 리소스의 computed attribute(예: arn)를 어떻게 처리하나? → mock_provider가 가짜 값을 자동 생성. 또는 override_resource에서 특정 attribute 값을 명시적으로 지정하여 테스트 시나리오를 제어. → terratest(Go 기반)와 terraform test의 차이는? → terratest: Go 코드로 작성. 복잡한 검증(HTTP 요청, SSH 접속) 가능. terraform test: HCL로 작성. 학습 곡선이 낮고 Terraform 네이티브. 단순 속성 검증은 terraform test, 통합 테스트는 terratest가 적합.",
+    "tags": [
+      "terraform-test",
+      "tftest",
+      "testing",
+      "mock-provider",
+      "assert",
+      "ci-cd"
+    ]
   }
 ]

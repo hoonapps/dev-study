@@ -18,6 +18,8 @@ import ncncInfraQuestions from "@/data/ncnc-infra.json";
 import monitoringQuestions from "@/data/monitoring.json";
 import argocdQuestions from "@/data/argocd.json";
 import opensearchQuestions from "@/data/opensearch.json";
+import algorithmQuestions from "@/data/algorithm.json";
+import designPatternQuestions from "@/data/design-pattern.json";
 
 const allQuestions: Question[] = [
   ...(mysqlQuestions as Question[]),
@@ -38,6 +40,8 @@ const allQuestions: Question[] = [
   ...(monitoringQuestions as Question[]),
   ...(argocdQuestions as Question[]),
   ...(opensearchQuestions as Question[]),
+  ...(algorithmQuestions as Question[]),
+  ...(designPatternQuestions as Question[]),
 ];
 
 export function getAllQuestions(): Question[] {
