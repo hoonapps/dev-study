@@ -93,3 +93,23 @@ export function toggleBookmark(questionId: string): boolean {
 export function isBookmarked(questionId: string): boolean {
   return getBookmarks().includes(questionId);
 }
+
+const VIEW_KEY = "devsenior_views";
+
+export function getViewCounts(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(VIEW_KEY);
+  if (!raw) return {};
+  return JSON.parse(raw);
+}
+
+export function incrementView(questionId: string): number {
+  const views = getViewCounts();
+  views[questionId] = (views[questionId] || 0) + 1;
+  localStorage.setItem(VIEW_KEY, JSON.stringify(views));
+  return views[questionId];
+}
+
+export function getViewCount(questionId: string): number {
+  return getViewCounts()[questionId] || 0;
+}

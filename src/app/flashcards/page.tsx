@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getRandomQuestions } from "@/lib/questions";
-import { markFlashcardSeen, isBookmarked, toggleBookmark } from "@/lib/storage";
+import { markFlashcardSeen, isBookmarked, toggleBookmark, incrementView, getViewCount } from "@/lib/storage";
 import { Question, Category, CATEGORY_LABELS, CATEGORY_COLORS } from "@/types/question";
 
 export default function FlashcardsPage() {
@@ -12,6 +12,7 @@ export default function FlashcardsPage() {
   const [depth, setDepth] = useState<"light" | "deep" | "senior">("light");
   const [category, setCategory] = useState<Category | undefined>();
   const [bookmarked, setBookmarked] = useState(false);
+  const [viewCount, setViewCount] = useState(0);
 
   useEffect(() => {
     setCards(getRandomQuestions(999, category));
@@ -22,7 +23,11 @@ export default function FlashcardsPage() {
   const card = cards[current];
 
   useEffect(() => {
-    if (card) setBookmarked(isBookmarked(card.id));
+    if (card) {
+      setBookmarked(isBookmarked(card.id));
+      const count = incrementView(card.id);
+      setViewCount(count);
+    }
   }, [card]);
 
   const handleBookmark = (e: React.MouseEvent) => {
@@ -97,14 +102,16 @@ export default function FlashcardsPage() {
             {CATEGORY_LABELS[card.category]}
           </span>
           <span className="text-[10px] text-[var(--muted)]">{card.difficulty}</span>
-          {(card.tags || []).slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
-              #{tag}
+          {viewCount > 1 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)]15 text-[var(--accent)]">
+              {viewCount}회
             </span>
-          ))}
-          <button onClick={handleBookmark} className="ml-auto text-lg" title="Bookmark">
-            {bookmarked ? <span style={{color: "var(--warning)"}}>&#9733;</span> : <span style={{color: "var(--muted)"}}>&#9734;</span>}
-          </button>
+          )}
+          <span className="ml-auto flex items-center gap-2">
+            <button onClick={handleBookmark} className="text-lg" title="Bookmark">
+              {bookmarked ? <span style={{color: "var(--warning)"}}>&#9733;</span> : <span style={{color: "var(--muted)"}}>&#9734;</span>}
+            </button>
+          </span>
         </div>
 
         {!flipped ? (
