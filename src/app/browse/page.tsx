@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getAllQuestions } from "@/lib/questions";
-import { getResults } from "@/lib/storage";
+import { getResults, toggleBookmark, isBookmarked } from "@/lib/storage";
 import { Question, QuizResult, Category, Difficulty, CATEGORY_LABELS, CATEGORY_COLORS, DIFFICULTY_LABELS } from "@/types/question";
+
+const PAGE_SIZE = 20;
 
 export default function BrowsePage() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -13,40 +15,61 @@ export default function BrowsePage() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showDeep, setShowDeep] = useState<Record<string, boolean>>({});
+  const [page, setPage] = useState(1);
+  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setQuestions(getAllQuestions());
     setResults(getResults());
   }, []);
 
-  const resultMap = new Map<string, QuizResult>();
-  for (const r of results) resultMap.set(r.questionId, r);
+  const resultMap = useMemo(() => {
+    const map = new Map<string, QuizResult>();
+    for (const r of results) map.set(r.questionId, r);
+    return map;
+  }, [results]);
 
-  const filtered = questions.filter((q) => {
-    if (category && q.category !== category) return false;
-    if (difficulty && q.difficulty !== difficulty) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      return (
-        q.question.toLowerCase().includes(s) ||
-        q.tags.some((t) => t.toLowerCase().includes(s)) ||
-        q.explanation.toLowerCase().includes(s)
-      );
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return questions.filter((q) => {
+      if (category && q.category !== category) return false;
+      if (difficulty && q.difficulty !== difficulty) return false;
+      if (search) {
+        const s = search.toLowerCase();
+        const tags = Array.isArray(q.tags) ? q.tags : [];
+        return (
+          (q.question || "").toLowerCase().includes(s) ||
+          tags.some((t) => (t || "").toLowerCase().includes(s)) ||
+          (q.explanation || "").toLowerCase().includes(s) ||
+          (q.seniorTip || "").toLowerCase().includes(s) ||
+          (q.id || "").toLowerCase().includes(s)
+        );
+      }
+      return true;
+    });
+  }, [questions, category, difficulty, search]);
 
-  const categoryCounts = questions.reduce(
-    (acc, q) => {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [category, difficulty, search]);
+
+  const categoryCounts = useMemo(() => {
+    return questions.reduce((acc, q) => {
       acc[q.category] = (acc[q.category] || 0) + 1;
       return acc;
-    },
-    {} as Record<string, number>
-  );
+    }, {} as Record<string, number>);
+  }, [questions]);
+
+  const handleBookmark = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const added = toggleBookmark(id);
+    setBookmarks(prev => ({ ...prev, [id]: added }));
+  };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Browse All Questions</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold">Browse</h1>
 
       {/* Search */}
       <input
@@ -54,10 +77,10 @@ export default function BrowsePage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search questions, tags..."
-        className="w-full p-3 rounded-lg border border-[var(--card-border)] bg-[var(--card)] text-[var(--fg)] focus:outline-none focus:border-[var(--accent)]"
+        className="w-full p-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--card)] text-[var(--fg)] text-sm focus:outline-none focus:border-[var(--accent)]"
       />
 
-      {/* Category Filter - horizontal scroll */}
+      {/* Category Filter */}
       <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide">
         <div className="flex gap-1.5 w-max">
           <button
@@ -98,91 +121,77 @@ export default function BrowsePage() {
         ))}
       </div>
 
-      {/* Results Count */}
-      <p className="text-sm text-[var(--muted)]">{filtered.length} questions</p>
+      {/* Results Count + Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[var(--muted)]">{filtered.length} questions</p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} className="text-xs px-2 py-1 rounded bg-[var(--card)] text-[var(--muted)] disabled:opacity-30">Prev</button>
+            <span className="text-xs text-[var(--muted)]">{page}/{totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages} className="text-xs px-2 py-1 rounded bg-[var(--card)] text-[var(--muted)] disabled:opacity-30">Next</button>
+          </div>
+        )}
+      </div>
 
       {/* Question List */}
       <div className="space-y-3">
-        {filtered.map((q) => {
+        {paged.map((q) => {
           const result = resultMap.get(q.id);
           const isExpanded = expandedId === q.id;
           const isDeep = showDeep[q.id];
+          const saved = bookmarks[q.id] ?? (typeof window !== "undefined" ? isBookmarked(q.id) : false);
 
           return (
             <div key={q.id} className="card">
-              <div
-                className="cursor-pointer"
-                onClick={() => setExpandedId(isExpanded ? null : q.id)}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="category-badge"
-                    style={{ background: CATEGORY_COLORS[q.category] + "20", color: CATEGORY_COLORS[q.category] }}
-                  >
+              <div className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : q.id)}>
+                <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                  <span className="category-badge" style={{ background: CATEGORY_COLORS[q.category] + "20", color: CATEGORY_COLORS[q.category] }}>
                     {CATEGORY_LABELS[q.category]}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
-                    {q.difficulty}
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">{q.difficulty}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
                     {q.type === "multiple-choice" ? "MC" : q.type === "ox" ? "O/X" : "SA"}
                   </span>
                   {result && (
-                    <span className={`text-xs font-bold ${result.correct ? "text-[var(--success)]" : "text-[var(--error)]"}`}>
+                    <span className={`text-[10px] font-bold ${result.correct ? "text-[var(--success)]" : "text-[var(--error)]"}`}>
                       {result.correct ? "PASS" : "FAIL"}
                     </span>
                   )}
+                  <button onClick={(e) => handleBookmark(e, q.id)} className="ml-auto text-sm">
+                    {saved ? <span style={{color: "var(--warning)"}}>&#9733;</span> : <span style={{color: "var(--muted)"}}>&#9734;</span>}
+                  </button>
                 </div>
-                <p className="font-medium text-sm">{q.question}</p>
-                {q.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {q.tags.slice(0, 5).map((tag) => (
-                      <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <p className="text-sm font-medium">{q.question}</p>
               </div>
 
               {isExpanded && (
-                <div className="mt-4 pt-4 border-t border-[var(--card-border)] space-y-3">
-                  {/* Answer */}
+                <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2">
                   <div>
-                    <p className="text-xs text-[var(--success)] font-medium mb-1">Answer</p>
-                    <p className="text-sm">
-                      {q.type === "multiple-choice" && q.options
-                        ? q.options[q.answer as number]
-                        : String(q.answer)}
+                    <p className="text-[10px] text-[var(--success)] font-medium mb-0.5">Answer</p>
+                    <p className="text-xs">
+                      {q.type === "multiple-choice" && q.options ? q.options[q.answer as number] : String(q.answer)}
                     </p>
                   </div>
-
-                  {/* Light */}
                   <div>
-                    <p className="text-sm font-semibold text-[var(--accent)] mb-1">Light</p>
-                    <p className="text-sm text-[var(--muted)] leading-relaxed">{q.explanation}</p>
+                    <p className="text-[10px] font-semibold text-[var(--accent)] mb-0.5">Light</p>
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">{q.explanation}</p>
                   </div>
-
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeep((prev) => ({ ...prev, [q.id]: !prev[q.id] }));
-                    }}
-                    className="text-sm text-[var(--warning)] underline"
+                    onClick={(e) => { e.stopPropagation(); setShowDeep(prev => ({ ...prev, [q.id]: !prev[q.id] })); }}
+                    className="text-xs text-[var(--warning)] underline"
                   >
                     {isDeep ? "Hide Deep Dive" : "Show Deep Dive"}
                   </button>
-
                   {isDeep && (
                     <>
                       <div>
-                        <p className="text-sm font-semibold text-[var(--warning)] mb-1">Deep Dive</p>
-                        <p className="text-sm text-[var(--muted)] leading-relaxed">{q.deepDive || q.seniorTip}</p>
+                        <p className="text-[10px] font-semibold text-[var(--warning)] mb-0.5">Deep Dive</p>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed">{q.deepDive || q.seniorTip}</p>
                       </div>
                       {q.deepDive && (
                         <div>
-                          <p className="text-sm font-semibold text-[var(--success)] mb-1">Senior Tip</p>
-                          <p className="text-sm text-[var(--muted)] leading-relaxed">{q.seniorTip}</p>
+                          <p className="text-[10px] font-semibold text-[var(--success)] mb-0.5">Senior Tip</p>
+                          <p className="text-xs text-[var(--muted)] leading-relaxed">{q.seniorTip}</p>
                         </div>
                       )}
                     </>
@@ -193,6 +202,15 @@ export default function BrowsePage() {
           );
         })}
       </div>
+
+      {/* Bottom Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-30">Prev</button>
+          <span className="text-sm text-[var(--muted)]">{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages} className="btn-primary text-xs px-3 py-1.5 disabled:opacity-30">Next</button>
+        </div>
+      )}
     </div>
   );
 }
