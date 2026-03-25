@@ -705,5 +705,299 @@
       "networking"
     ],
     "deepDive": "EKS에서 IPv6 전용 모드(IPv6-only Pod)를 사용하면 NAT Gateway가 불필요해지는 이유와, 이 모드에서 IPv4 전용 외부 서비스에 접근하는 방법(DNS64/NAT64)은? → IPv6 주소의 /128 vs /64 서브넷 할당이 K8s Pod 주소 계획에 미치는 영향은? → IPv6 환경에서 기존 IPv4 기반 WAF 규칙과 IP 화이트리스트를 어떻게 마이그레이션하는가?"
+  },
+  {
+    "id": "net-036",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "HTTP/3와 QUIC 프로토콜이 기존 HTTP/2의 어떤 문제를 해결하고, 어떤 원리로 동작하는지 설명하라.",
+    "answer": "HTTP/3는 TCP 대신 UDP 기반의 QUIC 위에서 동작한다. HTTP/2의 HOL(Head-Of-Line) 블로킹 문제를 스트림 독립성으로 해결하고, 0-RTT 연결로 레이턴시를 줄인다.",
+    "explanation": "HTTP/2 문제: TCP 레벨 패킷 손실 시 모든 스트림이 멈추는 TCP HOL 블로킹. QUIC 해결책: (1) UDP 기반으로 각 스트림을 독립적으로 처리 — 한 스트림의 패킷 손실이 다른 스트림에 영향 없음. (2) 연결 ID(Connection ID) 기반으로 IP 변경(Wi-Fi → LTE) 시에도 연결 유지(Connection Migration). (3) TLS 1.3 내장으로 1-RTT 핸드셰이크, 재연결 시 0-RTT. (4) 혼잡 제어, 재전송을 UDP 위 QUIC 레이어에서 처리.",
+    "seniorTip": "실무 적용: CloudFront, AWS ALB는 HTTP/3(QUIC)를 지원한다. 활성화하면 모바일 클라이언트(패킷 손실률 높음) 성능이 향상된다. 단, 방화벽에서 UDP 443 포트를 열어야 하고, 일부 기업 방화벽은 UDP를 차단한다. NestJS 서버 자체는 HTTP/3를 직접 처리하지 않고 Ingress/CloudFront가 종단점 역할을 한다. 백엔드 간 gRPC + HTTP/2는 여전히 TCP 기반이다.",
+    "tags": [
+      "http3",
+      "quic",
+      "udp",
+      "hol-blocking",
+      "performance"
+    ],
+    "deepDive": "QUIC의 혼잡 제어 알고리즘(Cubic vs BBR)이 TCP의 혼잡 제어와 다른 점은? → HTTP/3에서 스트림 우선순위(Priority) 설정이 HTTP/2와 어떻게 달라졌는가? → 0-RTT 재연결의 보안 취약점(replay attack)과 그 완화 방법은?"
+  },
+  {
+    "id": "net-037",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "gRPC의 4가지 스트리밍 타입 중 서버가 실시간 이벤트를 클라이언트에 지속적으로 푸시할 때 적합한 방식은?",
+    "options": [
+      "Unary RPC — 단일 요청, 단일 응답",
+      "Server Streaming RPC — 단일 요청, 다중 응답 스트림",
+      "Client Streaming RPC — 다중 요청 스트림, 단일 응답",
+      "Bidirectional Streaming RPC — 양방향 스트림"
+    ],
+    "answer": 1,
+    "explanation": "4가지 타입: (1) Unary: 일반 함수 호출처럼 1:1. (2) Server Streaming: 클라이언트가 한 번 요청하면 서버가 여러 응답을 스트림으로 전송 — 실시간 알림, 로그 스트리밍에 적합. (3) Client Streaming: 클라이언트가 데이터를 스트림으로 전송, 서버가 합산 후 응답 — 파일 업로드에 적합. (4) Bidirectional: 채팅, 실시간 게임.",
+    "seniorTip": "NestJS에서 gRPC 사용: @GrpcMethod(), @GrpcStreamMethod() 데코레이터. Server Streaming은 Observable을 반환해 RxJS와 자연스럽게 통합된다. K8s에서 gRPC는 L7 인식 로드밸런서(Envoy, istio, AWS ALB)가 필요하다 — TCP 수준 로드밸런서는 단일 HTTP/2 연결을 특정 Pod에 계속 전달해 부하 불균형이 발생한다.",
+    "tags": [
+      "grpc",
+      "streaming",
+      "protobuf",
+      "nestjs",
+      "kubernetes"
+    ],
+    "deepDive": "gRPC Server Streaming에서 백프레셔(backpressure)를 어떻게 처리하는가? → gRPC-Web이 브라우저에서 Bidirectional Streaming을 완전히 지원하지 못하는 이유와 대안(Connect 프로토콜)은? → K8s에서 gRPC 헬스체크(grpc.health.v1.Health)를 Liveness/Readiness Probe로 설정하는 방법은?"
+  },
+  {
+    "id": "net-038",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "WebSocket과 SSE(Server-Sent Events)의 성능 특성을 비교하고, 각각의 적합한 사용 사례를 설명하라.",
+    "answer": "WebSocket은 양방향 전이중 통신, SSE는 서버→클라이언트 단방향. SSE는 HTTP 위에서 동작해 인프라 호환성이 높고, WebSocket은 실시간 양방향 인터랙션에 적합하다.",
+    "explanation": "SSE 특성: HTTP/1.1의 Transfer-Encoding: chunked 또는 HTTP/2 스트림 활용. 자동 재연결(EventSource API). 브라우저 연결 제한 없음(HTTP/2 멀티플렉싱). 텍스트 전용. WebSocket 특성: 독립 프로토콜(ws://, wss://), 바이너리 지원, 양방향. 성능: 단순 푸시라면 SSE가 오버헤드가 적다. 메시지 빈도가 높고 양방향이면 WebSocket이 유리하다.",
+    "seniorTip": "NestJS에서 SSE: Response 객체에 직접 스트림 쓰기 또는 Observable 반환. WebSocket: @WebSocketGateway() 데코레이터. K8s/ALB 환경에서 WebSocket은 idle timeout(기본 60초)에 주의 — AWS ALB는 최대 4000초까지 설정 가능. SSE는 HTTP이므로 Ingress에서 별도 처리 불필요. 채팅처럼 클라이언트도 자주 메시지를 보내면 WebSocket, 주식 시세처럼 서버에서만 푸시하면 SSE가 더 단순하다.",
+    "tags": [
+      "websocket",
+      "sse",
+      "real-time",
+      "nestjs",
+      "http"
+    ],
+    "deepDive": "HTTP/2 위의 SSE가 HTTP/1.1 SSE보다 브라우저 연결 제한에서 유리한 이유는? → WebSocket 연결 수가 수만 개를 넘을 때 Node.js에서 발생하는 메모리 이슈와 해결책은? → NestJS에서 SSE와 Redis Pub/Sub을 결합해 수평 확장 가능한 실시간 알림 시스템을 설계하는 방법은?"
+  },
+  {
+    "id": "net-039",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "TCP 혼잡 제어의 Slow Start와 AIMD(Additive Increase Multiplicative Decrease) 알고리즘을 설명하라.",
+    "answer": "Slow Start는 연결 초기 cwnd(혼잡 윈도우)를 지수적으로 증가시키고, AIMD는 혼잡 미감지 시 선형 증가, 혼잡 감지 시 절반으로 감소시켜 네트워크 이용률과 공정성을 균형 잡는다.",
+    "explanation": "TCP 혼잡 제어 단계: (1) Slow Start: cwnd=1MSS에서 시작, ACK마다 1씩 증가 → 사실상 지수 증가. ssthresh(slow start threshold) 도달 시 Congestion Avoidance로 전환. (2) Congestion Avoidance(AIMD): RTT마다 cwnd를 1MSS 증가(선형). 패킷 손실(타임아웃 또는 3 dup ACK) 감지 시: 타임아웃이면 ssthresh=cwnd/2, cwnd=1로 리셋. 3 dup ACK이면 Fast Retransmit + Fast Recovery: ssthresh=cwnd/2, cwnd=ssthresh.",
+    "seniorTip": "백엔드 개발자 관점: TCP 혼잡 제어는 장거리 고대역폭 연결(AWS 리전 간, CDN)에서 특히 중요하다. BBR(Bottleneck Bandwidth and RTT) 알고리즘은 Linux 4.9+에서 기본 지원, 손실 기반이 아닌 대역폭 추정 기반으로 클라우드 환경에서 Cubic보다 성능이 좋다. EKS 노드의 TCP 혼잡 제어 설정: sysctl net.ipv4.tcp_congestion_control을 확인하라.",
+    "tags": [
+      "tcp",
+      "congestion-control",
+      "slow-start",
+      "aimd",
+      "network-protocol"
+    ],
+    "deepDive": "Cubic과 BBR의 차이점과 각각이 적합한 네트워크 환경은? → TCP Fast Open(TFO)이 Slow Start와 어떻게 상호작용하고, 보안 이슈는? → 컨테이너 환경(K8s Pod)에서 TCP 혼잡 제어 파라미터를 튜닝할 때 호스트 네임스페이스와 Pod 네트워크 네임스페이스의 관계는?"
+  },
+  {
+    "id": "net-040",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "UDP가 TCP보다 적합한 사용 사례가 아닌 것은?",
+    "options": [
+      "DNS 조회 — 짧고 빠른 단일 쿼리/응답",
+      "온라인 게임 — 최신 상태가 중요, 약간의 패킷 손실 허용",
+      "파일 전송 — 100% 데이터 무결성 필수",
+      "QUIC — UDP 위에서 자체 신뢰성 구현"
+    ],
+    "answer": 2,
+    "explanation": "UDP는 연결 설정 없음, 순서 보장 없음, 재전송 없음 — 빠르지만 신뢰성이 없다. DNS는 단일 패킷에 담기는 작은 쿼리라 UDP 이상적. 게임은 오래된 위치 정보보다 최신 정보가 중요해 패킷 손실을 무시. QUIC는 UDP 위에서 직접 신뢰성과 혼잡 제어를 구현. 파일 전송은 모든 바이트의 순서와 무결성이 필수 → TCP가 적합.",
+    "seniorTip": "백엔드에서 UDP를 직접 다룰 일은 드물지만, DNS 동작 이해는 필수다. CoreDNS(K8s), Route53 모두 UDP 53. DNS over HTTPS(DoH)나 DNS over TLS(DoT)는 UDP 대신 TCP/TLS를 사용한다. syslog, SNMP, NetFlow 등 모니터링 프로토콜도 UDP 기반이 많다.",
+    "tags": [
+      "udp",
+      "dns",
+      "gaming",
+      "quic",
+      "protocol"
+    ],
+    "deepDive": "DTLS(Datagram TLS)가 UDP 기반 통신에 TLS 보안을 제공하는 방식과 QUIC의 내장 TLS 1.3와의 차이는? → DNS UDP 패킷이 512바이트를 초과할 때 EDNS0(Extension Mechanisms for DNS)가 동작하는 방식은? → VoIP(SIP/RTP)에서 UDP 패킷 손실을 보상하기 위한 FEC(Forward Error Correction) 기법은?"
+  },
+  {
+    "id": "net-041",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "ICMP와 ping/traceroute의 동작 원리를 설명하고, 클라우드 환경에서 ICMP 차단이 미치는 영향을 설명하라.",
+    "answer": "ICMP는 네트워크 오류 보고와 진단용 프로토콜. ping은 ICMP Echo Request/Reply로 연결성 확인, traceroute는 TTL을 1씩 증가시키며 각 홉의 ICMP Time Exceeded 응답으로 경로를 추적한다.",
+    "explanation": "ping: ICMP Type 8 (Echo Request) 전송 → 대상이 Type 0 (Echo Reply)으로 응답 → RTT 측정. traceroute: TTL=1로 패킷 전송 → 첫 번째 라우터가 TTL 초과 시 Type 11(Time Exceeded) 반환 → TTL을 1씩 늘리며 반복 → 목적지까지 경로 파악. 클라우드 영향: AWS Security Group에서 ICMP를 차단하면 ping 불가 — 연결 테스트 시 TCP ping(curl, telnet)을 사용해야 한다.",
+    "seniorTip": "K8s 노드 간 네트워크 디버깅 시 ICMP가 차단되어 있으면 traceroute가 동작하지 않는다. 대안: traceroute -T(TCP 모드), mtr(My Traceroute — ping + traceroute 통합). AWS VPC에서 ICMP를 허용하면 Path MTU Discovery(PMTUD)가 작동해 fragmentation 없이 최적 패킷 크기를 협상할 수 있다. PMTUD 차단은 Black Hole 라우팅 문제를 일으킨다.",
+    "tags": [
+      "icmp",
+      "ping",
+      "traceroute",
+      "debugging",
+      "aws-vpc"
+    ],
+    "deepDive": "PMTU(Path Maximum Transmission Unit) Discovery에서 ICMP Type 3 Code 4(Fragmentation Needed)가 차단되면 발생하는 'Black Hole' 문제와 해결책은? → IPv6에서 ICMPv6가 NDP(Neighbor Discovery Protocol)를 통해 ARP를 대체하는 방식은? → K8s CNI(Calico/Cilium)에서 노드 간 ICMP 정책을 설정하는 방법은?"
+  },
+  {
+    "id": "net-042",
+    "category": "network",
+    "difficulty": "junior",
+    "type": "concept",
+    "question": "ARP(Address Resolution Protocol)의 동작 원리와 ARP 스푸핑 공격을 설명하라.",
+    "answer": "ARP는 같은 네트워크 내에서 IP 주소를 MAC 주소로 변환하는 프로토콜. ARP 스푸핑은 가짜 ARP 응답으로 트래픽을 가로채는 중간자 공격이다.",
+    "explanation": "ARP 동작: (1) 192.168.1.10의 MAC 주소를 모를 때 브로드캐스트로 'who has 192.168.1.10?' 전송. (2) 해당 호스트가 자신의 MAC 주소로 응답. (3) ARP 캐시에 IP→MAC 매핑 저장. ARP 스푸핑: 공격자가 자신의 MAC 주소를 게이트웨이 IP에 연결하는 가짜 ARP 응답을 보내면, 피해자의 트래픽이 공격자를 경유한다(MITM).",
+    "seniorTip": "클라우드/컨테이너 환경: K8s 내부에서 Pod 간 통신도 ARP를 사용한다. Calico, Cilium 같은 CNI는 eBPF/IPVLAN으로 ARP 오버헤드를 줄인다. AWS VPC는 가상화 레이어에서 MAC→IP 매핑을 관리해 전통적인 ARP 스푸핑이 불가하다. 클라우드 보안에서 ARP 공격 위협은 낮지만, 온프레미스 환경에서는 Dynamic ARP Inspection(DAI) 스위치 기능으로 방어한다.",
+    "tags": [
+      "arp",
+      "mac-address",
+      "layer2",
+      "arp-spoofing",
+      "security"
+    ],
+    "deepDive": "Gratuitous ARP가 고가용성(HA) 페일오버와 VM 마이그레이션에서 어떻게 활용되는가? → K8s에서 Calico가 ARP proxy 모드와 BGP 모드 중 ARP 처리를 어떻게 최적화하는가? → AWS ENI(Elastic Network Interface)에서 IP aliasing 시 ARP 동작과 EIP reassociation 시 트래픽 전환 메커니즘은?"
+  },
+  {
+    "id": "net-043",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "BGP(Border Gateway Protocol)가 클라우드 네트워킹에서 어떻게 활용되는지 설명하라.",
+    "answer": "BGP는 인터넷 라우터 간 경로 정보를 교환하는 EGP(External Gateway Protocol). 클라우드에서는 AWS Direct Connect, VPN, Transit Gateway의 동적 라우팅에 사용된다.",
+    "explanation": "BGP 핵심 개념: AS(Autonomous System) 번호, BGP Peer, 경로 어트리뷰트(AS-PATH, LOCAL_PREF, MED). 클라우드 활용: (1) AWS Direct Connect: 온프레미스 BGP 라우터와 AWS가 피어링해 경로 자동 교환. (2) VPN + BGP: Site-to-Site VPN에서 정적 라우팅 대신 BGP로 온프레미스 서브넷을 자동 광고. (3) Transit Gateway: 멀티 VPC 환경에서 BGP 기반 라우팅. (4) K8s에서 Calico BGP 모드: Pod CIDR을 BGP로 외부 라우터에 광고.",
+    "seniorTip": "실무에서 BGP를 직접 설정할 일은 대형 인프라에서 발생한다. Direct Connect 구성 시 BGP 필수 파라미터: ASN(Amazon 측 64512~65534), BGP Auth Key. Multi-path 환경에서 ECMP(Equal-Cost Multi-Path)를 BGP와 결합해 대역폭을 늘릴 수 있다. BGP 장애 시 수동 failover 또는 BFD(Bidirectional Forwarding Detection)로 빠른 감지가 가능하다.",
+    "tags": [
+      "bgp",
+      "direct-connect",
+      "routing",
+      "aws",
+      "networking"
+    ],
+    "deepDive": "BGP Route Reflector가 iBGP full mesh의 확장성 문제를 해결하는 방식과 K8s Calico BGP 피어링에서의 적용은? → AWS Transit Gateway와 Direct Connect Gateway의 BGP 경로 선택 우선순위(LOCAL_PREF vs AS-PATH)는? → BGP Hijacking 공격의 원리와 RPKI(Resource Public Key Infrastructure)를 통한 방어 방법은?"
+  },
+  {
+    "id": "net-044",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Site-to-Site VPN과 Client VPN의 차이로 올바른 것은?",
+    "options": [
+      "Site-to-Site VPN은 개인 사용자용, Client VPN은 기업용이다",
+      "Site-to-Site VPN은 두 네트워크(온프레미스↔클라우드)를 터널로 연결하고, Client VPN은 개별 기기를 VPN 서버에 연결한다",
+      "Site-to-Site VPN은 UDP만 사용하고, Client VPN은 TCP만 사용한다",
+      "둘 다 동일한 프로토콜을 사용하며 차이는 대역폭뿐이다"
+    ],
+    "answer": 1,
+    "explanation": "Site-to-Site VPN: 온프레미스 VPN 게이트웨이와 AWS VPN 게이트웨이가 IPSec 터널을 형성. 사무실 네트워크 전체가 VPC와 연결됨. Client VPN: 개발자/직원 개인 PC에 VPN 클라이언트 설치, OpenVPN 프로토콜로 AWS VPC 접근. AWS Client VPN Endpoint에 연결. 프로토콜: IPSec(IKEv2) 또는 OpenVPN(TLS), WireGuard 등 다양하다.",
+    "seniorTip": "개발 환경 접근: AWS Client VPN은 비용이 높다(연결당 시간 요금). 대안: Bastion Host(EC2) + SSH 터널링, AWS SSM Session Manager(포트 포워딩). 제로 트러스트 도입 시 Cloudflare Access, AWS Verified Access로 VPN 없이 애플리케이션 수준 접근 제어가 가능하다. K8s API Server 접근도 VPN 없이 OIDC + IAM으로 인증 가능하다.",
+    "tags": [
+      "vpn",
+      "site-to-site",
+      "client-vpn",
+      "ipsec",
+      "aws"
+    ],
+    "deepDive": "IKEv2와 OpenVPN의 핸드셰이크 차이와 모바일 환경에서 IKEv2의 MOBIKE 확장이 IP 변경에 대응하는 방식은? → WireGuard가 IPSec/OpenVPN보다 성능이 우수한 이유와 AWS VPN에서 WireGuard 지원 현황은? → AWS Client VPN에서 상호 TLS 인증(Mutual TLS)과 Active Directory 인증을 결합하는 설계는?"
+  },
+  {
+    "id": "net-045",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "SD-WAN(Software-Defined WAN)의 개념과 기업 네트워크에서의 역할을 설명하라.",
+    "answer": "SD-WAN은 소프트웨어로 WAN 연결(MPLS, 인터넷, LTE)을 중앙 관리하고 트래픽을 정책 기반으로 최적 경로로 전송하는 기술이다. 전통적 MPLS 의존도를 줄이고 비용을 절감한다.",
+    "explanation": "전통 WAN 문제: MPLS 회선은 안정적이나 비용이 높고 확장이 느림. 클라우드 트래픽이 증가해 모든 트래픽을 데이터센터로 백홀링하면 비효율. SD-WAN 해결: (1) 여러 연결(MPLS + 인터넷 + LTE)을 동시 활용. (2) 애플리케이션 인식 라우팅 — 비디오 콜은 QoS 높은 MPLS, 일반 웹은 인터넷. (3) 클라우드 직접 연결(Direct Cloud Access) — Office365, AWS SaaS를 지점에서 직접 접근. (4) 중앙 컨트롤러에서 정책 배포.",
+    "seniorTip": "클라우드 네이티브 환경에서 SD-WAN은 주로 멀티 사이트 기업에 해당한다. SaaS 중심이 된 기업에서 SASE(Secure Access Service Edge) 아키텍처가 SD-WAN + 클라우드 보안(CASB, SWG, ZTNA)을 통합한다. K8s 환경에서는 서비스 메시(Istio, Linkerd)가 클러스터 내부의 SD-WAN 역할을 한다 — 정책 기반 트래픽 제어, 관찰 가능성, 암호화.",
+    "tags": [
+      "sd-wan",
+      "wan",
+      "networking",
+      "sase",
+      "cloud"
+    ],
+    "deepDive": "SD-WAN의 Zero Touch Provisioning(ZTP)이 기업 지점 확장에서 운영 효율을 높이는 방식은? → SASE 아키텍처에서 SD-WAN과 SSE(Security Service Edge)가 통합되는 방식과 Cloudflare One, Zscaler의 접근 방식 차이는? → AWS Cloud WAN이 기존 Transit Gateway + Direct Connect 조합 대비 제공하는 기능과 비용 트레이드오프는?"
+  },
+  {
+    "id": "net-046",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "HTTP Request Smuggling 공격의 원리와 방어 방법을 설명하라.",
+    "answer": "HTTP Request Smuggling은 프론트엔드(로드밸런서)와 백엔드 서버 간 HTTP 요청 경계 해석 불일치를 이용해 다른 사용자의 요청에 악성 데이터를 주입하는 공격이다.",
+    "explanation": "원리: HTTP/1.1에서 요청 길이를 Content-Length 또는 Transfer-Encoding: chunked로 지정. 두 헤더가 동시에 있을 때 프론트엔드와 백엔드가 다르게 해석하면 공격자가 요청 경계를 조작할 수 있다. CL.TE: 프론트엔드가 Content-Length 우선, 백엔드가 Chunked 우선. TE.CL: 반대. 결과: 세션 하이재킹, 권한 우회, 캐시 포이즈닝.",
+    "seniorTip": "방어: (1) HTTP/2로 전환 — H2는 단일 길이 표현으로 모호성 제거. (2) 프론트엔드-백엔드 간 H2 업그레이드 강제. (3) AWS ALB + NestJS 스택에서 ALB가 HTTP/2를 종단하고 백엔드와 HTTP/1.1로 통신할 때 ALB는 CL/TE 충돌을 자동으로 처리한다. (4) 커스텀 Nginx/HAProxy 사용 시 http-reuse 설정 검토. PortSwigger Web Security Academy의 HTTP Smuggling 랩으로 실습 권장.",
+    "tags": [
+      "http-smuggling",
+      "security",
+      "http",
+      "alb",
+      "web-security"
+    ],
+    "deepDive": "HTTP/2 Downgrade Smuggling이 HTTP/2→HTTP/1.1 변환 지점에서 발생하는 메커니즘은? → PortSwigger가 발표한 HTTP/2 Request Tunnelling 공격 기법과 방어 방법은? → AWS WAF와 ALB 조합에서 Request Smuggling을 탐지하기 위한 로그 분석 방법은?"
+  },
+  {
+    "id": "net-047",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "DNS over HTTPS(DoH)와 DNS over TLS(DoT)의 차이와 백엔드 서비스에서의 고려사항을 설명하라.",
+    "answer": "DoH는 DNS 쿼리를 HTTPS(포트 443)로 암호화해 일반 웹 트래픽과 구분 불가. DoT는 전용 포트(853)에서 TLS로 암호화. 둘 다 DNS 쿼리 도청과 조작을 방지한다.",
+    "explanation": "전통 DNS: UDP 53으로 평문 전송 — ISP, 중간자가 쿼리 내용을 볼 수 있고 DNS 스푸핑 가능. DoH: 브라우저에서 1.1.1.1/dns-query 같은 HTTP 엔드포인트로 쿼리. 방화벽이 포트 기반으로 차단 불가. DoT: 포트 853 전용 — 방화벽이 쉽게 차단 가능하지만 더 명확하게 식별/모니터링 가능. DNSSEC: 암호화는 아니지만 DNS 응답의 무결성을 검증하는 별개 표준.",
+    "seniorTip": "K8s CoreDNS에서 DoT 업스트림 설정: forward . tls://8.8.8.8 tls://8.8.4.4. 컨테이너 내부 DNS 조회를 암호화하면 클러스터 내 DNS 스누핑을 방지한다. 기업 방화벽에서 DoH를 차단하면 내부 DNS 정책이 우회될 수 있다 — WPAD(Web Proxy Auto-Discovery)와 함께 고려. Route53 Resolver DNS Firewall로 아웃바운드 DNS를 필터링할 수 있다.",
+    "tags": [
+      "doh",
+      "dot",
+      "dns",
+      "security",
+      "encryption"
+    ],
+    "deepDive": "DNSSEC의 서명 체인(RRSIG, DNSKEY, DS 레코드)이 DNS 응답 무결성을 검증하는 방식과 DNS Amplification 공격에서 DNSSEC 레코드가 오용되는 이유는? → CoreDNS에서 DNS-over-TLS 업스트림을 설정할 때 인증서 검증(tls_servername)의 중요성은? → 브라우저의 DoH 자동 사용이 기업 내부 스플릿-호라이즌 DNS와 충돌하는 문제와 해결책은?"
+  },
+  {
+    "id": "net-048",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "IPv4 주소 고갈 문제와 CGNAT(Carrier-Grade NAT)이 백엔드 서비스에 미치는 영향을 설명하라.",
+    "answer": "IPv4 주소 고갈로 ISP들이 CGNAT을 사용해 여러 가구가 하나의 공인 IP를 공유한다. 이로 인해 IP 기반 Rate Limiting, 접근 제어, 로그 분석에서 오진이 발생할 수 있다.",
+    "explanation": "CGNAT(RFC 6598, 100.64.0.0/10): 통신사가 NAT를 한 번 더 적용해 수백 명의 가입자가 단일 공인 IP를 공유. 백엔드 영향: (1) IP 기반 Rate Limiting이 정상 사용자를 차단 — 한 IP에서 비정상적으로 많은 요청처럼 보임. (2) IP 기반 차단이 대규모 사용자에게 영향. (3) 보안 로그에서 악성 IP가 다수의 정상 사용자와 공유. (4) Session Affinity(L4 스티키 세션)가 깨짐.",
+    "seniorTip": "Rate Limiting 설계 시 IP 단독이 아닌 User-Agent + IP + 사용자 ID 조합으로 설계하라. NestJS에서 @nestjs/throttler는 기본적으로 IP 기반이다 — CGNAT 환경에서 인증된 사용자는 사용자 ID 기반으로 변경하라. AWS WAF의 Rate-based Rule도 IP + Header 조합을 지원한다. 로그 분석 시 X-Forwarded-For의 첫 번째 IP(가장 왼쪽)가 클라이언트 IP지만, CGNAT에서는 여러 사용자가 같은 IP를 가질 수 있다.",
+    "tags": [
+      "cgnat",
+      "ipv4",
+      "nat",
+      "rate-limiting",
+      "security"
+    ],
+    "deepDive": "RFC 6598에서 정의된 Shared Address Space(100.64.0.0/10)가 사설 IP(RFC 1918)와 구분되는 이유와 라우팅 정책 차이는? → CGNAT 환경에서 법 집행 요청(공인 IP + 시간 기반 사용자 식별)에 ISP가 대응하기 위해 유지하는 로그 구조는? → IPv4 주소 고갈에 대응하는 IPv4 주소 거래 시장과 ARIN/APNIC의 대기 정책이 클라우드 비용에 미치는 영향은?"
+  },
+  {
+    "id": "net-049",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "TCP keepalive와 HTTP keep-alive는 다른 개념이다. 각각의 역할로 올바른 것은?",
+    "options": [
+      "TCP keepalive는 HTTP 연결 재사용, HTTP keep-alive는 TCP 연결 유지",
+      "TCP keepalive는 OS 레벨에서 유휴 TCP 연결이 살아있는지 탐지하고, HTTP keep-alive는 하나의 TCP 연결에서 여러 HTTP 요청을 재사용한다",
+      "둘 다 동일하게 연결을 유지하며 차이가 없다",
+      "TCP keepalive는 HTTP/2에서만 동작하고 HTTP keep-alive는 HTTP/1.1에서만 동작한다"
+    ],
+    "answer": 1,
+    "explanation": "TCP keepalive: OS 커널 기능. 설정된 시간(tcp_keepalive_time, 기본 2시간) 동안 데이터 교환이 없으면 probe 패킷을 전송해 상대방이 살아있는지 확인. 방화벽/NAT에서 유휴 연결이 끊기는 것을 방지. HTTP keep-alive(Persistent Connection): HTTP/1.1에서 Connection: keep-alive 헤더로 TCP 연결을 재사용. 3-way 핸드셰이크 오버헤드를 줄임. HTTP/2는 기본적으로 단일 연결에서 멀티플렉싱.",
+    "seniorTip": "실무에서의 혼동: AWS ALB idle timeout(기본 60초)은 HTTP keep-alive와 다르다. ALB가 60초 내에 요청이 없으면 TCP 연결을 끊는다. NestJS 서버와 DB(MySQL) 연결 풀에서도 TCP keepalive를 설정하면 방화벽/NAT가 장시간 유휴 연결을 끊는 것을 방지한다. TypeORM 연결 풀 옵션: keepConnectionAlive: true. Redis 클라이언트도 유사하게 설정해야 한다.",
+    "tags": [
+      "tcp-keepalive",
+      "http-keep-alive",
+      "connection",
+      "typeorm",
+      "aws-alb"
+    ],
+    "deepDive": "Linux의 tcp_keepalive_time, tcp_keepalive_intvl, tcp_keepalive_probes 세 가지 파라미터가 연결 장애 감지 시간에 미치는 수식은? → K8s Pod에서 장기 실행 gRPC 스트림이 NAT Gateway에 의해 끊기는 문제를 TCP keepalive와 gRPC keepalive 조합으로 해결하는 방법은? → HTTP/2 PING 프레임이 TCP keepalive와 독립적으로 애플리케이션 레벨 연결 상태를 확인하는 방식은?"
+  },
+  {
+    "id": "net-050",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "tcpdump, Wireshark, nslookup, dig 각 도구의 용도와 실제 네트워크 디버깅 시나리오를 설명하라.",
+    "answer": "tcpdump/Wireshark는 패킷 캡처 및 분석, nslookup/dig는 DNS 조회 디버깅 도구. 각각 레이어가 다른 네트워크 문제를 진단한다.",
+    "explanation": "tcpdump: CLI 패킷 캡처. 예: tcpdump -i eth0 'port 443' -w capture.pcap — K8s 노드에서 TLS 핸드셰이크 실패 분석. Wireshark: tcpdump 캡처 파일을 GUI로 분석. TCP 재전송, TLS alert, HTTP 응답 코드 시각화. nslookup: 간단한 DNS 조회. 예: nslookup service.namespace.svc.cluster.local — K8s 내부 DNS 확인. dig: 상세 DNS 디버깅. dig +trace example.com — DNS 위임 체인 추적. dig @8.8.8.8 — 특정 DNS 서버 직접 조회.",
+    "seniorTip": "K8s 디버깅에서 자주 쓰는 패턴: (1) kubectl exec로 Pod 내부에서 nslookup/dig 실행해 CoreDNS 확인. (2) EKS 노드에서 tcpdump로 Pod 트래픽 캡처: K8s Pod의 veth 인터페이스 특정. (3) ss(socket statistics) — netstat 현대 대체제. ss -tnp로 연결 상태 확인. (4) curl -v, curl --resolve: DNS를 우회해 특정 IP로 HTTP 테스트. (5) openssl s_client: TLS 인증서와 핸드셰이크 상세 분석.",
+    "tags": [
+      "tcpdump",
+      "wireshark",
+      "nslookup",
+      "dig",
+      "network-debugging"
+    ],
+    "deepDive": "K8s Pod에서 tcpdump를 실행하기 위해 NET_ADMIN capability를 부여하는 것의 보안 위험과, 대안으로 ephemeral container나 kubectl debug를 활용하는 방법은? → Wireshark의 TLS 복호화 기능(TLS master secret 로깅)을 개발 환경에서 NestJS HTTPS 트래픽 분석에 활용하는 방법은? → dig의 DNSSEC 검증(+dnssec 플래그)이 실제로 확인하는 서명 체인의 각 레코드(RRSIG, NSEC)는?"
   }
 ]

@@ -543,5 +543,275 @@
       "redis",
       "elasticsearch"
     ]
+  },
+  {
+    "id": "algo-031",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "동적 프로그래밍(DP)을 언제 적용해야 하는지 판단하는 기준과, 메모이제이션과 타뷸레이션의 차이를 설명해주세요.",
+    "answer": "DP는 최적 부분 구조(Optimal Substructure)와 중복 부분 문제(Overlapping Subproblems)를 모두 가진 문제에 적용합니다. 메모이제이션은 Top-Down 재귀 + 캐시, 타뷸레이션은 Bottom-Up 반복 + 테이블입니다.",
+    "explanation": "DP 적용 판단: (1) 최적 부분 구조: 전체 최적해가 부분 문제의 최적해로 구성되는가? (2) 중복 부분 문제: 같은 부분 문제를 여러 번 계산하는가? 메모이제이션: 재귀 호출 시 결과를 Map/객체에 저장, 이미 계산했으면 반환. 자연스러운 재귀 구조 유지. 타뷸레이션: 작은 부분 문제부터 테이블에 채워나감. 재귀 스택 오버플로우 없음, 캐시 지역성 우수.",
+    "deepDive": "메모이제이션과 타뷸레이션 중 어떤 것이 더 빠른가요? → 이론상 같은 O(n) 복잡도지만 타뷸레이션이 함수 호출 오버헤드가 없고 CPU 캐시 친화적이어서 실제로 더 빠릅니다. 단, 모든 부분 문제를 계산하는 반면 메모이제이션은 필요한 부분만 계산합니다. DP를 백엔드 비즈니스 로직에 적용한 사례는? → 최적 쿠폰 조합 계산(배낭 문제), 최소 비용 경로(다익스트라도 DP의 일종), 편집 거리 기반 검색어 교정. 공간 최적화는? → 많은 DP 문제에서 전체 테이블 대신 이전 행/열만 필요합니다. 피보나치의 O(n) → O(1), LCS의 O(n²) → O(n)으로 줄일 수 있습니다.",
+    "seniorTip": "실무에서 DP가 나오는 경우: 가격 최적화, 작업 스케줄링, 문자열 유사도(Levenshtein) 등입니다. 하지만 입력 크기가 작거나 단순 그리디로 해결 가능하면 DP는 오버엔지니어링입니다. 항상 그리디 → DP 순서로 검토하세요.",
+    "tags": [
+      "dynamic-programming",
+      "memoization",
+      "tabulation",
+      "optimization",
+      "algorithm"
+    ]
+  },
+  {
+    "id": "algo-032",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "그리디 알고리즘이 최적해를 보장하는 조건과 작업 스케줄링, 허프만 코딩에서의 적용을 설명해주세요.",
+    "answer": "그리디는 매 순간 국소 최적 선택을 하는 방식으로, 그리디 선택 속성(Greedy Choice Property)과 최적 부분 구조를 만족할 때만 전역 최적해를 보장합니다.",
+    "explanation": "작업 스케줄링(Job Scheduling): 마감 시간이 있는 작업들을 최대한 완료하려면 마감 시간 순으로 정렬 후 처리 — 그리디 선택이 최적임이 증명됨. Interval Scheduling: 종료 시간 빠른 순 정렬 후 선택 — 가장 많은 작업 완료. 허프만 코딩: 출현 빈도가 낮은 문자에 긴 비트 코드 할당. 빈도 오름차순으로 두 개씩 합치는 최소 힙 사용 — O(n log n). 탐욕 선택이 최적 접두사 코드를 보장함.",
+    "deepDive": "그리디가 실패하는 대표적인 사례는? → 동전 거스름돈 문제에서 동전 종류가 임의적이면 그리디가 실패합니다(예: [1, 3, 4]에서 6을 만들 때 그리디: 4+1+1, 최적: 3+3). 이 경우 DP가 필요합니다. 그리디와 DP를 구분하는 실전 방법은? → 반례를 찾아보세요. 반례가 없으면 그리디 증명 시도, 있으면 DP. 허프만 코딩이 백엔드에서 활용되는 사례는? → gzip, zstd 등 압축 알고리즘의 핵심 구성요소입니다. HTTP 응답 압축(Content-Encoding: gzip)이 내부적으로 허프만 코딩을 사용합니다.",
+    "seniorTip": "API 응답에 Content-Encoding: gzip을 적용하면 대부분의 경우 50-80% 크기 절감이 가능합니다. NestJS에서 compression 미들웨어 적용: app.use(compression()). 단, 이미 압축된 파일(JPEG, PNG, MP4)에는 적용하지 마세요 — 오히려 크기가 커질 수 있습니다.",
+    "tags": [
+      "greedy",
+      "scheduling",
+      "huffman",
+      "algorithm",
+      "compression"
+    ]
+  },
+  {
+    "id": "algo-033",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "백트래킹 알고리즘의 원리와 N-Queens, 제약 충족 문제(CSP)에서의 적용을 설명해주세요.",
+    "answer": "백트래킹은 가능한 모든 경우를 탐색하되, 유망하지 않은 분기를 조기에 가지치기(pruning)하는 완전 탐색 최적화 기법입니다.",
+    "explanation": "N-Queens: N×N 체스판에 N개의 퀸을 서로 공격하지 않게 배치. 행 순서대로 퀸을 배치하며 열/대각선 충돌 시 즉시 백트래킹. O(N!) 최악이지만 pruning으로 실제는 훨씬 적음. 제약 충족 문제(CSP): 변수-도메인-제약 조건 구조. 스도쿠 풀기: 각 셀에 1-9를 대입하며 행/열/박스 제약 확인. 위반 시 즉시 되돌아감. Arc Consistency(AC-3)로 미리 도메인을 줄이면 성능 향상.",
+    "deepDive": "백트래킹과 브루트 포스의 차이는? → 브루트 포스는 모든 경우를 끝까지 탐색, 백트래킹은 조기 포기(pruning). N=8 Queens에서 브루트 포스: 8^8 = 1600만, 백트래킹: ~2000으로 줄어듭니다. 백트래킹을 백엔드에서 활용하는 사례는? → 스케줄링 시스템(교사-수업-교실 제약 배정), 퍼미션 조합 검증, 정규식 매칭(역추적). 정규식의 재앙적 백트래킹(Catastrophic Backtracking)이란? → 잘못 작성된 정규식(e.g., (a+)+)이 입력에 따라 지수 시간이 걸리는 ReDoS 취약점. NestJS 입력 검증에서 복잡한 정규식 사용 시 주의가 필요합니다.",
+    "seniorTip": "ReDoS(Regular Expression Denial of Service)는 실제 보안 취약점입니다. class-validator의 @Matches() 데코레이터에 사용자 입력 기반 정규식을 허용하면 위험합니다. 간단하고 명확한 정규식을 사용하고, safe-regex 라이브러리로 위험한 패턴을 검출하세요.",
+    "tags": [
+      "backtracking",
+      "n-queens",
+      "csp",
+      "pruning",
+      "redos"
+    ]
+  },
+  {
+    "id": "algo-034",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "BFS와 DFS의 특성 차이와 웹 크롤링, 파일 시스템 탐색 등 실제 사용 사례를 설명해주세요.",
+    "answer": "BFS는 너비 우선으로 최단 경로 보장, DFS는 깊이 우선으로 메모리 효율이 높습니다. BFS는 큐, DFS는 스택(또는 재귀)을 사용합니다.",
+    "explanation": "BFS 사용 사례: (1) 웹 크롤링 — 같은 도메인 페이지를 레벨별로 탐색, 깊이 제한 설정 쉬움. (2) 최단 경로 — 소셜 네트워크 최단 연결 단계. (3) P2P 네트워크 피어 발견. DFS 사용 사례: (1) 파일 시스템 탐색 — 디렉토리 재귀 탐색, 스택 기반으로 메모리 절약. (2) 사이클 탐지 — 의존성 순환 감지. (3) 미로 탐색. (4) 위상 정렬 전처리.",
+    "deepDive": "BFS의 공간 복잡도 문제는? → BFS는 현재 레벨의 모든 노드를 큐에 유지해야 합니다. 완전 이진 트리의 마지막 레벨은 n/2개 노드 → O(n) 공간. DFS는 O(depth)만 필요합니다. 실제 웹 크롤러에서 방문 여부를 어떻게 관리하나요? → URL을 SHA-256 해시 후 Redis Set에 저장. Bloom Filter로 메모리를 줄이고 중복 방지(단, 오탐 가능). 분산 크롤러에서는 Kafka로 URL 큐를 관리합니다. 양방향 BFS란? → 시작점과 목적지 양쪽에서 동시에 BFS를 수행해 만나는 지점을 찾음. 탐색 공간이 O(b^d)에서 O(b^(d/2))로 줄어듭니다.",
+    "seniorTip": "NestJS에서 파일 시스템 탐색(fs.readdir + 재귀)은 DFS 패턴입니다. 대용량 디렉토리에서 동기 재귀는 스택 오버플로우 위험이 있습니다. BullMQ 같은 큐를 사용해 비동기 반복 탐색으로 전환하면 안전합니다. 배포 시 정적 파일 해시 목록 생성 스크립트가 이 패턴을 씁니다.",
+    "tags": [
+      "bfs",
+      "dfs",
+      "graph",
+      "web-crawling",
+      "file-system"
+    ]
+  },
+  {
+    "id": "algo-035",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "위상 정렬(Topological Sort)의 원리와 빌드 시스템, DB 마이그레이션 순서 결정에서의 활용을 설명해주세요.",
+    "answer": "위상 정렬은 방향 비순환 그래프(DAG)에서 간선 방향을 따라 노드를 선형 순서로 나열하는 알고리즘입니다. 의존성 순서를 결정할 때 사용합니다.",
+    "explanation": "알고리즘: (1) Kahn's Algorithm(BFS 기반): 진입 차수(in-degree) 0인 노드를 큐에 넣고 처리, 연결 노드의 in-degree를 감소시키며 반복. 순환 의존성이 있으면 감지 가능. (2) DFS 기반: 모든 노드에 DFS 후 완료 역순으로 나열. 빌드 시스템: CMake, Gradle, Make — 파일 A가 B에 의존하면 B를 먼저 빌드. DB 마이그레이션: TypeORM 마이그레이션 파일의 순서, Liquibase의 의존성 체인.",
+    "deepDive": "사이클이 존재할 때 위상 정렬이 실패하는 것을 어떻게 활용하나요? → 순환 의존성 감지. Node.js 모듈 시스템에서 순환 require가 발생하면 정의되지 않은 값이 전달됩니다. NestJS의 모듈 순환 의존성도 이를 통해 감지 가능합니다. 여러 개의 유효한 위상 정렬이 있을 때 어떻게 하나요? → 모든 유효한 순서가 정답입니다. 우선순위가 필요하면 Kahn's에서 단순 큐 대신 우선순위 큐(힙)를 사용합니다. 현업에서 응용: 마이크로서비스 배포 순서(서비스 A가 B의 API에 의존하면 B 먼저 배포), K8s 리소스 적용 순서(ConfigMap → Deployment 순).",
+    "seniorTip": "NestJS에서 순환 의존성(circular dependency)은 forwardRef()로 해결하지만 이는 임시방편입니다. 위상 정렬 관점에서 모듈 의존성 그래프를 그려보면 순환이 발생하는 구조적 문제를 찾을 수 있습니다. 의존성 방향을 역전(DIP)하거나 공통 모듈로 분리하는 것이 근본 해결책입니다.",
+    "tags": [
+      "topological-sort",
+      "dag",
+      "dependency",
+      "migration",
+      "nestjs"
+    ]
+  },
+  {
+    "id": "algo-036",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "유니온-파인드(Union-Find) 자료구조의 원리와 연결 컴포넌트 탐지, 네트워크 클러스터링에서의 활용을 설명해주세요.",
+    "answer": "유니온-파인드는 서로소 집합(Disjoint Set)을 관리하는 자료구조로, Find(대표 원소 탐색)와 Union(집합 합치기)를 거의 O(1)에 처리합니다.",
+    "explanation": "핵심 최적화: (1) 경로 압축(Path Compression): Find 시 루트까지의 모든 노드가 루트를 직접 가리키도록 갱신 → 이후 탐색 O(1)에 가까워짐. (2) 랭크 기반 합치기(Union by Rank): 트리 높이가 낮은 쪽을 높은 쪽에 붙임 → 트리 균형 유지. 두 최적화 결합 시 시간 복잡도: O(α(n)) — 아커만 함수의 역으로 사실상 상수. 활용: 연결 컴포넌트 탐지(그래프에서 섬 개수), 네트워크 클러스터링, Kruskal MST 알고리즘.",
+    "deepDive": "유니온-파인드와 BFS/DFS 연결 컴포넌트 탐색의 차이는? → BFS/DFS는 O(V+E), 유니온-파인드도 O(E*α(V)) — 유사하지만 유니온-파인드는 동적으로 간선이 추가되는 온라인 환경에 더 적합합니다. 실제 시스템에서 유니온-파인드 활용은? → MST(최소 신장 트리)로 데이터센터 네트워크 최소 비용 연결 설계. 사용자 추천 시스템에서 연결된 사용자 그룹 식별. 마이크로서비스 의존성 클러스터 분석. 분산 환경에서 유니온-파인드를 구현하려면? → 단일 노드 유니온-파인드를 분산 시스템으로 확장하기 어렵습니다. Redis Cluster의 슬롯 할당이 유사한 개념을 사용합니다.",
+    "seniorTip": "실제 코딩 테스트에서 '몇 개의 섬/그룹이 있는가?' 류의 문제는 유니온-파인드 또는 BFS/DFS로 해결합니다. 간선 추가가 동적이면 유니온-파인드, 정적 그래프면 BFS/DFS가 코드가 더 직관적입니다.",
+    "tags": [
+      "union-find",
+      "disjoint-set",
+      "graph",
+      "connected-components",
+      "network"
+    ]
+  },
+  {
+    "id": "algo-037",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "비트 조작(Bit Manipulation)을 활용한 플래그 시스템, 권한 관리, 비트맵의 실제 구현을 설명해주세요.",
+    "answer": "비트 조작은 정수의 개별 비트를 AND/OR/XOR/NOT/SHIFT 연산으로 처리합니다. 플래그 시스템에서 여러 boolean 상태를 단일 정수로 효율적으로 관리합니다.",
+    "explanation": "권한 플래그 예시(Unix 스타일): READ=0b001, WRITE=0b010, EXEC=0b100. 권한 부여: perm |= WRITE. 권한 확인: (perm & READ) !== 0. 권한 제거: perm &= ~WRITE. 모든 권한: perm = READ | WRITE | EXEC. 비트맵: N개의 상태를 N비트로 표현. 1억 개 사용자 '온라인 여부'를 비트맵으로 저장하면 12.5MB. Redis BITSET, BITCOUNT로 구현 가능. JavaScript의 숫자는 64비트 부동소수점이지만 비트 연산 시 32비트 정수로 처리되는 점 주의.",
+    "deepDive": "XOR의 특이한 활용은? → XOR의 자기 역원 특성(a^a=0, a^0=a): 배열에서 중복 없이 한 번만 등장하는 수 찾기 O(n)/O(1). 암호화의 기본(XOR cipher). 두 변수를 임시 변수 없이 교환: a^=b; b^=a; a^=b. 비트 조작으로 2의 거듭제곱 확인은? → (n & (n-1)) === 0. Redis의 HyperLogLog가 비트 트릭을 활용하는 방식은? → 해시의 선행 0 비트 개수로 카디널리티를 추정합니다. 확률적 데이터 구조의 핵심 원리입니다.",
+    "seniorTip": "MySQL의 권한 테이블도 비트 플래그를 사용합니다. NestJS에서 역할/권한 시스템을 비트마스크로 구현하면 단일 숫자 컬럼으로 복잡한 권한 조합을 표현할 수 있습니다. 단, 비트마스크는 특정 권한 조합을 인덱싱하기 어려워 검색 성능 이슈가 생길 수 있습니다. 읽기 중심이면 비트마스크, 쓰기/검색 중심이면 별도 테이블을 고려하세요.",
+    "tags": [
+      "bit-manipulation",
+      "flags",
+      "permissions",
+      "bitmap",
+      "redis"
+    ]
+  },
+  {
+    "id": "algo-038",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "저수지 샘플링(Reservoir Sampling)의 원리와 스트리밍 데이터에서 균등 무작위 샘플링에 어떻게 활용하는지 설명해주세요.",
+    "answer": "저수지 샘플링은 전체 크기를 모르는 스트림에서 k개의 균등 무작위 샘플을 O(n) 시간, O(k) 공간으로 추출하는 알고리즘입니다.",
+    "explanation": "알고리즘(k=1 단순 버전): 첫 번째 원소를 선택. i번째 원소(i>1)를 1/i 확률로 현재 선택과 교환. 결과: 모든 원소가 동일한 1/n 확률로 선택됨. k개 버전: 처음 k개를 저수지에 채움. i번째 원소(i>k)를 k/i 확률로 저수지의 무작위 위치에 삽입. 활용: 대용량 로그에서 무작위 샘플 추출, A/B 테스트 대상 무작위 선정, Kafka 스트림에서 실시간 샘플링.",
+    "deepDive": "저수지 샘플링이 균등 분포를 보장하는 수학적 증명은? → 귀납법: n번째 원소가 최종 선택될 확률 = k/n. (i번째 선택 확률 k/i) * (이후 교체 안 될 확률 곱). 가중치 저수지 샘플링(Weighted Reservoir Sampling)이란? → 각 원소에 가중치가 있을 때, 키 = u^(1/w) (u: [0,1] 균등 난수, w: 가중치)로 정렬해 상위 k개 선택하는 Algorithm A-Res. 백엔드에서 활용 사례는? → 대용량 이벤트 스트림(클릭, 결제)에서 일정 비율의 이벤트만 샘플링해 분석. 전체 데이터를 저장하지 않고 통계적으로 유효한 샘플만 DB에 저장.",
+    "seniorTip": "A/B 테스트 또는 피처 플래그에서 사용자를 무작위 그룹에 배정할 때 user_id를 시드로 한 해시(murmurhash(userId) % 100)가 더 결정론적이고 일관성 있습니다. 저수지 샘플링은 스트림이 완료된 후에도 균등 샘플이 보장되어야 할 때 적합합니다.",
+    "tags": [
+      "reservoir-sampling",
+      "streaming",
+      "random-sampling",
+      "statistics",
+      "ab-testing"
+    ]
+  },
+  {
+    "id": "algo-039",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "Count-Min Sketch의 원리와 대규모 스트리밍 데이터에서 빈도 추정에 어떻게 활용하는지 설명해주세요.",
+    "answer": "Count-Min Sketch는 확률적 자료구조로, d×w 크기의 카운터 배열과 d개의 해시 함수를 사용해 O(1) 업데이트/쿼리로 아이템 빈도를 추정합니다. 과대 추정(overestimate)만 발생하며 과소 추정은 없습니다.",
+    "explanation": "동작: (1) 각 해시 함수 h_i로 w 범위의 인덱스 계산, 해당 카운터 증가. (2) 빈도 쿼리 시 d개 카운터 중 최솟값 반환(최솟값이 가장 정확한 추정). 공간: O(d*w), d=log(1/δ), w=e/ε (δ: 실패 확률, ε: 오차율). 활용: Redis의 빈번한 키 탐지, 네트워크 트래픽에서 Heavy Hitter 탐지, API Rate Limiting(IP별 요청 수 근사), 상품 조회수 실시간 집계.",
+    "deepDive": "Count-Min Sketch와 Bloom Filter의 차이는? → Bloom Filter: 원소 존재 여부(0/1). Count-Min Sketch: 원소 빈도(카운트). 둘 다 확률적이지만 Bloom Filter는 false negative 없음, Count-Min Sketch는 과소 추정 없음. Redis에서 Count-Min Sketch 구현은? → Redis 4.0의 CMS.INCRBY, CMS.QUERY 명령어로 네이티브 지원. sketch 초기화 시 오차율과 신뢰도를 설정합니다. Sketch와 정확한 카운터의 하이브리드는? → Top-K 아이템은 정확한 카운터를 유지하고 나머지는 스케치로 처리하는 혼합 방식이 실용적입니다.",
+    "seniorTip": "쿠폰 조회수처럼 정확한 카운팅이 필요하면 Redis INCR, 근사치로 충분한 실시간 트렌드 분석에는 HyperLogLog(카디널리티)나 Count-Min Sketch(빈도)를 사용하세요. 메모리가 수십 MB이면 수십억 개 이벤트도 처리 가능합니다.",
+    "tags": [
+      "count-min-sketch",
+      "probabilistic",
+      "streaming",
+      "frequency-estimation",
+      "redis"
+    ]
+  },
+  {
+    "id": "algo-040",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "스킵 리스트(Skip List)의 원리와 Redis Sorted Set 내부 구현에서 어떻게 활용되는지 설명해주세요.",
+    "answer": "스킵 리스트는 연결 리스트에 여러 레벨의 '빠른 경로'를 확률적으로 추가한 자료구조로, O(log n) 탐색/삽입/삭제를 기대값으로 보장합니다.",
+    "explanation": "구조: 레벨 0은 일반 연결 리스트. 레벨 1은 약 절반의 노드를 포함, 레벨 k는 레벨 k-1의 약 절반. 각 노드는 코인 플립(50%)으로 다음 레벨 포함 여부 결정. 탐색: 상위 레벨에서 빠르게 이동, 오버슈트 시 하위 레벨로 내려감. Redis Sorted Set: Hash(score 저장) + Skip List(score 순서 유지). ZRANGE, ZRANGEBYSCORE, ZRANK 모두 Skip List를 사용. ZRANGEBYSCORE min max가 O(log n + k)인 이유.",
+    "deepDive": "스킵 리스트와 균형 BST(AVL, Red-Black Tree)의 비교는? → 평균 성능은 같은 O(log n)이지만, 스킵 리스트는 구현이 단순하고 병렬 접근(lock-free)이 쉽습니다. BST는 최악 케이스가 확정적 O(log n), 스킵 리스트는 확률적 O(log n)(극히 낮은 확률로 O(n)). Redis가 스킵 리스트를 선택한 이유는? → Redis 작성자 antirez는 구현 단순성, 디버그 용이성, 범위 쿼리 성능을 이유로 스킵 리스트를 선택했습니다. 스킵 리스트 레벨을 몇 개로 설정해야 하나요? → n개 원소에서 최대 레벨은 log(1/p)*log(n), p는 레벨 상승 확률. Redis는 p=0.25, 최대 레벨 32를 사용합니다.",
+    "seniorTip": "Redis ZADD O(log n), ZRANGE O(log n + k), ZRANGEBYSCORE O(log n + k). 리더보드 구현 시 ZADD로 점수 업데이트, ZREVRANGE로 상위 N개 조회가 최적 패턴입니다. 같은 score 내 정렬이 필요하면 score에 소수점으로 타임스탬프를 인코딩하는 트릭이 있습니다.",
+    "tags": [
+      "skip-list",
+      "redis",
+      "sorted-set",
+      "data-structure",
+      "leaderboard"
+    ]
+  },
+  {
+    "id": "algo-041",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "머클 트리(Merkle Tree)의 원리와 블록체인 무결성 검증, Git의 내부 구조에서의 활용을 설명해주세요.",
+    "answer": "머클 트리는 리프 노드가 데이터 해시이고, 내부 노드가 자식 해시의 결합 해시인 이진 트리입니다. 루트 해시(Merkle Root) 하나로 전체 데이터셋의 무결성을 O(log n)에 검증합니다.",
+    "explanation": "구조: 리프: hash(data). 부모: hash(leftChild + rightChild). 루트: 전체 트리 요약. 블록체인 활용: 비트코인 블록 헤더에 거래 목록의 Merkle Root만 저장. SPV(Simple Payment Verification) 클라이언트는 하나의 거래가 블록에 포함됨을 O(log n)개의 해시만으로 검증 가능. Git 활용: 각 commit, tree, blob 객체가 SHA-1/SHA-256 해시. 커밋 해시가 전체 히스토리의 무결성을 보장. 한 파일이라도 변경되면 루트까지 모든 해시가 변경됨.",
+    "deepDive": "머클 트리와 일반 해시 목록의 차이는? → 해시 목록은 전체를 재검증해야 합니다. 머클 트리는 변경된 부분만 O(log n)에 식별 가능. P2P 파일 공유(BitTorrent)에서 어떻게 활용되나요? → 큰 파일을 청크로 분할하고 머클 트리 구성. 각 청크 다운로드 시 루트 해시로 무결성 즉시 검증. 신뢰할 수 없는 피어에서 받은 데이터도 검증 가능. Git에서 머클 트리의 의미는? → 두 커밋의 공통 조상을 찾는 git merge-base, git bisect 모두 이 해시 구조를 활용합니다. 동일 내용의 파일은 항상 같은 blob 해시 → 저장 공간 중복 제거.",
+    "seniorTip": "분산 시스템에서 데이터 동기화 검증 시 머클 트리가 활용됩니다. Amazon DynamoDB, Apache Cassandra에서 노드 간 데이터 불일치를 감지하는 Anti-entropy 프로세스가 머클 트리를 사용합니다. 마이크로서비스에서 이벤트 소싱의 스냅샷 무결성 검증에도 응용 가능합니다.",
+    "tags": [
+      "merkle-tree",
+      "hashing",
+      "blockchain",
+      "git",
+      "integrity"
+    ]
+  },
+  {
+    "id": "algo-042",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "링 버퍼(Ring Buffer / Circular Buffer)의 원리와 로그 버퍼, 이벤트 큐에서의 활용을 설명해주세요.",
+    "answer": "링 버퍼는 고정 크기 배열을 원형으로 사용하는 자료구조로, head/tail 포인터로 O(1) 삽입/삭제를 달성합니다. 오래된 데이터를 자동으로 덮어써 메모리를 재사용합니다.",
+    "explanation": "구조: size=N인 배열, head(읽기 위치)와 tail(쓰기 위치). 삽입: buffer[tail % N] = data; tail++. 삭제: data = buffer[head % N]; head++. 가득 찬 경우: tail-head === N (overwite 모드) 또는 예외 발생. 활용: (1) 로그 버퍼 — 최근 N개 로그만 유지, 오래된 것 자동 삭제. (2) OS 커널 입력 버퍼 — 키보드, 네트워크 패킷. (3) 오디오/비디오 스트리밍 버퍼. (4) BullMQ 내부 큐 구현.",
+    "deepDive": "링 버퍼에서 가득 찬 상태와 빈 상태를 구분하는 방법은? → head===tail이면 비어 있음. 가득 찬 상태는 (tail-head===N) 또는 별도 카운터 유지. 또는 N+1 크기 배열에서 한 슬롯을 희생해 구분. Lock-free 링 버퍼는? → head/tail을 atomic 연산(CAS)으로 업데이트하면 뮤텍스 없이 단일 생산자-단일 소비자 구현 가능. C++의 std::atomic, Rust의 crossbeam-queue가 이 원리. Redis의 List(LPUSH/RPOP)가 링 버퍼로 활용되는 방식은? → LPUSH + LTRIM(0, N-1) 조합으로 최근 N개 이벤트만 유지하는 슬라이딩 윈도우 로그 구현.",
+    "seniorTip": "NestJS에서 최근 N개의 오류 로그를 메모리에서 빠르게 접근하거나 실시간 모니터링 대시보드에 스트리밍할 때 링 버퍼 구조가 유용합니다. Redis의 LPUSH + LTRIM 조합이 가장 실용적인 구현입니다. 클러스터 환경에서는 Redis가 공유 링 버퍼 역할을 합니다.",
+    "tags": [
+      "ring-buffer",
+      "circular-buffer",
+      "queue",
+      "log-buffer",
+      "redis"
+    ]
+  },
+  {
+    "id": "algo-043",
+    "category": "algorithm",
+    "difficulty": "mid",
+    "type": "application",
+    "question": "JavaScript Array, Map, Set의 주요 연산별 시간 복잡도를 정리하고, 백엔드에서의 선택 기준을 설명해주세요.",
+    "answer": "Array는 인덱스 접근 O(1), 탐색 O(n), 삽입/삭제 O(n). Map/Object는 조회/삽입/삭제 평균 O(1). Set은 중복 없는 Map으로 동일 복잡도를 가집니다.",
+    "explanation": "Array: push/pop O(1), shift/unshift O(n)(앞 요소 이동), indexOf/includes O(n), splice O(n). Map: get/set/has/delete 모두 평균 O(1), 최악 O(n)(해시 충돌). 정렬된 순서 불보장(삽입 순서 보장). Set: add/has/delete 모두 평균 O(1). Object: 유사하지만 정수 키는 자동 정렬, symbol/string은 삽입 순서. 실선택 기준: 빈번한 탐색이면 Map/Set, 순서가 중요하면 Array, 양쪽 끝 삽입/삭제가 많으면 Deque 구조 고려.",
+    "deepDive": "V8에서 Array의 push가 O(1) amortized인 이유는? → 동적 배열은 가득 차면 2배 크기로 재할당합니다. 개별 push는 최악 O(n)이지만 평균(amortized)은 O(1). 재할당 횟수: log2(n), 각 복사 비용: O(n) → 총 O(n log n) / n번 = O(log n) amortized. Map과 Object의 실제 성능 차이는? → 소규모(10개 이하)에서는 V8이 Object를 배열처럼 최적화합니다. 대규모, 빈번한 삽입/삭제, 비문자열 키에서는 Map이 우월합니다. 배열의 정렬(sort)은 어떤 알고리즘을 사용하나요? → V8은 Tim Sort(합병 정렬 + 삽입 정렬 하이브리드)로 안정 정렬 O(n log n) 보장.",
+    "seniorTip": "API 응답에서 배열을 Map으로 변환해 캐시하는 패턴: users.reduce((map, user) => map.set(user.id, user), new Map()). 이후 O(1) 조회 가능. 특히 관계 데이터를 메모리에서 JOIN할 때 유용합니다. 단, 대용량이면 Redis Hash나 DB 인덱스를 사용하세요.",
+    "tags": [
+      "array",
+      "map",
+      "set",
+      "time-complexity",
+      "javascript"
+    ]
+  },
+  {
+    "id": "algo-044",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "공간 복잡도 인식의 중요성과 메모리 효율적인 알고리즘 선택 기준을 설명해주세요.",
+    "answer": "공간 복잡도는 알고리즘이 사용하는 메모리 양입니다. 시간과 공간은 종종 트레이드오프 관계이며, 서버 메모리 제약, GC 압력, 캐시 지역성 등을 고려해야 합니다.",
+    "explanation": "공간 복잡도 유형: O(1): 입력 크기와 무관한 상수 공간. O(n): 입력 비례 추가 공간. O(n²): 2D 배열. 실제 고려사항: (1) 힙 메모리(GC): 대용량 객체/배열 생성 → GC 압력 증가 → Node.js 이벤트 루프 지연. (2) 스택 메모리: 재귀 깊이 → 스택 오버플로우. (3) 외부 메모리(DB/Redis): 메모리 부족 시 디스크로 스필. 메모리 효율 기법: in-place 알고리즘(퀵소트), 스트리밍 처리(전체 로드 대신 청크), 제너레이터(lazy evaluation).",
+    "deepDive": "Node.js의 메모리 한계와 튜닝은? → V8 기본 힙 1.5GB(64bit). --max-old-space-size=4096으로 늘릴 수 있지만 GC 시간도 늘어납니다. 대용량 처리는 스트리밍 API(fs.createReadStream, pipeline)를 사용하세요. 메모리 누수의 주요 원인은? → (1) 이벤트 리스너 미제거, (2) 클로저가 대용량 변수 참조 유지, (3) 전역 캐시 무제한 증가, (4) WeakRef/WeakMap 미활용. 프로파일링: node --inspect + Chrome DevTools의 Heap Snapshot으로 진단. K8s에서 메모리 requests/limits 설정과 OOMKilled 관계는? → limits 초과 시 OOMKilled. requests는 스케줄링 기준. 메모리 누수가 있으면 Pod가 주기적으로 OOMKill 됩니다 — 이를 '주기적 재시작'으로 모니터링하면 조기 감지 가능.",
+    "seniorTip": "NestJS 서비스에서 대용량 CSV/Excel을 메모리에 올리지 마세요. multer의 memoryStorage 대신 diskStorage + 스트리밍 파서(fast-csv, xlsx-stream-reader)를 사용하면 100MB 파일도 수십 MB 메모리로 처리 가능합니다.",
+    "tags": [
+      "space-complexity",
+      "memory",
+      "gc",
+      "nodejs",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "algo-045",
+    "category": "algorithm",
+    "difficulty": "senior",
+    "type": "concept",
+    "question": "상각 분석(Amortized Analysis)이란 무엇이고, 동적 배열 리사이징과 HashMap에서 어떻게 적용되는지 설명해주세요.",
+    "answer": "상각 분석은 일련의 연산에서 최악 케이스 연산의 비용을 전체에 분산시켜 연산당 평균 비용을 계산하는 방법입니다. 개별 연산은 비싸지만 전체적으로는 효율적임을 증명합니다.",
+    "explanation": "동적 배열 예시: n번의 push에서 2의 거듭제곱마다 O(n) 복사가 발생. 복사 비용 합계: 1+2+4+8+...+n = 2n-1. 총 비용 O(n) / n번 연산 = O(1) amortized. HashMap 리해싱: 로드 팩터 0.75 초과 시 O(n) 리해싱. 삽입 n번에 리해싱 발생 횟수 = log2(n). 각 리해싱 비용의 합 = O(n). 따라서 삽입 amortized O(1). 분석 방법: (1) 집계법(Aggregate): 전체 비용/연산 수. (2) 잠재 함수법(Potential): 잠재 에너지를 정의해 비싼 연산 전에 '저축'.",
+    "deepDive": "상각 분석이 worst case 보장과 다른 점은? → 상각 분석은 n번의 연산 시퀀스에 대한 평균입니다. 단일 연산은 여전히 O(n)이 될 수 있습니다. 실시간 시스템처럼 단일 연산 지연이 치명적인 경우엔 적합하지 않습니다. 이 경우 점진적 리해싱(incremental rehashing)을 사용합니다. Redis가 점진적 리해싱을 사용하는 이유는? → Redis는 단일 스레드이므로 한 번에 전체 리해싱을 하면 이벤트 루프가 멈춥니다. 대신 매 요청마다 일부씩 마이그레이션하는 점진적 방식을 사용합니다. 두 개의 해시 테이블을 동시에 유지하다가 완료 후 교체합니다. JavaScript Array의 pop이 push보다 상각 비용이 낮은 이유는? → pop은 절대 리사이징을 트리거하지 않습니다. 단순 tail 감소 + O(1). push만 가끔 O(n) 복사를 유발합니다.",
+    "seniorTip": "Redis HSET에 수백만 필드를 추가할 때 점진적 리해싱으로 인해 메모리 사용이 일시적으로 두 배가 됩니다. 대량 삽입 시 INFO memory로 used_memory 변화를 모니터링하고, 메모리 여유분을 충분히 확보한 후 작업하세요.",
+    "tags": [
+      "amortized-analysis",
+      "dynamic-array",
+      "hashmap",
+      "redis",
+      "performance"
+    ]
   }
 ]

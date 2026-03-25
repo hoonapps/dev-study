@@ -508,5 +508,292 @@
       "reliability",
       "infrastructure"
     ]
+  },
+  {
+    "id": "ncnc-infra-026",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "니콘내콘이 Terraform Registry의 공개 모듈 대신 커스텀 Terraform 모듈을 직접 만들어 사용하는 이유와 각 접근 방식의 트레이드오프를 설명하라.",
+    "answer": "공개 모듈은 빠르게 시작할 수 있지만 조직 특유의 보안 정책, 네이밍 컨벤션, 태깅 표준을 강제하기 어렵다. 커스텀 모듈은 초기 개발 비용이 크지만 내부 표준을 모듈 인터페이스로 캡슐화해 모든 팀이 동일한 방식으로 리소스를 생성하고, 업그레이드·패치를 중앙에서 제어할 수 있다.",
+    "explanation": "공개 모듈 문제점: 외부 모듈의 Breaking Change를 통제할 수 없다. 모듈이 지원하지 않는 파라미터가 필요할 때 모듈을 포크하거나 workaround가 필요하다. 보안 취약점이 발견됐을 때 외부 모듈 업데이트를 기다려야 한다.",
+    "deepDive": "니콘내콘의 실제 커스텀 모듈 구조를 상상해보자. modules/eks-nodegroup: 노드 그룹 생성 표준화. 반드시 포함해야 하는 태그(env, service, cost-center), 허용된 인스턴스 타입 목록, gp3 기본 볼륨, 보안 그룹 규칙이 모듈에 내장된다. 사용자는 env, instance_type, min_size, max_size만 지정하면 된다. modules/rds-mysql: 반드시 활성화된 deletion_protection, 암호화(storage_encrypted=true), 최소 retention_period: 7일 백업이 기본값. 사용자가 이를 비활성화하려면 명시적으로 override해야 한다. 공개 terraform-aws-modules/rds를 사용하면 이 기본값이 없어 팀원이 실수로 deletion_protection=false로 생성할 수 있다. 커스텀 모듈의 유지보수 비용: AWS provider 업그레이드 시 모듈도 업데이트 필요. 이것이 Registry 모듈의 장점(커뮤니티가 유지보수)이기도 하다. 절충안: 공개 모듈을 감싸는(wrapping) 내부 모듈을 만드는 방식. 공개 모듈의 기능을 활용하면서 내부 표준을 강제한다.",
+    "seniorTip": "커스텀 모듈의 버전 관리를 반드시 하라. git 태그(v1.0.0, v1.1.0)를 사용해 모듈 버전을 고정하면, 모듈 업데이트가 기존 사용처에 의도치 않게 영향을 주지 않는다. source = 'git::https://github.com/ncnc/terraform-modules.git//modules/eks?ref=v1.2.0' 형식으로 참조하라.",
+    "tags": [
+      "terraform",
+      "custom-modules",
+      "infrastructure-standards",
+      "module-design",
+      "registry"
+    ]
+  },
+  {
+    "id": "ncnc-infra-027",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "multiple-choice",
+    "question": "니콘내콘의 140개 ECR 리포지토리에 lifecycle policy가 없다면 어떤 비용 문제가 발생하며, 효과적인 lifecycle policy 설계는?",
+    "options": [
+      "lifecycle policy가 없어도 ECR은 자동으로 오래된 이미지를 삭제한다",
+      "untagged 이미지와 오래된 tagged 이미지가 무한 축적되어 GB당 약 $0.10/월의 스토리지 비용이 계속 증가한다. untagged는 7일, tagged는 최신 10개만 보관하는 정책이 효과적이다",
+      "lifecycle policy 미설정 시 ECR 이미지를 pull할 수 없게 된다",
+      "이미지 수가 1000개를 초과하면 ECR이 자동으로 계정을 정지한다"
+    ],
+    "answer": 1,
+    "explanation": "ECR은 lifecycle policy가 없으면 이미지를 영구 보관한다. CI/CD 파이프라인이 매 배포마다 이미지를 push하면 하루 10회 배포 × 140개 서비스 × 365일 = 연간 511,000개 이미지가 쌓일 수 있다. ECR 스토리지 비용은 서울 리전 기준 $0.10/GB/월이다. 500MB 이미지 511,000개면 약 255TB, 월 $25,500의 스토리지 비용이 발생할 수 있다.",
+    "deepDive": "효과적인 lifecycle policy를 설계해보자. 정책 1: untagged 이미지 7일 후 삭제. CI가 실패한 빌드, 덮어쓰여진 latest 태그 등으로 untagged 이미지가 빠르게 쌓인다. 7일이면 디버깅에 충분하다. 정책 2: 'latest' 이외의 태그된 이미지는 최근 10개만 보관. 롤백을 위해 최근 10개 버전이면 충분하다. 정책 3: 'prod-' 접두사 태그는 30개 보관. 프로덕션 배포 이미지는 더 오래 보관하는 것이 안전하다. Terraform으로 모든 ECR 리포지토리에 동일한 lifecycle policy를 자동 적용: resource aws_ecr_lifecycle_policy에 policy를 JSON으로 정의하고 모든 ECR 리소스에 연결한다. 비용 절감 효과: 실제로 lifecycle policy 도입 후 ECR 비용이 80-90% 감소한 사례가 많다. 월 $1000이던 비용이 $100-200으로 줄어드는 효과다.",
+    "seniorTip": "ECR lifecycle policy를 적용하기 전에 삭제될 이미지가 현재 실행 중인 Pod의 이미지와 겹치지 않는지 확인하라. K8s는 이미지를 노드에 로컬 캐시하므로 이미 실행 중인 Pod는 영향 없다. 하지만 Pod가 재스케줄되어 이미지를 다시 pull해야 할 때 이미 삭제됐으면 ErrImagePull이 발생한다. 배포된 버전의 이미지 태그는 항상 보관하는 정책이 안전하다.",
+    "tags": [
+      "ecr",
+      "lifecycle-policy",
+      "cost-optimization",
+      "docker",
+      "aws"
+    ]
+  },
+  {
+    "id": "ncnc-infra-028",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "K8s Pod SecurityContext에서 runAsNonRoot: true와 runAsUser: 1000을 설정하는 것이 실제로 어떤 공격 벡터를 막으며, 이것만으로 컨테이너 보안이 충분한가?",
+    "answer": "컨테이너 내부 프로세스가 root(UID 0)로 실행되지 않도록 강제해, 컨테이너 탈출(container escape) 취약점이 발생했을 때 호스트 노드에서 root 권한으로 실행되는 것을 방지한다. 하지만 이것만으로는 충분하지 않으며 readOnlyRootFilesystem, capabilities drop, seccomp, AppArmor 등 다층 방어가 필요하다.",
+    "explanation": "Docker의 기본 설정은 컨테이너 프로세스가 root로 실행된다. runc 취약점(CVE-2019-5736 등) 같은 container escape가 발생하면 호스트 root 권한을 획득할 수 있다. runAsNonRoot는 이 공격의 영향을 UID 1000으로 제한한다.",
+    "deepDive": "실제 공격 시나리오와 각 방어 계층의 역할을 살펴보자. 공격 시나리오: 애플리케이션에 RCE(Remote Code Execution) 취약점이 발견됐다. 공격자가 컨테이너 내부에서 임의 코드를 실행한다. 방어 계층 1 - runAsNonRoot: 컨테이너 내부에서 UID 1000으로만 실행 가능. /etc/passwd 수정, 특권 포트 바인딩 불가. 방어 계층 2 - readOnlyRootFilesystem: true: 파일시스템이 읽기 전용이므로 악성 코드 설치 불가. 앱이 파일을 써야 하면 emptyDir volume을 특정 경로에만 마운트. 방어 계층 3 - capabilities: drop: [ALL]: CAP_NET_RAW(패킷 스니핑), CAP_SYS_ADMIN(시스템 콜 남용) 등 리눅스 capabilities를 모두 제거. 실제로 필요한 capability만 add: [NET_BIND_SERVICE] 형식으로 추가. 방어 계층 4 - seccompProfile: RuntimeDefault: 허용된 시스템 콜 목록만 실행 가능. 예상치 못한 시스템 콜 호출을 차단. 방어 계층 5 - 이미지 취약점 스캔: ECR Image Scanning, Trivy로 배포 전 CVE 탐지. 이 모든 계층이 조합되어야 의미 있는 컨테이너 보안이 완성된다.",
+    "seniorTip": "K8s Pod Security Standards(PSS)를 사용하면 네임스페이스 레벨에서 보안 정책을 일괄 적용할 수 있다. restricted PSS를 production 네임스페이스에 적용하면 runAsNonRoot, readOnlyRootFilesystem, capabilities drop이 자동으로 강제되어 SecurityContext 설정을 잊는 실수를 예방한다.",
+    "tags": [
+      "kubernetes",
+      "security-context",
+      "container-security",
+      "least-privilege",
+      "defense-in-depth"
+    ]
+  },
+  {
+    "id": "ncnc-infra-029",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "니콘내콘이 ALB Ingress 대신 ALB 앞에 Traefik v3을 두는 이중 레이어 구조를 선택한 이유를 설명하고, 각 레이어의 역할을 설명하라.",
+    "answer": "ALB는 AWS 레벨의 DDoS 방어, TLS 종료, WAF 통합, 외부 트래픽 수신을 담당한다. Traefik은 K8s 클러스터 내부에서 미들웨어(인증, rate limiting, 헤더 조작, circuit breaker), 서비스 디스커버리(K8s Ingress/IngressRoute 자동 감지), 세밀한 라우팅 규칙을 담당한다. ALB만으로는 K8s 네이티브 미들웨어 체인 구성이 어렵다.",
+    "explanation": "AWS ALB Ingress Controller를 사용하면 ALB가 직접 K8s Service로 트래픽을 보낸다. 하지만 미들웨어 체인(인증 → rate limit → 헤더 주입 → 서비스 라우팅)을 ALB annotation으로 구현하는 것은 제한적이다. Traefik은 IngressRoute CRD와 Middleware CRD로 이를 선언적으로 구성할 수 있다.",
+    "deepDive": "구체적인 트래픽 흐름을 따라가보자. 클라이언트 → ALB(TLS 종료, WAF 체크, DDoS 방어) → Traefik(K8s NodePort 또는 LoadBalancer Service) → Traefik IngressRoute 규칙 평가. Traefik 미들웨어 체인: 1) RateLimit 미들웨어: 초당 100 요청 이상이면 429 반환. 2) IPWhitelist 미들웨어: /admin 경로는 사무실 IP에서만 접근. 3) BasicAuth 또는 ForwardAuth 미들웨어: @InternalApiKey() 엔드포인트 보호. 4) Headers 미들웨어: X-Request-Id, X-Real-IP 헤더 주입. 5) Circuit Breaker 미들웨어: ncnc-backend-v1이 50% 에러율이면 자동으로 트래픽 차단. 이 미들웨어 체인을 ALB annotation만으로 구현하는 것은 불가능하다. 트레이드오프: 이중 레이어는 레이턴시가 약간 증가하고 운영 복잡성이 높아진다. Traefik 자체가 SPOF가 될 수 있으므로 Traefik도 replicas: 2 이상으로 운영해야 한다.",
+    "seniorTip": "Traefik의 대시보드는 현재 활성 라우팅 규칙과 미들웨어를 시각적으로 확인할 수 있어 디버깅에 유용하다. 하지만 대시보드 자체를 인터넷에 노출하면 안 된다. IngressRoute에 IPWhitelist 미들웨어를 적용해 사무실 IP에서만 접근 가능하도록 제한하라.",
+    "tags": [
+      "traefik",
+      "alb",
+      "ingress",
+      "kubernetes",
+      "middleware",
+      "traffic-management"
+    ]
+  },
+  {
+    "id": "ncnc-infra-030",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "short-answer",
+    "question": "kube-prometheus-stack Helm chart를 배포하면 어떤 컴포넌트들이 설치되며, 각 컴포넌트를 커스터마이징하는 방법을 설명하라.",
+    "answer": "kube-prometheus-stack은 Prometheus(메트릭 수집·저장), Alertmanager(알람 라우팅), Grafana(시각화), kube-state-metrics(K8s 오브젝트 메트릭), node-exporter(노드 OS 메트릭), Prometheus Operator(CRD로 Prometheus 설정 관리)를 단일 Helm chart로 배포한다. values.yaml에서 각 컴포넌트를 개별적으로 활성화/비활성화하고 설정을 오버라이드한다.",
+    "explanation": "Prometheus Operator가 핵심이다. ServiceMonitor, PodMonitor, PrometheusRule 같은 CRD를 사용하면 Prometheus 설정 파일을 직접 수정하지 않고 K8s 리소스로 스크래핑 타겟과 알람 규칙을 선언적으로 관리할 수 있다.",
+    "deepDive": "니콘내콘의 커스터마이징 시나리오를 살펴보자. Grafana 관리자 비밀번호 변경: grafana.adminPassword를 values.yaml에 설정하거나 existingSecret을 참조해 Secrets Manager에서 가져온다. Prometheus retention 기간 설정: prometheus.prometheusSpec.retention: 30d, prometheus.prometheusSpec.retentionSize: 50GB. AlertManager Slack 연동: alertmanager.config.receivers에 slack_configs를 추가. api_url을 External Secrets로 K8s Secret에서 참조. 니콘내콘 앱 ServiceMonitor 추가: kube-prometheus-stack은 기본적으로 레이블이 release: kube-prometheus-stack인 ServiceMonitor만 수집한다. 앱 ServiceMonitor에 이 레이블을 추가하거나 values.yaml에서 prometheus.prometheusSpec.serviceMonitorSelector: {}로 변경하면 모든 ServiceMonitor를 수집한다. PersistentVolume 설정: prometheus.prometheusSpec.storageSpec.volumeClaimTemplate으로 gp3 StorageClass를 지정한다. 기본값이 없으면 Prometheus 데이터가 Pod 재시작 시 사라진다.",
+    "seniorTip": "kube-prometheus-stack을 Terraform의 helm_release 리소스로 관리할 때 values를 파일로 분리하라. sensitive한 값(Slack webhook URL, Grafana 비밀번호)은 set_sensitive로 주입하면 Terraform state에 평문으로 저장되지 않는다.",
+    "tags": [
+      "kube-prometheus-stack",
+      "prometheus",
+      "grafana",
+      "alertmanager",
+      "helm",
+      "monitoring"
+    ]
+  },
+  {
+    "id": "ncnc-infra-031",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "short-answer",
+    "question": "Loki + S3 백엔드 조합의 로그 보존(retention) 전략과 비용 최적화 방법을 설명하라.",
+    "answer": "Loki는 로그 데이터를 S3에 청크(chunk)로 저장하고 인덱스를 별도로 관리한다. retention 설정으로 오래된 청크를 자동 삭제하고, S3 lifecycle policy로 스토리지 클래스를 S3 Standard → S3 Intelligent-Tiering → Glacier로 단계적으로 전환해 비용을 최적화한다.",
+    "explanation": "Loki의 설계 철학은 '저렴한 인덱싱, 저렴한 스토리지'다. 전통적인 Elasticsearch 기반 로그 시스템과 달리 로그 내용을 인덱싱하지 않고 레이블(Pod 이름, 네임스페이스 등)만 인덱싱한다. 로그 검색 시 파일 스캔 방식이므로 비용이 낮지만 대용량에서 검색이 느릴 수 있다.",
+    "deepDive": "니콘내콘의 로그 보존 전략을 설계해보자. 로그 발생량 추정: 서비스 15개 × Pod 10개 × 초당 100줄 × 평균 200바이트 = 약 3GB/시간 = 72GB/일. Loki retention 설정: table_manager.retention_period: 30d (최근 30일만 Loki에서 검색 가능). S3 lifecycle 설정: 0-30일: S3 Standard ($0.023/GB/월). 30-90일: S3 Intelligent-Tiering ($0.0023/GB/월, 자주 접근 안 되면 자동 전환). 90일 이후: Glacier Instant Retrieval ($0.004/GB/월, 검색 시 몇 밀리초 지연). 1년 이후: 삭제 또는 Glacier Deep Archive($0.00099/GB/월). 비용 계산: 72GB/일 × 30일 = 2.16TB, S3 Standard 비용 약 $50/월. S3 Intelligent-Tiering으로 전환 후 약 60일치를 수개월 보관 시 비용이 대폭 감소. Loki의 query_range API는 S3에서 직접 청크를 읽으므로, 30일 이전 데이터도 검색 가능하지만 응답이 느리다.",
+    "seniorTip": "Loki 레이블 설계가 성능과 비용에 직접 영향을 준다. 고카디널리티 레이블(user_id, request_id 같은 유니크 값)을 레이블로 사용하면 인덱스가 폭증해 Loki 성능이 급격히 저하된다. 이런 값은 로그 메시지 본문에 포함하고 LogQL의 line_format이나 regexp를 사용해 파싱하라.",
+    "tags": [
+      "loki",
+      "s3",
+      "log-retention",
+      "cost-optimization",
+      "observability"
+    ]
+  },
+  {
+    "id": "ncnc-infra-032",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "External Secrets Operator와 AWS Secrets Manager를 연동해 K8s Secret을 자동 생성하는 전체 흐름을 설명하고, 시크릿 교체(rotation) 시 앱이 새 시크릿을 자동으로 사용하는 방법을 설명하라.",
+    "answer": "ExternalSecret 리소스를 생성하면 External Secrets Operator가 Secrets Manager에서 값을 가져와 K8s Secret을 생성한다. 교체 시 refreshInterval(예: 1h)마다 Operator가 Secrets Manager를 확인해 K8s Secret을 업데이트하고, Deployment의 env나 envFrom에 Secret이 연결된 경우 Pod는 자동으로 재시작되지 않으므로 Reloader 도구로 변경을 감지해 Rolling Restart를 트리거해야 한다.",
+    "explanation": "External Secrets Operator는 SecretStore(Secrets Manager IAM 연결 설정)와 ExternalSecret(어떤 시크릿의 어떤 키를 K8s Secret의 어느 키로 매핑할지) 두 CRD로 구성된다. IRSA(IAM Roles for Service Accounts)로 Operator에 Secrets Manager 읽기 권한을 부여한다.",
+    "deepDive": "전체 설정 흐름을 단계별로 보자. 1) IRSA 설정: Terraform으로 IAM Role을 만들고 Secrets Manager 읽기 정책을 연결. EKS OIDC 신뢰 관계를 설정해 external-secrets 네임스페이스의 SA만 이 역할을 assume할 수 있도록 제한. 2) SecretStore 생성: namespace별로 SecretStore를 만들거나, ClusterSecretStore로 전체 클러스터에서 공유. 3) ExternalSecret 생성: spec.target.name: ncnc-db-k8s-secret, spec.data에 remoteRef.key: /ncnc/prod/db, remoteRef.property: password, secretKey: DB_PASSWORD. 4) Operator가 자동으로 K8s Secret ncnc-db-k8s-secret 생성. 5) Deployment에서 envFrom.secretRef.name: ncnc-db-k8s-secret으로 환경변수 주입. 시크릿 교체 자동화: Secrets Manager에서 시크릿 교체 → External Secrets Operator가 refreshInterval마다 감지 → K8s Secret 업데이트 → Stakater Reloader가 Secret 변경 감지 → 관련 Deployment Rolling Restart. RDS 비밀번호 교체 시 이 흐름으로 앱 코드 변경 없이 자동 적용된다.",
+    "seniorTip": "시크릿 교체 완료 전 일부 Pod는 새 비밀번호, 일부는 이전 비밀번호를 사용하는 짧은 전환 기간이 있다. RDS가 이전 비밀번호를 즉시 무효화하면 이 기간에 이전 비밀번호를 사용하는 Pod가 연결 실패한다. RDS Secrets Manager 통합의 교체 로직은 교체 완료까지 이전 버전 비밀번호를 유지하는 방식을 사용한다.",
+    "tags": [
+      "external-secrets-operator",
+      "secrets-manager",
+      "kubernetes",
+      "secret-rotation",
+      "irsa"
+    ]
+  },
+  {
+    "id": "ncnc-infra-033",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "multiple-choice",
+    "question": "니콘내콘 인프라에서 기본 gp2 StorageClass 대신 gp3 StorageClass를 명시적으로 생성해 사용하는 이유는?",
+    "options": [
+      "gp3가 gp2보다 최대 저장 용량이 크다",
+      "gp3는 gp2보다 기가바이트당 20% 저렴하고 3,000 IOPS와 125 MB/s 처리량을 추가 비용 없이 기본 제공하며, IOPS와 처리량을 독립적으로 조정할 수 있다",
+      "gp3는 EKS 전용 볼륨 타입이다",
+      "gp2는 K8s에서 사용할 수 없다"
+    ],
+    "answer": 1,
+    "explanation": "gp2는 볼륨 크기에 비례해 IOPS가 결정된다(1GB당 3 IOPS, 최대 16,000). gp3는 크기와 IOPS/처리량이 독립적이다. 100GB 볼륨에 6,000 IOPS가 필요하면 gp2에서는 2,000GB 볼륨을 써야 하지만 gp3에서는 100GB + IOPS 추가 구성으로 가능하다. EKS의 기본 StorageClass는 gp2이므로 PVC 생성 시 gp3를 쓰려면 명시적으로 StorageClass를 생성해야 한다.",
+    "deepDive": "실제 비용 비교를 해보자. 서울 리전 기준(2025): gp2: $0.114/GB/월. gp3: $0.0912/GB/월 + $0.006/IOPS/월(3,000 초과분) + $0.048/MB-s/월(125 초과분). 500GB 볼륨 비교: gp2: $57/월, 기본 IOPS 1,500. gp3: $45.6/월, 기본 IOPS 3,000. gp3가 $11.4 저렴하고 IOPS는 2배. Prometheus의 PVC를 100GB gp2에서 gp3로 변경하면 월 $2.3 절감 + IOPS 1,200→3,000으로 메트릭 쓰기 성능 향상. 적용 방법: ebs-csi-driver EKS addon 설치 후 StorageClass 생성. parameters.type: gp3, parameters.iops: 3000, parameters.throughput: 125 설정. K8s 1.24 이상에서는 Volume을 수정(modifyVolume)해 실행 중 IOPS를 조정할 수도 있다. 기존 gp2 PVC를 gp3로 변경하려면 새 StorageClass로 PVC를 재생성하거나 AWS 콘솔/CLI로 기존 EBS 볼륨 타입을 직접 변경할 수 있다.",
+    "seniorTip": "EKS 클러스터의 StorageClass를 변경할 때 default StorageClass가 두 개가 되지 않도록 주의하라. 기존 gp2 StorageClass의 storageclass.kubernetes.io/is-default-class 어노테이션을 false로 변경하고 gp3 StorageClass를 default로 설정해야 한다. PVC에 storageClassName을 명시하지 않은 경우 default StorageClass가 사용된다.",
+    "tags": [
+      "eks",
+      "storageclass",
+      "gp3",
+      "ebs",
+      "cost-optimization",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "ncnc-infra-034",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "short-answer",
+    "question": "EKS 노드 그룹 update_config에서 max_unavailable: 1로 설정한 롤링 노드 업데이트 동작을 설명하고, 업데이트 중 서비스 연속성을 보장하기 위한 요건을 설명하라.",
+    "answer": "max_unavailable: 1은 노드 그룹 업데이트 시 동시에 최대 1개 노드만 드레인(drain)되고 새 버전으로 교체됨을 의미한다. 1개 노드의 Pod가 다른 노드로 재스케줄되는 동안 나머지 노드는 정상 운영된다. 서비스 연속성을 위해 각 Deployment가 최소 2개 Pod를 가져야 하고, PodDisruptionBudget으로 최소 실행 Pod 수를 보장해야 한다.",
+    "explanation": "max_unavailable: 1 업데이트 순서: 노드 1개 cordon(새 Pod 스케줄 차단) → drain(기존 Pod evict, PDB 확인) → 노드 종료 → 새 노드 생성 → 새 노드 Ready → 다음 노드 처리. 노드가 10개라면 1개씩 순서대로 교체되어 전체 업데이트에 더 오래 걸리지만 안정적이다.",
+    "deepDive": "노드 업데이트 중 장애 시나리오를 생각해보자. 시나리오: 노드 1을 drain하는 중 ncnc-backend-v1 Pod 5개 중 2개가 노드 1에 있다. PDB minAvailable: 3이면 drain이 허용된다(5개 중 2개 제거 시 3개 남으므로). 만약 PDB minAvailable: 4라면 drain 시 3개만 남으므로 PDB가 위반되어 drain이 차단된다. 업데이트가 멈춘다. 이 경우 임시로 Deployment replicas를 늘리거나 PDB를 완화해야 한다. 업데이트 시간 계산: 노드 10개, 노드당 교체 시간 5분이면 총 50분. max_unavailable: 2로 변경하면 25분. 업데이트 속도와 리스크의 트레이드오프. 새 노드 Ready 시간: 노드가 추가될 때 EKS addon(vpc-cni, coredns)이 초기화되고 노드 레이블이 설정되기까지 약 2-3분 소요. 이 시간에 Pod가 스케줄되면 정상이지만, DaemonSet이 Ready 상태가 되지 않았으면 네트워킹 문제가 생길 수 있다.",
+    "seniorTip": "노드 업데이트 전 terraform plan으로 변경 내용을 반드시 확인하라. aws_eks_node_group에서 launch_template을 변경하면 노드 그룹이 롤링 업데이트를 트리거한다. 의도치 않은 launch_template 변경(예: userdata 수정)이 모든 노드를 교체하는 상황을 막으려면 변경 사항을 꼼꼼히 리뷰해야 한다.",
+    "tags": [
+      "eks",
+      "node-group",
+      "rolling-update",
+      "max-unavailable",
+      "kubernetes",
+      "high-availability"
+    ]
+  },
+  {
+    "id": "ncnc-infra-035",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "니콘내콘이 레거시 VPC와 신규 EKS VPC 간 VPC Peering을 설정한 이유와 마이그레이션 전략, 그리고 Peering이 갖는 장기적 위험을 설명하라.",
+    "answer": "레거시 VPC에 있는 RDS, ElastiCache, 내부 서비스들이 신규 EKS 환경으로 한 번에 이전되지 않아 Peering으로 일시적인 통신 경로를 만든다. 장기 전략은 레거시 서비스를 점진적으로 신규 VPC로 이전하고 Peering을 제거하는 것이다. Peering의 위험: 라우팅이 복잡해지고, 보안 그룹 관리가 두 VPC에 걸쳐 분산되며, CIDR 충돌 가능성이 있다.",
+    "explanation": "VPC Peering은 두 VPC 간 프라이빗 통신을 가능하게 한다. 하지만 transitive routing이 지원되지 않아 A-B Peering, B-C Peering이 있어도 A에서 C로 직접 통신이 안 된다. CIDR이 겹치면 Peering 자체가 불가능하다.",
+    "deepDive": "니콘내콘의 마이그레이션 전략을 단계별로 설계해보자. 현재 상태: legacy-vpc(10.0.0.0/16)에 RDS, ElastiCache, EC2 레거시 앱. eks-vpc(10.1.0.0/16)에 EKS 클러스터. VPC Peering으로 연결. 마이그레이션 단계: 1단계 - EKS Pod가 Peering을 통해 레거시 RDS에 접근. 신규 기능은 EKS에서 개발, 레거시 RDS를 계속 사용. 2단계 - RDS를 EKS VPC로 이전. 스냅샷 복원 또는 DMS(Database Migration Service) 사용. EKS Pod의 DB 연결 대상을 신규 RDS로 변경. 레거시 앱도 Peering으로 신규 RDS 접근(일시적). 3단계 - 레거시 앱을 EKS로 이전(Strangler Fig 패턴). 4단계 - 레거시 VPC에 더 이상 사용 중인 리소스 없음 → VPC Peering 제거. Peering의 보안 위험: security group이 Peering을 통한 트래픽을 허용할 때, 규칙이 너무 넓으면 레거시 VPC의 모든 EC2가 EKS 내부 서비스에 접근 가능해진다. 반드시 최소 권한으로 특정 포트·프로토콜만 허용하고 출처 CIDR을 가능한 한 좁게 설정하라.",
+    "seniorTip": "VPC Peering 대신 AWS Transit Gateway를 사용하면 중앙 집중식 라우팅으로 관리가 편해지고 transitive routing도 지원된다. 단 Transit Gateway는 VPC Peering보다 비용이 높으므로(시간당 $0.05 + 데이터 처리 비용) 연결 VPC 수가 적을 때는 Peering이 더 경제적이다.",
+    "tags": [
+      "vpc-peering",
+      "migration",
+      "network",
+      "legacy",
+      "architecture"
+    ]
+  },
+  {
+    "id": "ncnc-infra-036",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "short-answer",
+    "question": "K8s 환경에서도 bastion host를 운영하는 이유를 설명하고, bastion host에 gp3 루트 볼륨을 사용하는 이유와 보안 강화 방법을 설명하라.",
+    "answer": "kubectl 접근은 EKS API 서버 엔드포인트로 직접 가능하지만, 레거시 RDS, ElastiCache, 내부 VPC 리소스에 SSH 터널이나 직접 접근이 필요한 경우가 있다. 운영 중 DB 긴급 쿼리, 네트워크 디버깅, 클러스터 노드 직접 접근이 필요할 때 bastion이 안전한 진입점을 제공한다. gp3는 비용 절감과 기본 IOPS 향상이 목적이다.",
+    "explanation": "K8s 환경이 이상적으로 설계되면 bastion 없이 kubectl과 AWS API로 모든 운영이 가능해야 한다. 하지만 현실에서는 레거시 시스템, 마이그레이션 기간, 비상 접근 경로 확보를 위해 bastion을 유지한다.",
+    "deepDive": "bastion host 보안 강화 방법을 살펴보자. 1) SSH 키 관리: 개인 SSH 키 대신 AWS Systems Manager Session Manager를 사용하면 SSH 포트(22) 없이 브라우저나 AWS CLI로 접속 가능하다. 키 관리 불필요, 세션 로그 자동 기록. 2) 보안 그룹: ingress 22번 포트를 0.0.0.0/0으로 열지 말고, 사무실 고정 IP와 VPN IP만 허용. 출장 중 접속이 필요하면 임시로 IP를 추가하고 작업 후 제거. 3) IMDSv2 강제: EC2 메타데이터 서비스를 v2로 강제해 SSRF 공격으로 IAM 크리덴셜 탈취를 방지. 4) 접속 로깅: CloudWatch Logs에 SSH 세션 기록. 5) 최소 IAM 권한: bastion의 Instance Profile에 최소한의 권한만. ssm:StartSession 정도면 SSM 접속에 충분. gp3 루트 볼륨: bastion은 OS 부팅과 로그만 쓰므로 8-20GB gp3 볼륨으로 충분. gp2 대비 20% 비용 절감. bastion이 부팅 시 느리다면 IOPS 부족일 수 있고 gp3의 기본 3,000 IOPS가 이를 해결한다.",
+    "seniorTip": "장기적으로 bastion host를 없애는 방향으로 가라. AWS Systems Manager Session Manager + EC2 Instance Connect + EKS API endpoint를 조합하면 bastion 없이 모든 운영이 가능하다. bastion을 없애면 보안 공격 면적이 줄어들고 인스턴스 비용도 절감된다.",
+    "tags": [
+      "bastion-host",
+      "aws",
+      "security",
+      "ssm",
+      "network"
+    ]
+  },
+  {
+    "id": "ncnc-infra-037",
+    "category": "ncnc",
+    "difficulty": "medium",
+    "type": "short-answer",
+    "question": "AWS ACM(Certificate Manager) 인증서 DNS 검증 방식이 이메일 검증 대비 가지는 장점과, Terraform으로 자동화하는 방법을 설명하라.",
+    "answer": "DNS 검증은 Route53에 CNAME 레코드를 추가하는 자동화가 가능해 갱신 시 사람 개입 없이 자동으로 재검증된다. 이메일 검증은 매 갱신마다 도메인 관리자가 이메일에서 승인 클릭이 필요하다. Terraform에서 aws_acm_certificate와 aws_route53_record를 for_each로 연결하면 인증서 생성부터 DNS 레코드 추가, 검증 완료 대기까지 완전 자동화된다.",
+    "explanation": "ACM 인증서는 13개월마다 자동 갱신된다. DNS 검증 방식은 Route53 CNAME이 유지되는 한 갱신 시 자동으로 검증되어 인증서 만료 걱정이 없다. 이메일 검증은 13개월마다 이메일 승인이 필요해 실수로 만료되는 사고가 발생할 수 있다.",
+    "deepDive": "Terraform acm module의 실제 구현을 살펴보자. resource aws_acm_certificate에 domain_name, subject_alternative_names, validation_method: DNS를 설정한다. aws_acm_certificate.domain_validation_options를 for_each로 순회해 각 도메인의 CNAME 레코드를 aws_route53_record로 생성한다. aws_acm_certificate_validation 리소스에 certificate_arn과 validation_record_fqdns를 설정하면 Terraform이 인증서 검증 완료까지 대기(약 5-10분)한다. 다중 도메인(SANs) 처리: *.ncnc.kr, ncnc.kr, admin.ncnc.kr을 단일 인증서로 처리할 때 각 도메인에 대한 CNAME이 생성된다. 단 *.ncnc.kr 인증서는 ncnc.kr 자체는 커버하지 않으므로 apex 도메인을 SAN으로 추가해야 한다. CloudFront와 조합: CloudFront 배포에 사용할 인증서는 반드시 us-east-1 리전에 있어야 한다. 서울 리전 앱이라도 CloudFront용 인증서는 us-east-1에 별도로 생성해야 하며 Terraform provider를 alias로 분리해 관리한다.",
+    "seniorTip": "aws_acm_certificate_validation의 timeouts.create를 기본 75분에서 더 길게 설정하면 DNS 전파가 느린 환경에서 타임아웃으로 인한 Terraform 실패를 방지할 수 있다. CI/CD 파이프라인에서 ACM 인증서 생성을 포함하면 첫 실행이 오래 걸릴 수 있으므로 timeout을 넉넉히 설정하라.",
+    "tags": [
+      "acm",
+      "dns-validation",
+      "certificate",
+      "terraform",
+      "route53"
+    ]
+  },
+  {
+    "id": "ncnc-infra-038",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "CloudFront OAC(Origin Access Control)가 OAI(Origin Access Identity)를 대체하는 이유와 S3 버킷 정책 설정 방법을 설명하라.",
+    "answer": "OAC는 AWS Signature Version 4를 사용해 CloudFront가 S3에 요청할 때 서명하므로 보안이 강화됐다. OAI는 레거시 방식으로 KMS 암호화된 S3 버킷, S3 Object Lambda, 모든 S3 리전에서 제한이 있었다. OAC는 이 제한이 없고 AWS에서 OAI를 대신하는 공식 권장 방식이다.",
+    "explanation": "OAI는 AWS CloudFront Identity(특수한 IAM Principal)를 S3 버킷 정책에 추가해 CloudFront만 접근 가능하도록 제한한다. OAC는 CloudFront 배포 자체가 IAM Principal로 동작하며 더 강력한 제어가 가능하다.",
+    "deepDive": "OAC 설정 흐름을 Terraform으로 살펴보자. 1) aws_cloudfront_origin_access_control 리소스 생성: signing_behavior: always, signing_protocol: sigv4. 2) aws_cloudfront_distribution의 origin 블록에 origin_access_control_id를 설정. 3) S3 버킷 정책에서 Principal: { Service: cloudfront.amazonaws.com }와 Condition: { StringEquals: { AWS:SourceArn: CloudFront 배포 ARN } }을 설정. OAI와 차이: OAI의 Principal은 arn:aws:iam::cloudfront:user/CloudFront-... 형식의 특수 IAM identity. OAC의 Principal은 cloudfront.amazonaws.com 서비스 principal + 배포 ARN 조건. OAC가 배포별로 정확히 제어 가능하다. KMS 암호화 S3: OAI는 S3 SSE-KMS를 지원하지 않아 KMS 키 정책에 CloudFront를 추가할 수 없었다. OAC는 KMS 키 정책에 cloudfront.amazonaws.com을 허용하면 암호화된 객체도 제공 가능하다. 니콘내콘의 기프티콘 이미지를 S3+CloudFront로 제공할 때 SSE-KMS 암호화를 적용하려면 OAC가 필수다.",
+    "seniorTip": "기존 OAI에서 OAC로 마이그레이션 시 다운타임 없이 할 수 있다. CloudFront 배포에 OAC를 추가하고 S3 버킷 정책에 OAC Principal을 추가한 뒤, 정상 동작 확인 후 OAI 관련 설정을 제거하는 순서로 진행하라. CloudFront 설정 변경은 전역 엣지 노드에 전파되는 데 최대 15분이 소요된다.",
+    "tags": [
+      "cloudfront",
+      "oac",
+      "s3",
+      "security",
+      "cdn"
+    ]
+  },
+  {
+    "id": "ncnc-infra-039",
+    "category": "ncnc",
+    "difficulty": "hard",
+    "type": "short-answer",
+    "question": "Helm values에서 Datadog API 키처럼 선택적으로 존재하는 민감한 값을 Terraform의 set_sensitive로 주입할 때 값이 없는 경우를 어떻게 처리해야 하는가?",
+    "answer": "Terraform의 dynamic 블록과 조건식을 사용해 변수가 null이 아닐 때만 set_sensitive 블록을 생성한다. 이렇게 하면 선택적 키가 없어도 Helm values 구조가 깨지지 않고, 값이 없을 때 Helm chart의 기본값이 사용된다.",
+    "explanation": "helm_release 리소스의 set_sensitive 블록은 일반 set과 달리 Terraform plan 출력에서 값이 (sensitive)로 표시되어 state 외부에서는 볼 수 없다. 단 Terraform state 파일에는 여전히 암호화되지 않은 상태로 저장되므로 state 암호화가 별도로 필요하다.",
+    "deepDive": "구체적인 Terraform 코드 패턴을 살펴보자. variable datadog_api_key를 nullable: true, default: null로 선언한다. helm_release 리소스에서 dynamic set_sensitive 블록을 사용한다. for_each = var.datadog_api_key != null ? toset(['datadog_api_key']) : toset([]). content 블록에 name: datadog.apiKey, value: var.datadog_api_key를 설정한다. 이 패턴의 장점: dev 환경에서는 Datadog API 키가 없어도 배포 가능. prod에서만 API 키를 제공해 Datadog 수집 활성화. 같은 Terraform 코드로 두 환경을 관리. 추가 패턴 - tfvars 분리: terraform.tfvars(공통, git 관리)와 terraform.secret.tfvars(민감 정보, .gitignore)로 분리. CI에서 secret.tfvars를 Secrets Manager에서 가져와 파일로 생성 후 terraform apply -var-file=terraform.secret.tfvars. 또는 모든 민감 변수를 TF_VAR_ 환경변수로 주입하는 방식도 많이 사용된다.",
+    "seniorTip": "Terraform state의 sensitive 값 노출을 막으려면 S3 backend의 server-side encryption과 함께 Terraform Cloud 또는 Vault backend를 사용하는 것이 가장 안전하다. Terraform Cloud는 state를 암호화해 저장하고 UI에서도 sensitive 값을 마스킹한다.",
+    "tags": [
+      "terraform",
+      "helm",
+      "set-sensitive",
+      "datadog",
+      "secrets-management"
+    ]
+  },
+  {
+    "id": "ncnc-infra-040",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "EKS에서 Terraform으로 관리되는 coredns, vpc-cni, ebs-csi-driver 애드온의 버전 업그레이드 전략과 업그레이드 순서가 서비스에 미치는 영향을 설명하라.",
+    "answer": "EKS 애드온 업그레이드는 EKS 클러스터 버전 업그레이드와 함께 또는 독립적으로 가능하다. vpc-cni는 Pod 네트워킹에 직접 영향을 주므로 신중하게 업그레이드해야 한다. 권장 순서: 1) EKS 클러스터 버전 업그레이드, 2) coredns, 3) vpc-cni, 4) ebs-csi-driver. 각 업그레이드 전 resolve_conflicts: OVERWRITE vs PRESERVE 설정으로 커스텀 설정 유지 여부를 결정한다.",
+    "explanation": "EKS 관리형 애드온은 Terraform의 aws_eks_addon으로 선언적으로 관리된다. addon_version을 명시하면 특정 버전으로 고정되어 예상치 못한 자동 업그레이드를 방지한다. EKS 버전 업그레이드 후 애드온이 이전 버전과 비호환이 될 수 있으므로 함께 업그레이드가 필요하다.",
+    "deepDive": "각 애드온의 업그레이드 위험도를 분석하자. vpc-cni(가장 위험): AWS VPC CNI 플러그인이 Pod의 ENI와 IP 주소를 관리한다. 업그레이드 중 DaemonSet이 롤링 업데이트되면 일시적으로 일부 노드에서 새 Pod IP 할당이 안 될 수 있다. 신규 Pod 생성은 잠시 지연될 수 있지만 기존 실행 중인 Pod는 영향 없다. resolve_conflicts: PRESERVE를 사용해 custom networking 설정이 덮어쓰여지지 않도록 하라. coredns(중간): DNS 서비스이므로 업그레이드 중 DNS 조회가 실패하면 서비스 간 통신이 끊길 수 있다. replicas: 2 이상이면 하나씩 업데이트되어 DNS 가용성을 유지한다. ebs-csi-driver(낮음): 이미 마운트된 볼륨은 영향 없고 신규 PVC 생성만 일시적으로 불가능할 수 있다. Terraform apply 시 애드온 변경이 노드 그룹 변경과 동시에 실행되지 않도록 depends_on이나 -target으로 순서를 제어하는 것이 안전하다.",
+    "seniorTip": "EKS 클러스터와 애드온 버전을 항상 EKS 지원 버전 매트릭스에서 확인하라. AWS는 EKS 버전별 지원 애드온 버전을 공식 문서로 제공한다. 애드온 버전을 최신으로 유지하지 않으면 보안 패치가 적용되지 않으므로, 분기 1회 애드온 버전 리뷰를 운영 루틴으로 만들어라.",
+    "tags": [
+      "eks",
+      "addons",
+      "vpc-cni",
+      "coredns",
+      "ebs-csi-driver",
+      "upgrade-strategy"
+    ]
   }
 ]

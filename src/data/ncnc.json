@@ -589,5 +589,308 @@
       "image-management",
       "ncnc"
     ]
+  },
+  {
+    "id": "ncnc-031",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘이 Nx 대신 Turborepo를 모노레포 도구로 선택한 이유와 두 도구의 핵심 트레이드오프를 설명하라.",
+    "answer": "Turborepo는 설정이 단순하고(turbo.json 하나), Vercel Remote Cache와의 네이티브 통합으로 CI 빌드 캐싱이 쉽다. Nx는 강력한 의존성 그래프 시각화, 코드 생성, 다양한 플러그인 생태계를 제공하지만 학습 곡선이 가파르고 설정이 복잡하다. 작은 팀에서 빠르게 도입하려면 Turborepo가, 대규모 엔터프라이즈 모노레포 관리는 Nx가 유리하다.",
+    "explanation": "Turborepo의 핵심 가치는 task 파이프라인(빌드→테스트→배포 순서 정의)과 캐싱이다. 변경된 패키지에만 영향받는 task만 재실행하는 incremental computation이 CI 시간을 크게 단축한다. Remote Cache는 팀 전체가 빌드 결과를 공유해 팀원 A가 빌드한 결과를 팀원 B가 재사용한다.",
+    "deepDive": "실제 니콘내콘 규모에서 Remote Cache의 효과를 계산해보자. 15개 앱, 평균 빌드 시간 5분/앱. 전체 빌드: 75분. 코드 변경이 없는 앱은 캐시 히트로 0초. payment 서비스만 변경했다면 payment 빌드 5분 + 다른 14개 캐시 히트. CI 총 시간: 약 5분. 캐시 히트율이 80%라면 CI 시간이 75분에서 평균 15분으로 감소. 월 CI 비용(GitHub Actions 요금)도 비례해 감소. Turborepo vs Nx 선택 기준 심화: 1) 코드 생성 필요성 - NestJS 모듈, 컴포넌트를 scaffolding하는 generator가 많이 필요하면 Nx의 generate 명령이 강점. 2) 빌드 도구 독립성 - Turborepo는 각 패키지가 어떤 빌드 도구(tsc, esbuild, webpack)를 쓰든 task 실행만 오케스트레이션. Nx는 빌드 도구까지 의견을 가진다. 3) 팀 규모 - 5명 팀은 Turborepo가 오버헤드 없이 빠르게 도입. 50명 팀이면 Nx의 경계 강제(enforce module boundaries), affected 감지가 더 중요해진다.",
+    "seniorTip": "Remote Cache를 도입할 때 캐시 무결성을 신뢰해야 한다. Turborepo는 입력(소스 코드, env 변수, turbo.json)의 해시로 캐시 키를 계산하므로, 환경 변수가 빌드 결과에 영향을 주는 경우 반드시 globalEnv나 env 설정에 포함시켜야 캐시 오염을 방지할 수 있다.",
+    "tags": [
+      "turborepo",
+      "nx",
+      "monorepo",
+      "remote-cache",
+      "build-optimization",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-032",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘 모노레포의 의존성 방향이 apps → service → domain → core로 엄격히 강제된다. 이 방향이 역전되면 어떤 문제가 생기는가?",
+    "answer": "하위 레이어(core/domain)가 상위 레이어(apps)를 참조하면 순환 의존성이 생겨 번들링이 불가능하고, 하위 레이어를 변경했을 때 모든 앱에 예상치 못한 영향이 전파된다. 또한 core 패키지가 특정 앱의 비즈니스 로직에 묶이게 되어 재사용성이 파괴된다.",
+    "explanation": "의존성 방향 원칙(Dependency Rule): 안정적인 레이어(변경이 적은)가 불안정한 레이어(변경이 잦은)에 의존하면 안 된다. core는 가장 안정적이어야 하고, apps는 가장 자주 변경된다. 방향이 역전되면 core를 수정할 때마다 apps의 변경 여부를 확인해야 하는 부담이 생긴다.",
+    "deepDive": "실제로 의존성이 역전되는 코드 예시를 생각해보자. @ncnc/core 패키지에서 import { PaymentService } from '@ncnc/payment-app'를 한다면? payment-app은 apps 레이어인데 core가 참조하면 역전이다. 이제 payment-app을 변경하면 core를 다시 빌드해야 한다. core를 사용하는 다른 10개 앱도 모두 영향을 받는다. 왜 이런 상황이 생기나? 개발자가 빠르게 기능을 구현하다 보면 '그냥 여기서 import하면 되겠다'는 유혹이 생긴다. 특히 마감이 다가오면 아키텍처 원칙이 흔들린다. 해결: Turborepo + eslint-plugin-import의 no-restricted-imports 규칙이나 Nx의 enforce-module-boundaries로 CI에서 역방향 의존성을 자동 감지하고 빌드를 실패시킨다. '사람이 아닌 도구가 아키텍처를 지키게 한다'는 원칙이다. 실제로 이런 경계 위반을 방치하면 2년 후 circular dependency로 빌드 자체가 불가능한 '의존성 지옥'에 빠진다.",
+    "seniorTip": "의존성 방향을 시각화하는 도구를 팀에 도입하라. Nx의 nx graph 또는 dependency-cruiser로 레이어 간 의존성 그래프를 생성하면 역전이나 예상치 못한 결합을 빠르게 발견할 수 있다. 아키텍처 리뷰 시 이 그래프를 기준으로 논의하라.",
+    "tags": [
+      "dependency-direction",
+      "architecture",
+      "circular-dependency",
+      "monorepo",
+      "layered-architecture",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-033",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "@RequiresModules 데코레이터와 createDynamicModule 패턴을 사용하는 주요 목적은?",
+    "options": [
+      "NestJS 모듈을 동적으로 lazy-load해 앱 시작 시간을 줄이기 위해",
+      "모듈 단위 tree-shaking으로 실제로 사용하는 모듈만 앱에 포함시켜 컨테이너 이미지 크기와 부트스트랩 시간을 줄이기 위해",
+      "의존성 주입 충돌을 방지하기 위해",
+      "유닛 테스트에서 모의(mock) 모듈을 쉽게 교체하기 위해"
+    ],
+    "answer": 1,
+    "explanation": "NestJS는 기본적으로 모든 import된 모듈을 시작 시 인스턴스화한다. 모노레포에서 공유 패키지에 수십 개의 기능 모듈이 있을 때, 특정 앱이 그 중 3개만 필요해도 전체를 초기화하면 낭비다. createDynamicModule과 @RequiresModules 패턴은 앱이 선언한 모듈만 동적으로 포함시켜 불필요한 Provider 초기화, DB 연결, 외부 API 클라이언트 생성을 막는다.",
+    "deepDive": "구체적인 예시로 이해해보자. @ncnc/shared 패키지에 EmailModule, SmsModule, SlackModule, PushModule, PaymentModule이 있다. ncnc-cron 앱은 EmailModule과 SlackModule만 필요하다. @RequiresModules 없이 SharedModule 전체를 import하면? SmsModule이 Twilio 클라이언트를 초기화하고 API 키를 검증한다. PaymentModule이 PG사 SDK를 로드한다. 앱 시작 시간이 200ms 늘어나고 불필요한 외부 연결이 생긴다. @RequiresModules([EmailModule, SlackModule])을 선언하면 앱 시작 시 해당 모듈만 초기화된다. 이것이 모듈 레벨 tree-shaking이다. 왜 번들러 tree-shaking으로 안 되나? NestJS의 DI 컨테이너는 런타임에 모듈을 등록하고 초기화하므로, 번들 단계에서 코드를 제거해도 DI 초기화 비용은 남는다. 런타임 레벨에서 제어해야 한다. 스타트업 시간이 K8s 환경에서 중요한 이유: Pod 재시작 시 Readiness Probe 통과까지 걸리는 시간이 서비스 복구 시간(MTTR)에 직접 영향을 준다. 200ms 차이가 100개 Pod면 전체적으로 중요해진다.",
+    "seniorTip": "NestJS 앱의 부트스트랩 시간을 측정하려면 main.ts에서 const start = Date.now()와 logger.log('Bootstrap time: ' + (Date.now()-start) + 'ms')를 추가하라. 개선 전후를 비교해 모듈 최적화 효과를 정량적으로 확인하라.",
+    "tags": [
+      "nestjs",
+      "dynamic-module",
+      "tree-shaking",
+      "startup-time",
+      "dependency-injection",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-034",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "NcncExceptionFilter가 에러 응답에 requestId를 포함시키는 이유와 이것이 운영 디버깅에서 어떤 가치를 가지는지 설명하라.",
+    "answer": "requestId는 단일 HTTP 요청의 전체 처리 흐름을 추적하는 고유 식별자다. 에러 응답에 requestId가 포함되면 사용자가 CS 문의 시 이 ID를 알려주고, 운영팀이 Datadog/Loki에서 해당 requestId로 로그를 필터링해 에러 발생 시점의 전체 컨텍스트(어떤 파라미터로 호출됐는지, 어디서 실패했는지)를 즉시 조회할 수 있다.",
+    "explanation": "분산 시스템에서 하나의 요청이 여러 서비스를 거칠 때 로그가 흩어진다. requestId를 모든 서비스가 헤더로 전파(X-Request-Id)하면 분산 추적이 가능해진다. NcncExceptionFilter는 에러 시 이 ID를 응답 바디에 포함시켜 사용자도 알 수 있게 한다.",
+    "deepDive": "requestId의 생성과 전파 흐름을 따라가보자. 1) LoggerInterceptor가 요청을 받으면 ShortUUID(예: 'a3fB2k')를 생성해 AsyncLocalStorage 또는 cls-hooked에 저장한다. 2) 이후 해당 요청의 모든 로그에 자동으로 requestId가 포함된다. 3) 외부 API 호출 시 X-Request-Id 헤더로 requestId를 전달하면 외부 서비스 로그와도 연결된다. 4) 에러 발생 시 NcncExceptionFilter가 { error: 'payment_failed', requestId: 'a3fB2k', message: '결제에 실패했습니다' } 형식으로 응답한다. 5) 사용자가 CS에 'a3fB2k 에러가 났어요'라고 문의하면 운영팀이 Datadog에서 requestId:'a3fB2k'로 검색해 해당 요청의 모든 로그를 조회한다. ShortUUID를 사용하는 이유: 표준 UUID(36자)는 에러 메시지에 포함되기 너무 길다. ShortUUID는 8-12자로 사람이 읽고 말하기 쉬운 형식이다. 단점: 충돌 가능성이 높아지지만, 디버깅 용도로는 시간대와 서비스명과 조합하면 충분히 유니크하다.",
+    "seniorTip": "requestId를 Datadog Trace ID와 연결하면 APM 트레이스와 로그를 동시에 볼 수 있다. Datadog의 dd.trace_id를 requestId로 사용하거나 로그에 dd.trace_id를 함께 기록하면 'requestId로 로그 찾기 → trace_id로 APM 트레이스 이동'이 원클릭으로 가능해진다.",
+    "tags": [
+      "exception-filter",
+      "request-id",
+      "distributed-tracing",
+      "debugging",
+      "nestjs",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-035",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "니콘내콘이 NestJS 기본 Logger 대신 Winston을 래핑한 NcncLogger를 사용하는 이유와 커스텀 래퍼 패턴의 장단점을 설명하라.",
+    "answer": "Winston은 구조화 로깅(JSON 형식), 다양한 transport(파일, Datadog, CloudWatch), 로그 레벨 제어, 컨텍스트 메타데이터 추가를 지원한다. 래퍼 패턴은 로거 구현체를 교체해도 호출 코드를 변경하지 않아도 되는 유연성을 제공한다. 단점은 래퍼 유지보수 부담과 Winston API의 일부 기능이 래퍼를 통해 노출되지 않을 수 있다는 점이다.",
+    "explanation": "NestJS Logger는 컨솔 출력만 지원하며 JSON 구조화 로깅이 없다. 프로덕션에서는 로그가 Datadog이나 Loki 같은 로그 집계 시스템에서 파싱되어야 하므로 JSON 형식이 필수다. Winston의 json() 포맷과 timestamp() 포맷을 조합하면 모든 로그가 파싱 가능한 JSON으로 출력된다.",
+    "deepDive": "NcncLogger가 해결해야 할 구체적인 요구사항을 나열해보자. 1) 구조화 로깅: { level: 'error', message: '결제 실패', requestId: 'a3fB2k', userId: 123, timestamp: '2025-01-01T00:00:00Z' } 형식. 2) 로그 레벨 환경 변수 제어: 개발환경 DEBUG, 운영환경 INFO. 3) Datadog transport: 로그를 직접 Datadog API로 전송. 4) 민감 정보 마스킹: 카드번호, 전화번호를 로그에 찍지 않도록 filter. 5) 컨텍스트 전파: requestId를 모든 로그에 자동 추가. NestJS LoggerService 인터페이스를 구현하면 app.useLogger(new NcncLogger())로 NestJS의 내부 로그도 Winston으로 보낼 수 있다. 래퍼를 만들지 않고 Winston을 직접 쓰면 안 되나? 가능하지만 NestJS DI 컨테이너에 통합이 어렵고, 각 서비스에서 winston.createLogger를 직접 호출하면 설정이 분산되어 일관성이 깨진다.",
+    "seniorTip": "로그의 민감 정보 마스킹은 법적 컴플라이언스(개인정보보호법)에서도 중요하다. NcncLogger의 Winston format 파이프라인에 커스텀 포맷터를 추가해 /\\d{10,11}/.test(value) 패턴의 전화번호나 카드번호를 자동으로 마스킹하는 로직을 넣어두면 의도치 않은 개인정보 로그 노출을 방지할 수 있다.",
+    "tags": [
+      "winston",
+      "logger",
+      "structured-logging",
+      "nestjs",
+      "observability",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-036",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘이 ncnc_pro, payment, published_coupon, push 등 여러 데이터베이스를 분리한 전략적 이유와 TypeORM에서 다중 DB 연결을 관리하는 방법을 설명하라.",
+    "answer": "DB 분리는 도메인 경계(Domain Boundary)를 물리적으로 강제해 서비스 간 불필요한 결합을 방지한다. payment DB는 PCI DSS 같은 규제 컴플라이언스를 위해 별도 접근 제어가 필요하다. TypeORM에서 DataSource를 복수로 생성하고 각 엔티티에 connection 이름을 지정하거나, NestJS TypeOrmModule.forRoot를 복수로 등록해 관리한다.",
+    "explanation": "단일 DB에 모든 테이블을 두면 서비스 경계가 희미해져 어떤 서비스도 어떤 테이블이든 접근할 수 있다. 분리된 DB는 접근 권한을 서비스별로 제한할 수 있고, 각 DB의 크기·성능·백업 정책을 독립적으로 설정할 수 있다.",
+    "deepDive": "TypeORM 다중 DataSource 설정의 실제 패턴을 보자. TypeOrmModule.forRoot({ name: 'payment', type: 'mysql', host: process.env.PAYMENT_DB_HOST, entities: [PaymentEntity, TransactionEntity] })를 AppModule에 등록한다. 리포지토리 주입 시 @InjectRepository(PaymentEntity, 'payment')처럼 connection 이름을 지정한다. 이름을 생략하면 default connection이 사용되어 엔티티를 찾지 못하는 에러가 발생하는 실수가 많다. DB 분리 후 발생하는 실제 문제: 1) 트랜잭션 경계 - payment DB와 ncnc_pro DB에 걸쳐 원자적 처리가 필요한 경우. TypeORM 단일 트랜잭션으로 불가능하므로 Saga 패턴이나 outbox pattern이 필요하다. 2) 조인 불가 - 다른 RDS 인스턴스라면 크로스 DB 조인이 불가능하므로 애플리케이션에서 조합. 3) 마이그레이션 조율 - payment DB 스키마 변경이 ncnc_pro DB의 데이터를 참조하는 로직에 영향을 줄 때 배포 순서를 신중하게 계획해야 한다.",
+    "seniorTip": "DB 연결 수 관리에 주의하라. NestJS 앱이 3개 DataSource를 각각 connection pool size 10으로 설정하고 30개 Pod가 뜨면 DB당 300개 연결이 생긴다. RDS의 max_connections 한도를 확인하고, PgBouncer나 RDS Proxy를 통한 연결 풀링을 고려해야 한다.",
+    "tags": [
+      "multi-database",
+      "typeorm",
+      "domain-separation",
+      "datasource",
+      "connection-pool",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-037",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "SQS Consumer가 처리 결과를 socket.io-client로 ncnc-socket-server에 직접 push하는 아키텍처의 이유와 대안적 접근 방식을 설명하라.",
+    "answer": "SQS Consumer(서버리스/독립 프로세스)가 처리 완료 후 사용자에게 실시간으로 알려야 할 때, WebSocket 연결을 직접 맺기 어려우므로 이미 사용자 WebSocket 연결을 관리하는 socket-server에 내부 HTTP/WebSocket으로 이벤트를 전달한다. 대안으로는 Redis Pub/Sub을 통한 간접 전달 또는 Socket.IO의 Redis Adapter를 활용하는 방법이 있다.",
+    "explanation": "SQS Consumer는 백그라운드 워커로 직접 WebSocket 연결을 관리하기 적합하지 않다. 사용자는 ncnc-socket-server에 연결되어 있으므로, Consumer가 결과를 알리려면 socket-server를 통해야 한다.",
+    "deepDive": "이 아키텍처의 실제 문제를 파보자. SQS Consumer가 socket.io-client로 ncnc-socket-server에 연결한다. 문제 1: socket-server가 여러 대(3개 Pod)라면 Consumer는 어떤 서버에 연결해야 할까? 사용자가 서버 A에 연결되어 있는데 Consumer가 서버 B에 메시지를 보내면 사용자는 받지 못한다. 해결: Consumer가 모든 socket-server에 연결하거나, Redis Adapter로 이벤트를 broadcast하면 적절한 서버가 사용자에게 전달한다. 문제 2: socket-server가 재시작되면 Consumer의 연결이 끊기고 재연결 로직이 필요하다. socket.io-client의 reconnect 옵션으로 자동 재연결을 설정해야 한다. 더 나은 대안 아키텍처: 1) Redis Pub/Sub - Consumer가 Redis에 publish, socket-server들이 subscribe. socket-server 수가 늘어도 Consumer 코드 변경 불필요. 2) SQS→Lambda→API Gateway WebSocket - 서버리스 WebSocket. 3) GraphQL Subscriptions - 클라이언트가 subscription으로 대기, 서버가 결제 완료 이벤트를 publish. 현재 방식의 장점은 단순성이다. 소규모 트래픽에서는 이 방식이 가장 빠르게 구현된다.",
+    "seniorTip": "Consumer와 socket-server 간 통신에 인증을 반드시 추가하라. 내부 네트워크라도 socket-server가 미인증 내부 연결을 수락하면 취약점이 된다. @InternalApiKey() 데코레이터를 socket-server의 내부 수신 엔드포인트에 적용해 Consumer 연결만 허용하라.",
+    "tags": [
+      "socket-io",
+      "sqs-consumer",
+      "real-time",
+      "internal-communication",
+      "redis-pubsub",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-038",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Redis 연결이 끊어졌을 때 캐시 작업을 no-op(아무것도 안 함)으로 처리하는 Graceful Degradation 패턴의 구현 원칙과 한계는?",
+    "options": [
+      "Redis 장애 시 앱을 즉시 종료해 사용자에게 명확한 에러를 보여주는 것이 더 안전하다",
+      "캐시 미스처럼 동작해 DB에서 직접 데이터를 조회하므로 서비스는 계속되지만 DB 부하 증가와 응답 속도 저하가 발생할 수 있다",
+      "no-op은 데이터 쓰기에도 적용되어 쓰기 작업이 자동으로 DB에 fallback된다",
+      "Redis 장애는 no-op으로 처리하면 안 되고 반드시 retry를 해야 한다"
+    ],
+    "answer": 1,
+    "explanation": "Redis의 GET이 no-op이 되면 캐시 히트가 없으므로 항상 DB로 조회한다. 서비스는 정상 동작하지만 캐시가 없을 때의 DB 원본 부하를 그대로 받는다. Redis가 캐싱하던 TPS가 1만이고 캐시 히트율이 90%라면, Redis 장애 시 DB가 1만 TPS를 받아 과부하 위험이 있다.",
+    "deepDive": "Graceful Degradation의 구현을 코드 레벨에서 살펴보자. Redis 클라이언트 래퍼에서 isConnected 플래그를 두고, 연결이 끊어지면 모든 get/set/del 메서드가 null/undefined를 즉시 반환하도록 한다. 이렇게 하면 캐시 계층이 투명하게 사라지고 서비스 로직은 변경 없이 DB에서 직접 데이터를 가져온다. 니콘내콘의 Slack 알림(10회마다 1번): Redis 에러가 발생할 때마다 알림을 보내면 Slack이 폭주한다. 카운터를 두고 10번마다 1번만 보내는 throttle 로직이 필요하다. 단 이 카운터 자체도 Redis를 쓰면 안 된다 — in-memory 카운터를 사용해야 한다. no-op 패턴의 진짜 위험: 캐시가 사라진 것을 모르고 운영팀이 인지하지 못하면, DB는 서서히 부하를 받다가 임계점에서 장애가 난다. 반드시 Datadog/CloudWatch에서 DB 커넥션 수와 쿼리 처리량을 모니터링하고 Redis 장애가 DB에 미치는 영향을 즉시 감지해야 한다.",
+    "seniorTip": "Circuit Breaker 패턴을 Redis 클라이언트에 적용하면 더 정교한 Graceful Degradation이 가능하다. 오코노미스트 라이브러리(opossum)를 활용해 Redis 에러율이 임계값을 넘으면 빠르게 open state로 전환하고, 일정 시간 후 half-open으로 복구를 시도하는 방식이다.",
+    "tags": [
+      "graceful-degradation",
+      "redis",
+      "circuit-breaker",
+      "fault-tolerance",
+      "cache-fallback",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-039",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "TypeORM 쿼리에 SQL 주석을 삽입해 Datadog APM과 트레이스를 연결하는 방법을 설명하고, 이 기법이 성능 분석에서 어떤 가치를 제공하는지 설명하라.",
+    "answer": "sqlcommenter 또는 커스텀 queryRunner 래퍼를 통해 /* traceparent='00-traceId-spanId-01' */ 형식의 SQL 주석을 쿼리 앞에 주입한다. MySQL slow log나 Datadog Database Monitoring이 이 주석을 파싱해 느린 쿼리와 해당 APM 트레이스를 자동 연결한다. 어떤 API 엔드포인트가 느린 쿼리를 유발하는지 즉시 알 수 있다.",
+    "explanation": "Datadog Database Monitoring은 SQL 주석의 traceparent를 파싱해 'Explain Plan'과 APM 트레이스를 연결한다. 이전까지는 슬로우 쿼리 로그를 보고 어떤 서비스/엔드포인트가 발생시켰는지 수동으로 찾아야 했다.",
+    "deepDive": "SQL 주석 삽입의 구현 방법을 살펴보자. TypeORM의 QueryRunner를 상속한 InstrumentedQueryRunner를 만들어 query() 메서드를 오버라이드한다. Datadog의 현재 Span을 tracer.scope().active()로 가져와 traceId와 spanId를 추출하고, /* ddtrace='traceId:spanId',service='ncnc-backend',endpoint='/api/orders' */ 형식으로 SQL 앞에 주입한다. 이 주석이 MySQL general log나 슬로우 쿼리 로그에 남으면 Datadog이 자동으로 파싱한다. 실제 가치: '주문 조회 API p99가 2초'라는 알람이 왔을 때, APM 트레이스에서 해당 요청의 SQL 실행 내역을 보면 어떤 쿼리가 오래 걸렸는지 알 수 있다. 거기서 바로 Database Monitoring 화면으로 이동해 실행 계획(EXPLAIN)과 인덱스 사용 현황을 확인한다. 이 연결이 없으면 슬로우 쿼리 발생 시각에 서비스가 무엇을 하고 있었는지 수동으로 교차 참조해야 해서 디버깅 시간이 몇 배 늘어난다.",
+    "seniorTip": "SQL 주석이 너무 길면 MySQL의 max_allowed_packet 한도를 초과할 수 있다. 주석을 50자 이하로 제한하고 필수 정보(traceId, service)만 포함하라. 또한 주석이 쿼리 캐시 키에 영향을 줄 수 있으므로 MySQL query_cache를 사용하는 환경에서는 주의가 필요하다.",
+    "tags": [
+      "datadog",
+      "apm",
+      "sql-comment",
+      "typeorm",
+      "trace-correlation",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-040",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "pnpm workspace + Turborepo 조합에서 pnpm strict mode가 phantom dependency 문제를 방지하는 메커니즘을 설명하라.",
+    "answer": "pnpm은 node_modules를 flat하게 호이스팅하지 않고 symlink 구조로 관리한다. 패키지 A가 패키지 B를 의존성으로 선언하지 않았으면 B를 require할 수 없다. npm/yarn의 flat node_modules에서는 B가 다른 패키지의 의존성으로 설치되면 A에서도 require가 되는 phantom dependency 문제가 생긴다.",
+    "explanation": "phantom dependency의 위험: 패키지 C가 B를 제거하면 A도 갑자기 require 실패. 개발 환경에서 우연히 동작했던 코드가 프로덕션에서 실패. pnpm의 엄격한 의존성 관리는 이 암묵적 의존성을 차단한다.",
+    "deepDive": "모노레포에서 phantom dependency가 어떻게 발생하고 pnpm이 어떻게 막는지 단계별로 살펴보자. npm workspace 환경: packages/app-a/node_modules에 express가 없어도 root/node_modules/express가 있으면 app-a에서 require('express')가 성공한다. app-a의 package.json에 express가 없는데 동작한다. 이것이 phantom dependency. pnpm 환경: packages/app-a는 자신의 .pnpm 가상 스토어에 선언된 의존성만 심볼릭 링크로 노출받는다. express를 선언하지 않으면 require('express') 즉시 MODULE_NOT_FOUND 에러. 이것이 '엄격 모드'다. 실제로 이 문제를 겪는 상황: 1) 공유 패키지(@ncnc/core)가 lodash를 사용하는데 core의 package.json에 lodash가 없다. npm에서는 우연히 동작하다가 pnpm으로 마이그레이션하면 에러. 2) TypeScript tsc 컴파일은 성공하지만 런타임 require 실패 — 빌드 타임과 런타임의 의존성 해석 차이로 인한 이슈. pnpm strict mode는 이 모든 암묵적 의존성을 명시적으로 만들도록 강제한다.",
+    "seniorTip": "pnpm으로 마이그레이션할 때 phantom dependency가 수십 개 발견되는 경우가 많다. 마이그레이션 전 pnpm doctor나 depcheck 도구로 선언되지 않은 의존성을 미리 찾아 정리하면 마이그레이션 충격을 줄일 수 있다.",
+    "tags": [
+      "pnpm",
+      "phantom-dependency",
+      "monorepo",
+      "node-modules",
+      "dependency-management",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-041",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "@Auth(), @PublicAuth(), @InternalApiKey() 데코레이터로 구현된 멀티 인증 패턴에서 각 데코레이터의 역할과 가드(Guard) 설계 방식을 설명하라.",
+    "answer": "@Auth()는 JWT Bearer 토큰을 검증하는 일반 사용자 인증, @PublicAuth()는 인증 없이 접근 가능한 엔드포인트 표시(가드를 건너뜀), @InternalApiKey()는 서비스 간 내부 통신 시 API 키로 인증한다. NestJS Guard에서 리플렉션 메타데이터를 읽어 어떤 데코레이터가 붙어 있는지 확인하고 적합한 검증 로직을 실행한다.",
+    "explanation": "NestJS의 커스텀 데코레이터는 SetMetadata로 메타데이터를 컨트롤러/핸들러에 붙인다. Guard는 Reflector.getAllAndOverride로 이 메타데이터를 읽어 인증 방식을 결정한다. 하나의 글로벌 AuthGuard가 세 가지 패턴을 모두 처리하는 방식이 일반적이다.",
+    "deepDive": "실제 Guard 로직의 흐름을 추적해보자. GlobalAuthGuard.canActivate()가 호출된다. 1) Reflector로 IS_PUBLIC_AUTH 메타데이터를 확인 → 있으면 true 반환(인증 스킵). 2) IS_INTERNAL_KEY 메타데이터 확인 → 있으면 X-Internal-Api-Key 헤더를 환경변수와 비교. 일치하면 true, 불일치면 UnauthorizedException. 3) 위 두 경우가 아니면 JWT Bearer 토큰 추출 및 검증. 유효하면 request.user에 User 객체 저장 후 true. 이 패턴의 장점: 새 인증 방식 추가(예: @ApiKeyAuth())가 Guard 하나만 수정하면 된다. 컨트롤러 코드는 변경 없음. 데코레이터만 추가하면 된다. @PublicAuth()의 함정: 개발 편의로 @PublicAuth()를 너무 많이 붙이면 의도치 않게 민감한 엔드포인트가 공개된다. PR 리뷰 시 @PublicAuth() 추가를 보안 관점에서 반드시 확인해야 한다. 이상적으로는 @PublicAuth()가 붙은 엔드포인트 목록을 별도로 관리하고 정기적으로 리뷰한다.",
+    "seniorTip": "@InternalApiKey()로 서비스 간 통신을 인증할 때 API 키를 하드코딩하지 말고 AWS Secrets Manager에서 가져오라. 그리고 서비스마다 다른 API 키를 사용해 어떤 서비스가 호출했는지 식별할 수 있도록 설계하라. 이것이 서비스 간 인증의 최소 보안 요건이다.",
+    "tags": [
+      "nestjs",
+      "auth-guard",
+      "decorator",
+      "multi-auth",
+      "security",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-042",
+    "category": "ncnc",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "ConsumerRunner와 CronRunner가 다른 bootstrap 패턴을 사용하는 이유를 설명하고, 각 패턴이 K8s 환경에서 어떻게 운영되는지 설명하라.",
+    "answer": "ConsumerRunner는 SQS 큐를 지속적으로 polling하는 장기 실행 프로세스로, K8s Deployment로 운영하며 메시지가 있을 때 처리하고 없으면 대기한다. CronRunner는 특정 시각에 일회성 배치를 실행하는 패턴으로 K8s CronJob으로 운영하며 실행 후 프로세스가 종료된다. 목적이 다르므로 bootstrap도 달라야 한다.",
+    "explanation": "ConsumerRunner는 SQS long polling을 유지하는 이벤트 루프가 핵심이다. HTTP 서버 없이 NestJS 앱을 standalone으로 부트스트랩하고 SQS consumer를 초기화해 무한 루프를 시작한다. CronRunner는 cron 스케줄에 따라 실행되어 작업을 완료하면 process.exit(0)으로 종료한다.",
+    "deepDive": "K8s 관점에서 두 패턴의 차이를 분석하자. ConsumerRunner(Deployment): 항상 실행 중이어야 하므로 restartPolicy: Always. SQS 메시지 처리 중 Pod가 종료되면 visibility timeout 만료 후 메시지가 재처리된다. 멱등성 필수. SIGTERM 시그널 처리(Graceful Shutdown)가 중요 — 현재 처리 중인 메시지를 완료하고 종료해야 한다. CronRunner(CronJob): 실행 완료 후 종료되므로 K8s가 completed 상태로 관리. concurrencyPolicy: Forbid로 중복 실행 방지. activeDeadlineSeconds로 최대 실행 시간 제한. 실패 시 backoffLimit 설정으로 재시도 횟수 제어. 주의: CronRunner가 K8s CronJob이 아닌 Deployment + node-cron으로 구현되면? Pod가 2개 뜨면 같은 배치가 2번 실행된다. K8s CronJob 방식이 아니면 분산 Lock(Redis)으로 중복 실행을 방지해야 한다.",
+    "seniorTip": "ConsumerRunner의 Graceful Shutdown은 반드시 구현해야 한다. process.on('SIGTERM')에서 새 메시지 수신을 중단하고 현재 처리 중인 메시지가 완료될 때까지 최대 30초 대기 후 종료하는 패턴을 사용하라. K8s의 terminationGracePeriodSeconds를 이 대기 시간보다 크게 설정해야 강제 종료를 피할 수 있다.",
+    "tags": [
+      "consumer-runner",
+      "cron-runner",
+      "kubernetes",
+      "sqs",
+      "graceful-shutdown",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-043",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘에 120개 이상의 커스텀 TypeORM Repository가 있다. BaseRepository를 extends하는 방식과 Repository를 compose하는 방식의 트레이드오프를 설명하고, 언제 어느 방식을 선택해야 하는지 설명하라.",
+    "answer": "extends 방식은 TypeORM Repository 메서드를 바로 사용할 수 있어 코드가 간결하지만 상속 계층이 깊어지면 변경 영향 범위가 크고 TypeORM 버전 업그레이드 시 Breaking Change에 취약하다. compose 방식은 TypeORM Repository를 private으로 주입받아 필요한 메서드만 노출하므로 의존성이 명확하고 교체가 쉽지만 초기 코드량이 더 많다.",
+    "explanation": "TypeORM의 Custom Repository는 @Injectable()로 만들고 DataSource를 주입받아 DataSource.getRepository(Entity)로 TypeORM Repository를 가져오는 패턴이 공식 권장 방식(TypeORM 0.3+)이다. 이전 버전의 @EntityRepository 데코레이터는 deprecated됐다.",
+    "deepDive": "120개 Repository를 관리하는 현실적인 전략을 살펴보자. 공통 패턴 추출: findById, findByIdOrFail, softDelete처럼 모든 Repository에 반복되는 메서드를 BaseRepository<T>로 추출한다. 하지만 BaseRepository를 상속하면 T의 타입이 any로 추론되는 TypeScript 타입 문제가 생길 수 있다. 제네릭을 신중하게 설계해야 한다. 도메인 중심 Repository: findActiveGifticonsByBrand처럼 도메인 언어로 메서드를 명명하면 서비스 코드에서 의미가 명확해진다. 반면 findBy({ brandId, isActive: true })처럼 쿼리 조건을 서비스에서 조합하면 Repository가 얇아지고 재사용성이 높아진다. 어떤 것이 나은가? 복잡한 JOIN이나 서브쿼리는 Repository에 캡슐화, 단순 필터는 서비스에서 구성하는 혼합 방식이 현실적이다. N+1 감지: 120개 Repository에서 N+1 쿼리가 발생하면 findMany + eager relations 조합이 문제다. TypeORM의 relations 옵션 대신 명시적 JOIN과 SELECT를 사용하는 습관이 성능 예측 가능성을 높인다.",
+    "seniorTip": "Repository 메서드 수를 최소화하라. '있으면 좋겠다'는 이유로 메서드를 추가하면 120개 Repository가 각각 20개 메서드를 가지게 된다. 2400개 메서드를 유지보수하는 비용을 생각하면, QueryBuilder를 서비스 레이어에서 직접 사용하는 것이 나을 때도 있다.",
+    "tags": [
+      "typeorm",
+      "repository-pattern",
+      "extends-vs-compose",
+      "base-repository",
+      "design-pattern",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-044",
+    "category": "ncnc",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "NestJS LoggerInterceptor에서 ShortUUID를 requestId로 사용할 때, UUID v4 대신 ShortUUID를 선택하는 실용적인 이유는?",
+    "options": [
+      "ShortUUID가 암호학적으로 더 안전하다",
+      "에러 응답에 포함될 때 사용자가 읽고 말하기 쉽고, 로그 검색 시 타이핑하기 짧아 운영 편의성이 높다",
+      "ShortUUID의 충돌 확률이 UUID v4보다 낮다",
+      "NestJS가 ShortUUID만 지원하기 때문이다"
+    ],
+    "answer": 1,
+    "explanation": "UUID v4는 '550e8400-e29b-41d4-a716-446655440000'처럼 36자로 길다. 에러 응답에 포함해 사용자가 CS에 전달할 때나 Slack 메시지에서 복사-붙여넣기 할 때 불편하다. ShortUUID는 Base58 인코딩으로 8-12자 수준으로 줄여 가독성과 편의성을 높인다. 충돌 가능성은 높아지지만 requestId는 단기(요청 처리 시간, 수초~수분) 내 유니크하면 충분하다.",
+    "deepDive": "ShortUUID 라이브러리의 동작 원리를 이해해보자. 내부적으로 UUID v4를 생성한 뒤 Base58 알파벳으로 인코딩한다. Base58은 혼동하기 쉬운 문자(0, O, I, l)를 제외한 58개 문자를 사용한다. 이 encoding으로 36자 UUID가 22자 안팎으로 줄어들고, shortid 패키지처럼 더 짧게(8-12자)하면 충돌 가능성이 올라간다. requestId 설계 시 고려사항: 1) 유니크 범위 - 글로벌 유니크 vs 시간대 유니크. requestId는 '이 요청을 로그에서 찾기 위한 용도'이므로 수초~수분 내 유니크하면 충분. 2) 사람이 읽는 형식 - 숫자+영문 소문자 조합이 가장 전달하기 쉽다. 3) 생성 비용 - Math.random() 기반은 crypto.randomUUID()보다 빠르지만 예측 가능성이 있다. requestId는 보안 토큰이 아니므로 Math.random()으로 충분. 4) 분산 환경 고려 - 여러 서비스가 requestId를 전파할 때 앞에 서비스명을 붙이는 패턴(backend-a3fB2k)도 좋다.",
+    "seniorTip": "requestId를 외부 의존성(ShortUUID 패키지) 없이 구현하려면 Date.now().toString(36) + Math.random().toString(36).slice(2)로 8-12자 식별자를 만들 수 있다. 패키지 없이 간단하게 구현되므로 의존성을 줄이고 싶을 때 유용하다.",
+    "tags": [
+      "short-uuid",
+      "request-id",
+      "logger-interceptor",
+      "nestjs",
+      "ux",
+      "ncnc"
+    ]
+  },
+  {
+    "id": "ncnc-045",
+    "category": "ncnc",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "니콘내콘의 아키텍처에서 apps → service → domain → core 계층 구조가 실제 배포 독립성을 보장하는가? 모노레포에서 계층 분리와 서비스 독립 배포의 관계를 설명하라.",
+    "answer": "계층 분리는 코드 구조적 경계를 만들지만 배포 독립성을 자동으로 보장하지는 않는다. 공유 패키지(core, domain)를 변경하면 이를 사용하는 모든 앱을 재빌드·재배포해야 할 수 있다. Turborepo의 affected 감지와 각 앱의 독립 Docker 이미지가 배포 독립성의 실제 구현이다.",
+    "explanation": "모노레포는 코드 공유와 독립 배포를 동시에 가능하게 하지만, 설계에 따라 배포 결합도가 달라진다. 공유 패키지 변경 시 영향받는 앱만 재배포하는 Turborepo의 affected 분석이 핵심이다.",
+    "deepDive": "배포 독립성의 실제 시나리오를 분석해보자. 시나리오: @ncnc/core의 formatPrice 함수를 수정한다. 이 패키지를 사용하는 앱: ncnc-backend-v1, ncnc-socket, ncnc-admin, ncnc-cron. 총 4개 앱이 재빌드·재배포 대상이 된다. ncnc-payment-sqs는 @ncnc/core를 사용하지 않으므로 영향 없음. 이것이 Turborepo turbo run build --filter='[HEAD~1]'의 동작이다. 진짜 독립 배포란? 이상적인 마이크로서비스는 다른 서비스 배포 없이 단독으로 배포 가능하다. 모노레포에서 공유 패키지를 사용하면 이 독립성이 부분적으로 깨진다. 해결책: 1) 공유 패키지 변경 빈도를 낮게 유지 — core/domain은 안정적인 인터페이스를 지향. 2) 공유 패키지를 별도 npm 패키지로 versioning하면 앱별로 다른 버전을 사용할 수 있어 배포 독립성이 높아진다. 하지만 패키지 버전 관리 오버헤드가 생긴다. 3) 인터페이스 안정성 규칙: core 패키지 변경 시 반드시 하위 호환성을 유지한다. Breaking change는 major 버전 bump와 함께 마이그레이션 기간을 제공한다.",
+    "seniorTip": "모노레포의 배포 독립성을 측정하는 지표를 만들어라. '특정 서비스 배포 시 함께 재배포되는 평균 서비스 수'가 낮을수록 배포 독립성이 높다. 이 지표가 5 이상이면 공유 패키지 의존성이 과도하게 결합된 신호다.",
+    "tags": [
+      "monorepo",
+      "independent-deployment",
+      "turborepo",
+      "shared-packages",
+      "architecture",
+      "ncnc"
+    ]
   }
 ]
