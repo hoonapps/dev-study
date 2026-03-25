@@ -78,15 +78,6 @@ export function getRandomQuestions(count: number, category?: Category, difficult
 }
 
 export function getDailyInsights(count: number = 3): Question[] {
-  const today = new Date().toISOString().split("T")[0];
-  let seed = 0;
-  for (let i = 0; i < today.length; i++) seed += today.charCodeAt(i);
-
-  const shuffled = [...allQuestions].sort((a, b) => {
-    const hashA = (seed * 31 + a.id.charCodeAt(0)) % 1000;
-    const hashB = (seed * 31 + b.id.charCodeAt(0)) % 1000;
-    return hashA - hashB;
-  });
-
+  const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
