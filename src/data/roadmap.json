@@ -1,0 +1,298 @@
+[
+  {
+    "week": 1,
+    "title": "DB 완전 정복",
+    "subtitle": "매일 쓰는데 제대로 모르면 제일 창피한 것",
+    "days": [
+      {
+        "day": 1,
+        "topic": "인덱스 동작 원리",
+        "questionIds": ["mysql-004", "mysql-010", "mysql-003"],
+        "summary": "B-Tree 구조, 커버링 인덱스, 복합 인덱스 Leftmost Prefix Rule. EXPLAIN 결과를 읽을 줄 알아야 한다."
+      },
+      {
+        "day": 2,
+        "topic": "락과 트랜잭션",
+        "questionIds": ["mysql-002", "mysql-009", "mysql-003"],
+        "summary": "FOR UPDATE, 데드락, Gap Lock, MVCC. 결제 시스템에서 동시성 제어는 생명이다."
+      },
+      {
+        "day": 3,
+        "topic": "쿼리 튜닝",
+        "questionIds": ["mysql-005", "mysql-006", "mysql-010"],
+        "summary": "EXPLAIN ANALYZE, 슬로우 쿼리 분석, N+1 문제. Datadog에서 느린 쿼리 찾고 고치는 프로세스."
+      },
+      {
+        "day": 4,
+        "topic": "레플리케이션과 커넥션",
+        "questionIds": ["mysql-007", "mysql-008", "mysql-001"],
+        "summary": "Read Replica lag, 커넥션 풀 × Pod 수 계산, UTC 저장 이유."
+      },
+      {
+        "day": 5,
+        "topic": "TypeORM 실전",
+        "questionIds": ["mysql-012", "ncnc-004", "nestjs-003"],
+        "summary": "트랜잭션에서 manager 사용, 마이그레이션 전략, 정산 시스템 설계."
+      }
+    ]
+  },
+  {
+    "week": 2,
+    "title": "K8s 확실히 이해하기",
+    "subtitle": "매일 kubectl 치는데 왜 그런지 설명 못하면 안 됨",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Pod 라이프사이클",
+        "questionIds": ["k8s-001", "k8s-002", "k8s-010"],
+        "summary": "Pod/Deployment/Service 관계, liveness vs readiness probe, graceful shutdown."
+      },
+      {
+        "day": 2,
+        "topic": "리소스와 스케일링",
+        "questionIds": ["k8s-003", "k8s-008", "k8s-007"],
+        "summary": "requests vs limits, QoS Class, HPA 동작 원리, Rolling Update 무중단 배포."
+      },
+      {
+        "day": 3,
+        "topic": "네트워킹",
+        "questionIds": ["k8s-006", "k8s-009", "k8s-004"],
+        "summary": "Ingress, Service 타입, Namespace, ConfigMap vs Secret, NetworkPolicy."
+      },
+      {
+        "day": 4,
+        "topic": "Helm 딥다이브",
+        "questionIds": ["k8s-041", "k8s-042", "k8s-043"],
+        "summary": "차트 구조, _helpers.tpl, hooks로 DB 마이그레이션, dependency 관리."
+      },
+      {
+        "day": 5,
+        "topic": "트러블슈팅",
+        "questionIds": ["k8s-005", "k8s-020", "k8s-036"],
+        "summary": "Pending, CrashLoopBackOff, OOMKilled 디버깅. kubectl describe/logs/events."
+      }
+    ]
+  },
+  {
+    "week": 3,
+    "title": "Terraform & AWS 인프라",
+    "subtitle": "ncnc-infra-v1을 자신있게 컨트롤하려면",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Terraform 핵심",
+        "questionIds": ["tf-001", "tf-002", "tf-004"],
+        "summary": "State 파일 역할, drift 감지, plan/apply 프로세스. 너네 state가 로컬인 위험."
+      },
+      {
+        "day": 2,
+        "topic": "모듈과 패턴",
+        "questionIds": ["tf-003", "tf-007", "tf-010"],
+        "summary": "module 설계, for_each vs count, depends_on. 너네 17개 커스텀 모듈 이해."
+      },
+      {
+        "day": 3,
+        "topic": "EKS + VPC",
+        "questionIds": ["aws-001", "aws-003", "aws-019"],
+        "summary": "EKS 아키텍처, Pod Identity(IRSA 대체), VPC/Subnet/NAT 설계."
+      },
+      {
+        "day": 4,
+        "topic": "RDS + ElastiCache + SQS",
+        "questionIds": ["aws-009", "aws-011", "aws-012"],
+        "summary": "RDS Multi-AZ 페일오버, ElastiCache 클러스터, SQS FIFO vs Standard."
+      },
+      {
+        "day": 5,
+        "topic": "보안과 비용",
+        "questionIds": ["tf-006", "aws-017", "ncnc-infra-001"],
+        "summary": "sensitive 변수, 비용 최적화(Spot/RI), state 로컬 위험과 해결책."
+      }
+    ]
+  },
+  {
+    "week": 4,
+    "title": "모니터링 & DevOps",
+    "subtitle": "장애 나면 30초 안에 원인 파악하는 능력",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Datadog APM",
+        "questionIds": ["mon-001", "mon-002", "mon-006"],
+        "summary": "Trace/Span, dd-trace NestJS 연동, 커스텀 메트릭과 카디널리티 함정."
+      },
+      {
+        "day": 2,
+        "topic": "Prometheus + Grafana",
+        "questionIds": ["mon-011", "mon-014", "mon-017"],
+        "summary": "Pull 모델, PromQL(rate vs irate), Grafana 대시보드 설계."
+      },
+      {
+        "day": 3,
+        "topic": "로깅 + 트레이싱",
+        "questionIds": ["mon-020", "mon-030", "mon-035"],
+        "summary": "Loki/LogQL, 구조화 로깅, 분산 트레이싱(OpenTelemetry)."
+      },
+      {
+        "day": 4,
+        "topic": "알림과 SLO",
+        "questionIds": ["mon-025", "mon-028", "mon-037"],
+        "summary": "증상 vs 원인 기반 알림, alert fatigue 방지, SLO burn rate."
+      },
+      {
+        "day": 5,
+        "topic": "ArgoCD GitOps",
+        "questionIds": ["argo-001", "argo-010", "argo-015"],
+        "summary": "Application 리소스, sync policy, sync window. 너네 179개 서비스 관리."
+      }
+    ]
+  },
+  {
+    "week": 5,
+    "title": "Redis & 캐싱 전략",
+    "subtitle": "캐시 하나 잘못 쓰면 장애, 잘 쓰면 10배 빠름",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Redis 기본과 자료구조",
+        "questionIds": ["redis-001", "redis-004", "redis-010"],
+        "summary": "싱글 스레드인데 빠른 이유, Sorted Set, 클러스터 해시 슬롯."
+      },
+      {
+        "day": 2,
+        "topic": "캐시 패턴",
+        "questionIds": ["redis-002", "redis-005", "ncnc-005"],
+        "summary": "Cache-Aside, Thundering Herd, 기프티콘 캐싱 전략 설계."
+      },
+      {
+        "day": 3,
+        "topic": "분산 락과 동시성",
+        "questionIds": ["redis-003", "redis-009", "redis-007"],
+        "summary": "SET NX EX, Redlock 논쟁, 파이프라이닝, eviction 정책."
+      },
+      {
+        "day": 4,
+        "topic": "Streams와 Pub/Sub",
+        "questionIds": ["redis-006", "redis-041", "redis-023"],
+        "summary": "Pub/Sub vs Streams vs SQS 선택 기준, Consumer Group."
+      },
+      {
+        "day": 5,
+        "topic": "운영과 모니터링",
+        "questionIds": ["redis-008", "redis-017", "redis-055"],
+        "summary": "RDB/AOF 영속성, Datadog 메트릭, 성능 디버깅(SLOWLOG)."
+      }
+    ]
+  },
+  {
+    "week": 6,
+    "title": "NestJS & Node.js 내부",
+    "subtitle": "프레임워크 위에서 일하지 말고, 프레임워크를 이해하고 일해",
+    "days": [
+      {
+        "day": 1,
+        "topic": "NestJS DI와 모듈",
+        "questionIds": ["nestjs-001", "nestjs-004", "nestjs-005"],
+        "summary": "DI 컨테이너, 모듈 캡슐화, 순환 의존성 해결."
+      },
+      {
+        "day": 2,
+        "topic": "NestJS 실행 파이프라인",
+        "questionIds": ["nestjs-002", "nestjs-006", "nestjs-008"],
+        "summary": "Middleware → Guard → Interceptor → Pipe → Handler. ValidationPipe 설정."
+      },
+      {
+        "day": 3,
+        "topic": "Node.js 이벤트 루프",
+        "questionIds": ["nodejs-001", "nodejs-002", "nodejs-005"],
+        "summary": "6단계, CPU 집약 작업이 위험한 이유, Promise.all 동작."
+      },
+      {
+        "day": 4,
+        "topic": "메모리와 성능",
+        "questionIds": ["nodejs-003", "nodejs-008", "nodejs-006"],
+        "summary": "메모리 누수, V8 GC(Young/Old Generation), Stream."
+      },
+      {
+        "day": 5,
+        "topic": "에러 핸들링과 운영",
+        "questionIds": ["nodejs-010", "nodejs-004", "nestjs-007"],
+        "summary": "unhandledRejection, Cluster vs K8s Pod, TypeORM 마이그레이션."
+      }
+    ]
+  },
+  {
+    "week": 7,
+    "title": "아키텍처 & 설계",
+    "subtitle": "코드만 짜는 개발자에서 시스템을 설계하는 개발자로",
+    "days": [
+      {
+        "day": 1,
+        "topic": "MSA와 이벤트 드리븐",
+        "questionIds": ["arch-001", "arch-004", "arch-010"],
+        "summary": "서비스 경계 정의, 이벤트 드리븐 장단점, Outbox 패턴."
+      },
+      {
+        "day": 2,
+        "topic": "멱등성과 일관성",
+        "questionIds": ["arch-002", "arch-007", "arch-003"],
+        "summary": "멱등성 키, CAP 정리, 서킷 브레이커."
+      },
+      {
+        "day": 3,
+        "topic": "기술 선정과 설계 원칙",
+        "questionIds": ["arch-005", "arch-006", "arch-009"],
+        "summary": "Boring Technology, 캐싱 trade-off, 샤딩은 마지막 수단."
+      },
+      {
+        "day": 4,
+        "topic": "디자인 패턴 실전",
+        "questionIds": ["dp-001", "dp-005", "dp-017"],
+        "summary": "Strategy(결제), Decorator(@Cacheable), Chain of Responsibility(NestJS)."
+      },
+      {
+        "day": 5,
+        "topic": "보안 필수",
+        "questionIds": ["sec-001", "sec-002", "sec-003"],
+        "summary": "JWT 구조, XSS 방어, SQL Injection. 이거 못 설명하면 시니어 아님."
+      }
+    ]
+  },
+  {
+    "week": 8,
+    "title": "내 코드 완전 이해",
+    "subtitle": "면접에서 '이거 왜 이렇게 했어요?' 물어보면 자신있게",
+    "days": [
+      {
+        "day": 1,
+        "topic": "니콘내콘 아키텍처",
+        "questionIds": ["ncnc-014", "ncnc-003", "ncnc-004"],
+        "summary": "Turborepo 분리 이유, SQS 파이프라인, C2C 환불 시스템."
+      },
+      {
+        "day": 2,
+        "topic": "코드 패턴",
+        "questionIds": ["ncnc-016", "ncnc-017", "ncnc-019"],
+        "summary": "PreventDoubleRequest, @RetryOnError 순서, GET_LOCK 리더 선출."
+      },
+      {
+        "day": 3,
+        "topic": "인프라",
+        "questionIds": ["ncnc-infra-001", "ncnc-infra-002", "ncnc-infra-012"],
+        "summary": "State 로컬 위험, tfvars 평문 시크릿, Pod Identity."
+      },
+      {
+        "day": 4,
+        "topic": "이전 경험",
+        "questionIds": ["ncnc-002", "ncnc-007", "ncnc-009"],
+        "summary": ".NET→NestJS 비용 절감, MQTT CPU 90% 절감, Lambda cold start."
+      },
+      {
+        "day": 5,
+        "topic": "종합 복습",
+        "questionIds": ["ncnc-011", "ncnc-012", "ncnc-008"],
+        "summary": "ArgoCD 무중단 배포, 파트너 API 장애 격리, Socket.IO 최적화."
+      }
+    ]
+  }
+]
