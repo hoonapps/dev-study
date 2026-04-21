@@ -5,6 +5,8 @@ import Link from "next/link";
 import { getCodingProblem } from "@/lib/coding";
 import { getCodingProgress, setCodingStatus, markCodingViewed } from "@/lib/storage";
 import { CodingProblem, DIFFICULTY_COLORS, DIFFICULTY_LABELS_CODING, PATTERN_LABELS } from "@/types/coding";
+import MarkdownText from "@/components/MarkdownText";
+import CodeBlock from "@/components/CodeBlock";
 
 type Tab = "problem" | "hints" | "code" | "walkthrough" | "secret" | "similar";
 
@@ -13,7 +15,6 @@ export default function CodingDetailClient({ id }: { id: string }) {
   const [tab, setTab] = useState<Tab>("problem");
   const [hintsShown, setHintsShown] = useState(0);
   const [status, setStatus] = useState<string>("unsolved");
-  const [copiedMsg, setCopiedMsg] = useState("");
 
   useEffect(() => {
     const p = getCodingProblem(id);
@@ -28,17 +29,6 @@ export default function CodingDetailClient({ id }: { id: string }) {
     if (!problem) return;
     setCodingStatus(problem.id, newStatus);
     setStatus(newStatus);
-  };
-
-  const copyCode = async () => {
-    if (!problem) return;
-    try {
-      await navigator.clipboard.writeText(problem.code);
-      setCopiedMsg("복사됨!");
-      setTimeout(() => setCopiedMsg(""), 1500);
-    } catch {
-      setCopiedMsg("복사 실패");
-    }
   };
 
   if (!problem) {
@@ -137,7 +127,7 @@ export default function CodingDetailClient({ id }: { id: string }) {
           <div className="space-y-4">
             <div>
               <p className="text-[10px] font-semibold text-[var(--muted)] uppercase mb-1">문제 설명</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{problem.description}</p>
+              <MarkdownText text={problem.description} />
             </div>
 
             <div>
@@ -192,15 +182,10 @@ export default function CodingDetailClient({ id }: { id: string }) {
 
         {tab === "code" && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-[var(--muted)] uppercase">Java 구현</p>
-              <button onClick={copyCode} className="text-[11px] px-2 py-1 rounded bg-[var(--card-border)]">
-                {copiedMsg || "복사"}
-              </button>
-            </div>
-            <pre className="bg-[var(--bg)] border border-[var(--card-border)] rounded p-3 text-[11px] font-mono overflow-x-auto leading-relaxed">
-              <code>{problem.code}</code>
-            </pre>
+            <CodeBlock
+              code={problem.code}
+              language={problem.patterns.includes("sql") ? "sql" : "java"}
+            />
             <div className="flex gap-2 text-[11px]">
               <span className="px-2 py-1 rounded bg-[var(--card-border)]">
                 <span className="text-[var(--muted)]">Time:</span> <span className="font-mono">{problem.complexity.time}</span>
@@ -215,7 +200,7 @@ export default function CodingDetailClient({ id }: { id: string }) {
         {tab === "walkthrough" && (
           <div>
             <p className="text-[10px] font-semibold text-[var(--muted)] uppercase mb-2">해설</p>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{problem.walkthrough}</p>
+            <MarkdownText text={problem.walkthrough} />
           </div>
         )}
 
@@ -223,7 +208,7 @@ export default function CodingDetailClient({ id }: { id: string }) {
           <div>
             <p className="text-[10px] font-semibold text-[var(--warning)] uppercase mb-2">🎯 풀이 비법</p>
             <div className="border-l-2 border-[var(--warning)] pl-3">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{problem.secret}</p>
+              <MarkdownText text={problem.secret} />
             </div>
           </div>
         )}
