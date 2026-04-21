@@ -27,6 +27,10 @@ import seniorInterviewQuestions from "@/data/senior-interview.json";
 import systemDesignQuestions from "@/data/system-design.json";
 import javaBasicsQuestions from "@/data/java-basics.json";
 import javaCotestQuestions from "@/data/java-cotest.json";
+import osQuestions from "@/data/os.json";
+import networkCsQuestions from "@/data/network-cs.json";
+import dsTheoryQuestions from "@/data/ds-theory.json";
+import linuxQuestions from "@/data/linux.json";
 
 const allQuestions: Question[] = [
   ...(mysqlQuestions as Question[]),
@@ -56,6 +60,10 @@ const allQuestions: Question[] = [
   ...(systemDesignQuestions as Question[]),
   ...(javaBasicsQuestions as Question[]),
   ...(javaCotestQuestions as Question[]),
+  ...(osQuestions as Question[]),
+  ...(networkCsQuestions as Question[]),
+  ...(dsTheoryQuestions as Question[]),
+  ...(linuxQuestions as Question[]),
 ];
 
 export function getAllQuestions(): Question[] {

@@ -26,7 +26,11 @@ export type Category =
   | "senior-interview"
   | "system-design"
   | "java-basics"
-  | "java-cotest";
+  | "java-cotest"
+  | "os"
+  | "network-cs"
+  | "ds-theory"
+  | "linux";
 
 export interface Question {
   id: string;
@@ -82,6 +86,10 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   "system-design": "System Design",
   "java-basics": "Java 기초",
   "java-cotest": "Java 코테",
+  "os": "운영체제",
+  "network-cs": "네트워크 기초",
+  "ds-theory": "자료구조 이론",
+  "linux": "Linux/Shell",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -111,6 +119,10 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   "system-design": "#10b981",
   "java-basics": "#f59e0b",
   "java-cotest": "#e11d48",
+  "os": "#8b5cf6",
+  "network-cs": "#06b6d4",
+  "ds-theory": "#3b82f6",
+  "linux": "#14b8a6",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

@@ -227,6 +227,18 @@ function getYesterdayDate(): string {
 }
 
 function updateStreak() {
+  // log activity regardless of streak update
+  try {
+    const today = getTodayDate();
+    const map = typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("devsenior_activity") || "{}")
+      : {};
+    map[today] = (map[today] || 0) + 1;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("devsenior_activity", JSON.stringify(map));
+    }
+  } catch {}
+
   const today = getTodayDate();
   const data = getStreak();
   if (data.lastStudyDate === today) return; // 이미 오늘 학습
@@ -361,4 +373,71 @@ export function getCodingStats(): { solved: number; attempted: number; total: nu
     else if (p.status === "attempted") attempted++;
   }
   return { solved, attempted, total: Object.keys(all).length };
+}
+
+// ========== Personal Memos ==========
+const MEMO_KEY = "devsenior_memos";
+
+export function getAllMemos(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(MEMO_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export function getMemo(id: string): string {
+  return getAllMemos()[id] || "";
+}
+
+export function setMemo(id: string, memo: string) {
+  const all = getAllMemos();
+  if (memo.trim()) {
+    all[id] = memo;
+  } else {
+    delete all[id];
+  }
+  localStorage.setItem(MEMO_KEY, JSON.stringify(all));
+}
+
+// ========== Activity Log (for heatmap) ==========
+const ACTIVITY_KEY = "devsenior_activity";
+
+export type ActivityType = "flashcard" | "quiz" | "coding-view" | "coding-solved" | "srs";
+
+// Map of date (YYYY-MM-DD) → count
+export function getActivityMap(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(ACTIVITY_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export function logActivity() {
+  const today = new Date().toISOString().split("T")[0];
+  const map = getActivityMap();
+  map[today] = (map[today] || 0) + 1;
+  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(map));
+}
+
+// ========== Mock Test History ==========
+const MOCK_KEY = "devsenior_mock_history";
+
+export interface MockTestResult {
+  id: string;
+  startedAt: number;
+  endedAt: number;
+  problemIds: string[];
+  solved: string[]; // subset of problemIds
+  totalMinutes: number;
+}
+
+export function getMockHistory(): MockTestResult[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(MOCK_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+export function saveMockResult(r: MockTestResult) {
+  const arr = getMockHistory();
+  arr.unshift(r);
+  if (arr.length > 30) arr.length = 30; // keep last 30
+  localStorage.setItem(MOCK_KEY, JSON.stringify(arr));
 }

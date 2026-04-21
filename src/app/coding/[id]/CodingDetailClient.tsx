@@ -7,6 +7,7 @@ import { getCodingProgress, setCodingStatus, markCodingViewed } from "@/lib/stor
 import { CodingProblem, DIFFICULTY_COLORS, DIFFICULTY_LABELS_CODING, PATTERN_LABELS } from "@/types/coding";
 import MarkdownText from "@/components/MarkdownText";
 import CodeBlock from "@/components/CodeBlock";
+import MemoBox from "@/components/MemoBox";
 
 type Tab = "problem" | "hints" | "code" | "walkthrough" | "secret" | "similar";
 
@@ -103,6 +104,9 @@ export default function CodingDetailClient({ id }: { id: string }) {
           ✓ 솔브
         </button>
       </div>
+
+      {/* Memo */}
+      <MemoBox id={problem.id} placeholder="풀이 메모, 실수 포인트, 시간 기록 등" />
 
       {/* Tabs */}
       <div className="overflow-x-auto -mx-4 px-4 scrollbar-hide border-b border-[var(--card-border)]">

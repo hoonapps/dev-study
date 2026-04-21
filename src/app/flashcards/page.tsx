@@ -12,6 +12,7 @@ import {
   SRSGrade,
 } from "@/lib/storage";
 import { Category, CATEGORY_LABELS, CATEGORY_COLORS, Question } from "@/types/question";
+import MemoBox from "@/components/MemoBox";
 
 export default function FlashcardsPage() {
   const [cards, setCards] = useState<Question[]>([]);
@@ -269,6 +270,9 @@ export default function FlashcardsPage() {
           </button>
         </div>
       )}
+
+      {/* Memo (only when flipped) */}
+      {flipped && card && <MemoBox id={card.id} />}
 
       {/* Navigation */}
       <div className="flex gap-3">

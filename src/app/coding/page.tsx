@@ -61,14 +61,19 @@ export default function CodingListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1">
           <h1 className="text-xl font-bold">Coding</h1>
           <p className="text-xs text-[var(--muted)]">{problems.length}문제 · {solvedCount}솔브 · {attemptedCount}시도</p>
         </div>
-        <Link href="/coding/roadmap" className="btn-primary text-xs px-3 py-1.5">
-          🗺️ 로드맵
-        </Link>
+        <div className="flex flex-col gap-1">
+          <Link href="/coding/roadmap" className="btn-primary text-[11px] px-2.5 py-1.5">
+            🗺️ 로드맵
+          </Link>
+          <Link href="/coding/mock" className="btn-secondary text-[11px] px-2.5 py-1.5">
+            ⏱️ 모의 코테
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

@@ -81,6 +81,7 @@ export default function TopBar() {
   const menuItems = [
     { href: "/", label: "홈", icon: "🏠" },
     { href: "/today", label: "오늘", icon: "☀️" },
+    { href: "/stats", label: "통계", icon: "📊" },
     { href: "/roadmap", label: "학습 로드맵", icon: "🗺️" },
     { href: "/coding/roadmap", label: "코테 로드맵", icon: "💻" },
     { href: "/flashcards", label: "플래시카드", icon: "🃏" },
