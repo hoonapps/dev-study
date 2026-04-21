@@ -796,5 +796,305 @@
       "memory-efficiency",
       "backpressure"
     ]
+  },
+  {
+    "id": "nestjs-041",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS 마이크로서비스에서 TCP 트랜스포트와 Redis 트랜스포트의 가장 큰 차이는?",
+    "options": [
+      "TCP는 비동기, Redis는 동기 통신이다",
+      "TCP는 서비스 간 직접 소켓 연결(request-response)이고, Redis는 Pub/Sub 채널을 중간 브로커로 사용하여 느슨한 결합을 제공한다",
+      "TCP만 메시지 직렬화를 지원한다",
+      "Redis 트랜스포트는 K8s 환경에서 동작하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "TCP 트랜스포트: 두 서비스가 직접 TCP 소켓으로 연결. 호출자가 대상 서비스의 호스트/포트를 알아야 한다. 응답이 즉시 돌아오는 request-response 패턴. Redis 트랜스포트: Redis의 Pub/Sub 채널을 경유. 호출자는 Redis만 알면 되므로 서비스 디스커버리가 필요 없다. 단, Redis가 SPOF가 된다.",
+    "seniorTip": "트랜스포트 선택 기준: 1) TCP — 동기적 결과가 필요하고, 서비스 위치를 알 수 있는 경우(K8s 내부 서비스 이름으로 접근). 2) Redis — 느슨한 결합이 필요하거나 팬아웃(1:N 발행)이 필요한 경우. 단, Redis는 메시지 영속성이 없으므로 Redis 재시작 시 유실될 수 있다. 3) RabbitMQ/Kafka — 메시지 영속성, 재처리, 순서 보장이 필요한 프로덕션 환경. 4) gRPC — Protobuf 기반 바이너리 직렬화로 성능이 중요하고, 스키마 계약이 필요한 경우. 니콘내콘처럼 금전이 관련된 서비스 간 통신은 TCP 또는 gRPC로 명시적으로 연결하고, 이벤트성 알림은 Redis Pub/Sub 또는 SQS를 사용하는 것이 현실적이다.",
+    "deepDive": "NestJS 마이크로서비스의 TCP 트랜스포트에서 ClientProxy.send()가 타임아웃 없이 무한 대기하면 어떤 문제가 발생하는가? → 타임아웃을 설정하는 방법은? → Redis 트랜스포트에서 응답 없이 소비자 서비스가 죽으면 호출자는 어떻게 되는가? NATS 트랜스포트와 Redis 트랜스포트의 차이는 무엇인가?",
+    "tags": [
+      "microservices",
+      "transport",
+      "tcp",
+      "redis",
+      "grpc"
+    ]
+  },
+  {
+    "id": "nestjs-042",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "@nestjs/bull(BullMQ)을 사용하여 Redis 기반 작업 큐를 구현할 때, 작업 재시도(retry) 전략과 실패한 작업 모니터링 방법을 설명하라.",
+    "answer": "@Process() 핸들러에서 예외를 throw하면 BullMQ가 자동으로 재시도한다. defaultJobOptions의 attempts와 backoff 설정으로 재시도 횟수와 간격을 제어하고, @OnQueueFailed() 이벤트로 실패를 감지하여 알림을 보낸다.",
+    "explanation": "BullMQ 재시도 설정: defaultJobOptions: { attempts: 3, backoff: { type: 'exponential', delay: 1000 } }. 핸들러에서 예외를 throw하면 작업이 failed 상태로 이동하고, attempts 횟수 내에서 자동 재시도. 모든 재시도 실패 시 failed 큐로 이동. @OnQueueFailed(name) 이벤트 리스너에서 Slack/PagerDuty 알림을 보낸다.",
+    "seniorTip": "BullMQ vs @nestjs/bull: @nestjs/bull은 Bull v3 기반이고, BullMQ(@nestjs/bullmq)는 Bull v4+ 기반으로 더 나은 성능과 TypeScript 지원. 실무 패턴: 1) 작업 데이터에 idempotency key를 포함하여 재시도 시 중복 처리 방지. 2) removeOnComplete: { count: 100 }으로 완료된 작업을 자동 정리하여 Redis 메모리 절약. 3) removeOnFail: false로 실패 작업은 유지하여 분석 가능. 4) priority로 작업 우선순위 설정(결제 작업 > 알림 작업). 5) Bull Board UI를 /admin/queues에 마운트하여 작업 상태를 시각적으로 모니터링. 결제 파이프라인의 큐는 Redis Sentinel 또는 Redis Cluster로 고가용성을 보장해야 한다.",
+    "deepDive": "BullMQ의 작업 재시도에서 Exponential Backoff와 Fixed Delay의 차이는? → 외부 PG사 API가 일시적으로 503을 반환할 때 몇 번, 어떤 간격으로 재시도하는 것이 적절한가? → 재시도 중에 동일 작업이 여러 Worker에서 동시에 처리되는 것을 방지하는 방법은? → failed 큐에 쌓인 작업을 수동으로 재실행하는 방법은?",
+    "tags": [
+      "bullmq",
+      "queue",
+      "retry",
+      "redis",
+      "job-processing"
+    ]
+  },
+  {
+    "id": "nestjs-043",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS + GraphQL에서 code-first 방식과 schema-first 방식의 핵심 차이와, code-first가 TypeScript 환경에서 선호되는 이유는?",
+    "options": [
+      "code-first는 성능이 더 빠르고, schema-first는 기능이 더 많다",
+      "code-first는 TypeScript 클래스/데코레이터로 스키마를 자동 생성하여 타입 안전성과 코드 동기화가 보장되고, schema-first는 .graphql 파일을 먼저 작성하여 스키마와 Resolver 구현이 분리된다",
+      "code-first는 REST API도 동시에 생성한다",
+      "schema-first만 N+1 문제를 해결할 수 있다"
+    ],
+    "answer": 1,
+    "explanation": "code-first: @ObjectType(), @Field(), @Resolver(), @Query(), @Mutation() 데코레이터로 TypeScript 클래스를 정의하면 schema.gql이 자동 생성된다. 타입이 코드와 스키마 간에 항상 동기화되므로 TypeScript 타입 안전성이 극대화된다. schema-first: schema.graphql을 먼저 작성하고, GraphQL Code Generator로 TypeScript 타입을 생성. 스키마 변경 시 코드 재생성이 필요하다.",
+    "seniorTip": "code-first 실무 팁: 1) autoSchemaFile: join(process.cwd(), 'src/schema.gql')로 파일 자동 생성 + Git 커밋. 2) sortSchema: true로 스키마 순서를 알파벳 정렬하여 Git diff를 줄임. 3) @Directive('@deprecated')로 deprecated 필드를 안전하게 제거. 4) @HideField()로 민감 필드(password)를 스키마에서 숨김. 5) BuildSchemaOptions에서 plugins로 커스텀 검증 추가. 파트너 API에 GraphQL을 노출할 때는 schema.gql을 API 계약서로 관리하고, breaking change(필드 삭제)는 @deprecated 후 충분한 기간이 지난 뒤 제거한다.",
+    "deepDive": "GraphQL code-first에서 N+1 문제가 발생하는 이유와, DataLoader를 NestJS에서 구현하는 방법은? → @ResolveField()가 Resolver에서 어떻게 동작하고, 부모 타입의 필드를 어떻게 참조하는가? → GraphQL Subscription을 NestJS에서 구현할 때 필요한 설정과 WebSocket 어댑터는?",
+    "tags": [
+      "graphql",
+      "code-first",
+      "schema-first",
+      "typescript",
+      "resolver"
+    ]
+  },
+  {
+    "id": "nestjs-044",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS 단위 테스트에서 TypeORM Repository를 모킹할 때 흔히 발생하는 함정과, @golevelup/ts-jest를 사용하는 이유를 설명하라.",
+    "answer": "jest.fn()으로 Repository를 수동 모킹하면 메서드 시그니처와 반환 타입이 실제와 달라도 컴파일 에러가 발생하지 않는다. @golevelup/ts-jest의 createMock<T>()는 인터페이스의 모든 메서드를 jest.fn()으로 자동 생성하고, TypeScript 타입 검사가 적용된다.",
+    "explanation": "수동 모킹의 문제: const mockRepo = { save: jest.fn(), find: jest.fn() }처럼 만들면 Repository의 실제 메서드(findOne, createQueryBuilder 등)가 누락되어도 컴파일 오류가 없다. 실제로 사용하는 메서드가 undefined이면 런타임에 에러. createMock<Repository<UserEntity>>()는 Repository의 모든 메서드를 jest.fn()으로 자동 생성하므로 빠뜨릴 수 없다.",
+    "seniorTip": "TypeORM Repository 모킹 실무 패턴: 1) createMock<Repository<UserEntity>>()로 타입 안전 모킹. 2) mockRepo.findOne.mockResolvedValue(user)처럼 체이닝으로 반환값 설정. 3) expect(mockRepo.save).toHaveBeenCalledWith(expectedEntity)로 저장 호출 검증. 4) DataSource.transaction()을 모킹할 때는 콜백에 모킹된 EntityManager를 전달해야 트랜잭션 내 로직이 테스트된다. 5) getRepositoryToken(UserEntity)를 provide에 사용하면 DI 컨테이너가 올바른 토큰으로 Repository를 주입한다. 테스트가 실제 구현과 달라도 통과하면 의미가 없다 — 모킹의 반환값이 실제 DB 동작과 일치하도록 주의하자.",
+    "deepDive": "TypeORM의 Repository.createQueryBuilder()를 모킹하기 어려운 이유는? → 메서드 체이닝(select().where().getMany())이 있는 QueryBuilder를 어떻게 모킹하는가? → 통합 테스트에서 실제 DB 대신 testcontainers를 사용하면 어떤 장점이 있는가? → jest.spyOn과 jest.fn()의 차이와 각각 어떤 상황에 사용하는가?",
+    "tags": [
+      "testing",
+      "mocking",
+      "typeorm",
+      "jest",
+      "repository"
+    ]
+  },
+  {
+    "id": "nestjs-045",
+    "category": "nestjs",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "NestJS에서 커스텀 Pipe를 구현하여 특정 도메인 규칙(예: 한국 휴대폰 번호 형식 검증)을 적용하는 방법과, ValidationPipe와의 차이를 설명하라.",
+    "answer": "PipeTransform 인터페이스를 구현하여 transform(value, metadata) 메서드에서 도메인 규칙을 검증하고 변환한다. ValidationPipe가 class-validator로 일반적인 데이터 검증을 담당한다면, 커스텀 Pipe는 비즈니스 도메인에 특화된 변환/검증을 담당한다.",
+    "explanation": "커스텀 Pipe 구현: @Injectable() class KoreanPhonePipe implements PipeTransform { transform(value: string) { const phoneRegex = /^01[016789]-?\\d{3,4}-?\\d{4}$/; if (!phoneRegex.test(value)) throw new BadRequestException('유효하지 않은 한국 휴대폰 번호'); return value.replace(/-/g, ''); // 하이픈 제거 후 반환 } }. 파라미터 레벨에서 @Param('phone', KoreanPhonePipe)처럼 적용.",
+    "seniorTip": "커스텀 Pipe 활용 사례: 1) 결제 금액 파이프 — 소수점 2자리로 반올림, 음수 차단. 2) 쿠폰 코드 파이프 — 대문자로 정규화, 공백 제거. 3) 날짜 파이프 — 문자열을 Date 객체로 파싱, 과거 날짜 차단. 4) DB 조회 파이프 — id를 받아 엔티티를 조회하여 반환(존재하지 않으면 404). Pipe에서 외부 서비스 호출이 필요한 경우 @Injectable()로 DI를 받아야 한다. transform()에서 async를 반환하면 비동기 파이프로 동작한다.",
+    "deepDive": "커스텀 Pipe에서 DB 조회를 하는 EntityExistsPipe를 구현할 때, NestJS의 DI 컨테이너에서 Repository를 어떻게 주입받는가? → 파이프 레벨 vs DTO 레벨 검증의 적절한 사용 기준은? → 글로벌 파이프와 메서드 레벨 파이프가 동시에 적용될 때 실행 순서는?",
+    "tags": [
+      "pipe",
+      "custom-pipe",
+      "validation",
+      "transform",
+      "domain-rules"
+    ]
+  },
+  {
+    "id": "nestjs-046",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS Interceptor에서 응답을 변환(response transformation)하여 모든 API가 동일한 포맷({ success, data, message })으로 응답하게 만드는 방법을 설명하라.",
+    "answer": "CallHandler.next().handle()이 반환하는 Observable을 map 연산자로 변환한다. Observable.pipe(map(data => ({ success: true, data, timestamp: new Date().toISOString() })))처럼 구현하여 전역 Interceptor로 등록한다.",
+    "explanation": "ResponseTransformInterceptor 구현: intercept(context, next) { return next.handle().pipe(map(data => ({ success: true, data, statusCode: context.switchToHttp().getResponse().statusCode, timestamp: new Date().toISOString() }))); }. APP_INTERCEPTOR로 전역 등록하면 모든 핸들러 응답에 적용된다.",
+    "seniorTip": "실무 주의사항: 1) StreamableFile(파일 다운로드)은 래핑하면 파일이 깨진다 — instanceof StreamableFile 체크로 건너뛴다. 2) 핸들러가 null/undefined를 반환하면 { success: true, data: null }처럼 래핑. 3) Swagger의 @ApiOkResponse()를 래퍼 DTO로 정의해야 실제 응답 포맷이 문서화된다. 4) 파트너 API 연동 시 응답 포맷 계약이 변경되면 모든 클라이언트에 영향을 줄 수 있으므로, 외부용 API와 내부용 API를 분리하거나 버저닝을 철저히 관리한다. 5) 에러 응답은 ExceptionFilter에서 별도로 포맷을 통일하고, 성공 응답은 Interceptor가 담당하는 역할 분리가 명확해야 디버깅이 쉽다.",
+    "deepDive": "응답 변환 Interceptor가 HttpException을 catch하지 못하는 이유는? → ExceptionFilter와 Interceptor가 협력하여 성공/실패 응답 모두 동일한 봉투(envelope) 형태로 만들려면 어떤 구조가 필요한가? → 파트너사가 특정 엔드포인트는 기존 포맷(data 필드 없이 직접 객체)으로 응답받기를 원한다면 어떻게 대응하는가?",
+    "tags": [
+      "interceptor",
+      "response-transform",
+      "rxjs",
+      "api-design",
+      "envelope-pattern"
+    ]
+  },
+  {
+    "id": "nestjs-047",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS에서 REQUEST 스코프 프로바이더를 사용할 때 주의해야 할 성능 문제는?",
+    "options": [
+      "REQUEST 스코프 프로바이더는 TypeScript를 지원하지 않는다",
+      "REQUEST 스코프 프로바이더에 의존하는 모든 상위 프로바이더도 자동으로 REQUEST 스코프가 되어 DI 트리 전체가 요청마다 재생성된다",
+      "REQUEST 스코프는 WebSocket에서만 동작한다",
+      "REQUEST 스코프 프로바이더는 싱글톤보다 메모리 사용량이 적다"
+    ],
+    "answer": 1,
+    "explanation": "스코프 전파(Scope Propagation): REQUEST 스코프 프로바이더를 주입받는 서비스도 REQUEST 스코프가 된다. 예: 싱글톤 CouponService가 REQUEST 스코프 RequestContextService를 주입받으면, CouponService도 요청마다 새 인스턴스가 생성된다. DI 트리가 깊으면 매 요청마다 수십 개의 객체가 생성/소멸되어 GC 압력이 급증한다.",
+    "seniorTip": "REQUEST 스코프를 피하는 대안: 1) AsyncLocalStorage(nestjs-cls) — 싱글톤 프로바이더에서 요청별 컨텍스트에 접근 가능. DI 트리를 오염시키지 않음. 2) REQUEST 스코프를 꼭 써야 한다면 DI 트리의 최말단(컨트롤러 또는 특정 서비스)에만 사용하고, 상위 서비스(비즈니스 로직)는 싱글톤 유지. 3) REQUEST 스코프 프로바이더를 사용하는 경우 APM으로 메모리 및 GC 압력을 반드시 모니터링. 결론: 요청별 컨텍스트가 필요하면 AsyncLocalStorage가 사실상 표준이다.",
+    "deepDive": "REQUEST 스코프 프로바이더를 사용하면 왜 싱글톤 프로바이더에 주입할 수 없는가? → 대신 어떤 방법으로 싱글톤 서비스에서 요청별 데이터에 접근하는가? → TRANSIENT 스코프와 REQUEST 스코프의 차이는? 어떤 상황에 TRANSIENT가 적합한가?",
+    "tags": [
+      "request-scope",
+      "di",
+      "performance",
+      "async-local-storage",
+      "scope-propagation"
+    ]
+  },
+  {
+    "id": "nestjs-048",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "TypeORM 마이그레이션을 CI/CD 파이프라인에서 자동화할 때, migration:generate와 migration:run을 언제 실행해야 하며 K8s 환경에서 안전하게 적용하는 방법을 설명하라.",
+    "answer": "migration:generate는 개발자 로컬에서 실행하여 마이그레이션 파일을 생성 후 Git에 커밋한다. migration:run은 배포 전 K8s Job 또는 initContainer로 한 번만 실행하여 여러 Pod가 동시에 실행하는 것을 방지한다.",
+    "explanation": "CI/CD 자동화 흐름: 1) 엔티티 변경 → npm run typeorm migration:generate -- -n AddCouponExpiredAt → 파일 생성 → PR에 포함. 2) main 머지 → 빌드 → 배포 전 K8s Job으로 migration:run 실행(완료 대기). 3) Job 성공 시 Deployment 업데이트. K8s Job에 activeDeadlineSeconds와 backoffLimit을 설정하여 실패 시 배포를 중단한다.",
+    "seniorTip": "K8s Job으로 마이그레이션 실행 패턴: 1) ArgoCD PostSync Hook으로 마이그레이션 Job을 배포 직전에 실행. 2) Job 컨테이너는 앱과 동일한 이미지 사용(마이그레이션 파일 포함 보장). 3) Job 완료 후 자동 삭제(ttlSecondsAfterFinished). 4) 대용량 테이블 마이그레이션은 migration:run 실행 시간이 수십 분일 수 있으므로 activeDeadlineSeconds를 넉넉하게 설정. 5) Staging에서 실제 데이터 크기와 유사한 환경으로 먼저 실행 시간을 측정. 절대 금지: Deployment의 entrypoint에서 마이그레이션 + 앱 시작을 함께 하면 Rolling Update 시 여러 Pod가 동시에 마이그레이션을 실행하여 데이터 손상 위험이 있다.",
+    "deepDive": "마이그레이션 Job이 실행 중에 기존 앱 Pod가 살아있는 상황에서 양쪽이 호환 가능해야 하는 이유는? → 마이그레이션이 실패했을 때 TypeORM의 migration:revert가 프로덕션에서 안전하지 않은 경우는? → 대용량 테이블(1억 건 이상)의 컬럼 추가를 무중단으로 진행하기 위해 pt-online-schema-change나 gh-ost를 사용하는 이유는?",
+    "tags": [
+      "migration",
+      "ci-cd",
+      "kubernetes",
+      "typeorm",
+      "zero-downtime"
+    ]
+  },
+  {
+    "id": "nestjs-049",
+    "category": "nestjs",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@nestjs/terminus를 사용한 헬스 체크에서 livenessProbe와 readinessProbe에 서로 다른 체크 로직을 넣어야 하는 이유는?",
+    "options": [
+      "두 프로브에 같은 로직을 넣어도 동작에 차이가 없다",
+      "livenessProbe 실패는 Pod 재시작을 유발하므로 DB 체크를 포함하면 DB 장애 시 모든 Pod가 재시작 루프에 빠진다. readinessProbe는 트래픽 라우팅만 제어하므로 DB 체크를 포함해도 안전하다",
+      "readinessProbe는 K8s에서 지원하지 않는 개념이다",
+      "livenessProbe는 외부 API 체크에만 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "livenessProbe: 실패 시 K8s가 Pod를 강제 재시작한다. DB 체크를 포함하면 DB 다운 시 모든 Pod가 재시작 루프에 빠져 서비스 완전 중단이 발생한다. 간단한 프로세스 생존 확인(HTTP 200 OK)만 포함하는 것이 안전하다. readinessProbe: 실패 시 트래픽 라우팅을 중단하고 서비스에서 제외한다. Pod는 살아있지만 트래픽만 받지 않으므로 DB 체크 포함이 적절하다.",
+    "seniorTip": "실무 권장 설정: 1) /health/live (livenessProbe): return { status: 'ok' } — 단순 HTTP 응답. 2) /health/ready (readinessProbe): DB pingCheck + Redis pingCheck + 외부 PG사 연결 가능 여부. 3) startup probe(startupProbe): 앱 초기 시작 시간이 길면 livenessProbe가 너무 일찍 실패하는 것을 방지. 4) failureThreshold와 periodSeconds를 적절히 설정하여 일시적 지연(DB 느림)과 진짜 장애를 구분. 5) 헬스 체크 엔드포인트는 인증 없이 접근 가능해야 하므로 @Public() 적용 + Rate Limiting 제외.",
+    "deepDive": "readinessProbe가 실패한 Pod는 ServiceAccount의 엔드포인트에서 제거되지만 Deployment에서 삭제되지는 않는다 — 이 상태가 장기화되면 어떤 문제가 생기고, PodDisruptionBudget과 어떻게 상호작용하는가? → @nestjs/terminus의 MemoryHealthIndicator가 실제로 측정하는 값(RSS vs Heap)의 차이는? → NestJS 앱이 TypeORM connection pool을 소진했을 때 readinessProbe가 이를 감지할 수 있도록 헬스 체크를 어떻게 설계하는가?",
+    "tags": [
+      "health-check",
+      "terminus",
+      "liveness",
+      "readiness",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "nestjs-050",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에 OpenTelemetry를 통합하여 분산 트레이싱을 구현할 때, 자동 계측(Auto-instrumentation)과 수동 계측(Manual instrumentation)의 차이와 NestJS 환경에서 적용하는 방법을 설명하라.",
+    "answer": "@opentelemetry/sdk-node와 @opentelemetry/auto-instrumentations-node로 HTTP, TypeORM, Redis 등의 호출을 자동으로 계측하고, api.trace.getTracer()로 커스텀 스팬을 추가하여 비즈니스 로직 레벨의 추적을 구현한다.",
+    "explanation": "Auto-instrumentation: @opentelemetry/auto-instrumentations-node 패키지가 HTTP 요청, DB 쿼리, Redis 호출 등에 자동으로 스팬을 추가한다. 코드 변경 없이 기본 트레이싱이 가능하다. Manual instrumentation: api.trace.getActiveSpan().addEvent()나 tracer.startActiveSpan()으로 결제 승인, 쿠폰 발행 같은 비즈니스 이벤트를 스팬에 직접 추가한다.",
+    "seniorTip": "NestJS 적용 핵심: 1) OTel SDK 초기화는 반드시 main.ts 최상단에서, NestFactory 이전에 실행해야 한다. 그렇지 않으면 NestJS 모듈 로드 중의 HTTP/DB 호출이 계측되지 않는다. 2) @opentelemetry/exporter-otlp-http로 Jaeger, Zipkin, Datadog, Grafana Tempo로 트레이스를 내보낸다. 3) 커스텀 스팬 속성(span.setAttribute('payment.amount', 5000))으로 비즈니스 컨텍스트를 추가하면 트레이스로 장애 원인을 훨씬 빠르게 파악할 수 있다. 4) SQS 메시지 처리 시 메시지 속성에 W3C Trace Context 헤더(traceparent)를 포함시켜 서비스 간 트레이스를 연결한다. 5) 샘플링 전략: 개발 환경은 100%, 프로덕션은 10-20%로 설정하여 오버헤드를 조절한다.",
+    "deepDive": "OpenTelemetry의 Context Propagation이 NestJS 비동기 코드(AsyncLocalStorage)와 상호작용하는 방식은? → SQS 메시지를 통해 서비스 간 Trace Context를 전파하는 방법은? 표준 W3C traceparent 헤더를 SQS 메시지 속성에 포함시키는 방법은? → 트레이스 데이터가 과도하게 수집되면 어떤 비용이 발생하고, Tail-based Sampling과 Head-based Sampling의 차이는?",
+    "tags": [
+      "opentelemetry",
+      "tracing",
+      "observability",
+      "distributed-tracing",
+      "auto-instrumentation"
+    ]
+  },
+  {
+    "id": "nestjs-051",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS 마이크로서비스에서 gRPC 트랜스포트를 사용할 때, Protobuf 정의와 TypeScript 타입 생성, 그리고 스트리밍 RPC(Server-side streaming) 구현 방법을 설명하라.",
+    "answer": "proto 파일에 service와 message를 정의하고 @grpc/proto-loader로 로드한다. ts-proto 또는 protoc-gen-ts로 TypeScript 인터페이스를 자동 생성하고, @GrpcMethod() 또는 @GrpcStreamMethod()로 NestJS Resolver를 구현한다.",
+    "explanation": "gRPC 설정: ClientGrpcProxy를 사용하여 클라이언트를 구성하고, @Client()로 gRPC 채널을 주입받는다. Server-side streaming: 서버에서 Observable을 반환하면 클라이언트가 스트림을 구독한다. 예: 대용량 보고서 생성 시 진행률을 스트리밍으로 전송.",
+    "seniorTip": "gRPC 실무 고려사항: 1) Protobuf 스키마를 별도 monorepo 패키지로 관리하여 클라이언트/서버가 동일한 스키마를 공유. 2) gRPC-web — 브라우저는 HTTP/2 양방향 스트리밍을 직접 지원하지 않으므로 grpc-web 프록시(Envoy)가 필요. 3) 서비스 간 gRPC 통신에 mTLS를 적용하면 Istio mTLS와 중복될 수 있으므로 레이어를 조율. 4) gRPC 헬스 체크 프로토콜(grpc.health.v1.Health)을 K8s readinessProbe에 활용. 5) Deadline Propagation: 클라이언트의 gRPC 호출 deadline을 하위 서비스 호출에도 전파하여 전체 요청 체인의 타임아웃을 제어한다.",
+    "deepDive": "gRPC에서 Deadline Propagation이 HTTP REST 방식 대비 어떻게 더 효과적으로 전체 서비스 체인의 타임아웃을 관리하는가? → gRPC의 Bidirectional Streaming을 NestJS에서 구현할 때 RxJS Subject를 어떻게 활용하는가? → Protobuf backward compatibility 규칙(필드 번호 재사용 금지 등)을 위반하면 어떤 문제가 발생하는가?",
+    "tags": [
+      "grpc",
+      "protobuf",
+      "microservices",
+      "streaming",
+      "typescript"
+    ]
+  },
+  {
+    "id": "nestjs-052",
+    "category": "nestjs",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "NestJS에서 @Module()의 forwardRef()는 순환 의존성 문제를 완전히 해결하므로, 설계 개선 없이 사용해도 된다.",
+    "answer": "X",
+    "explanation": "forwardRef()는 NestJS 초기화 순서 문제만 우회할 뿐, 논리적 순환 의존성은 그대로 존재한다. 양방향으로 의존하는 두 서비스는 한쪽 변경이 다른 쪽에 영향을 주어 테스트가 어렵고, 결합도가 높아져 독립 배포가 불가능해진다. 근본 해결: 공통 기능 추출, 이벤트 기반 전환, DIP 적용이 필요하다.",
+    "seniorTip": "forwardRef()를 쓰고 싶은 욕구가 생기는 순간이 설계를 재검토할 타이밍이다. 실무에서 순환 의존성이 자주 발생하는 패턴: 1) UserService가 OrderService의 '마지막 주문'을 조회, OrderService가 UserService의 '사용자 정보'를 조회 — 두 서비스가 서로의 책임을 침범하고 있다는 신호. 2) 해결: 이벤트 기반으로 전환하거나, UserOrderQueryService를 별도 모듈로 추출. Turborepo 모노레포에서는 패키지 간 의존성 방향을 단방향으로 강제하는 tsconfig references로 순환 의존을 빌드 타임에 차단할 수 있다.",
+    "deepDive": "forwardRef()를 사용했을 때 단위 테스트에서 발생하는 구체적인 어려움은? → 이벤트 기반(EventEmitter2)으로 순환 의존을 제거할 때 트레이드오프(동기 호출 vs 비동기 이벤트, 추적 어려움)는? → NestJS CLI의 nest g module 명령으로 생성한 모듈 구조에서 순환 의존이 발생하지 않는 올바른 모듈 경계 설계 원칙은?",
+    "tags": [
+      "circular-dependency",
+      "forward-ref",
+      "module-design",
+      "di",
+      "architecture"
+    ]
+  },
+  {
+    "id": "nestjs-053",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NestJS에서 @nestjs/config의 registerAs()를 사용하여 네임스페이스 설정을 만들 때의 장점은?",
+    "options": [
+      "환경 변수 파일을 여러 개 읽을 수 있다",
+      "설정을 도메인별로 분리하여 타입 안전하게 주입받을 수 있고, 테스트 시 특정 설정 네임스페이스만 모킹하기 쉽다",
+      "registerAs()를 사용하면 환경 변수 검증이 자동화된다",
+      "registerAs()는 비동기 설정 로딩만을 위한 기능이다"
+    ],
+    "answer": 1,
+    "explanation": "registerAs('database', () => ({ host: process.env.DB_HOST, port: parseInt(process.env.DB_PORT) }))로 'database' 네임스페이스를 만들면, @Inject(databaseConfig.KEY) config: ConfigType<typeof databaseConfig>로 타입 안전하게 주입받는다. process.env.DB_HOST 대신 config.host처럼 명확한 타입으로 접근 가능하다.",
+    "seniorTip": "실무 패턴: 1) 도메인별 설정 분리: databaseConfig, redisConfig, pgConfig, s3Config 등. 2) 각 설정 모듈에 class-validator 기반 검증을 추가하면 앱 시작 시 필수 환경 변수 누락을 즉시 감지. 3) 테스트에서 특정 네임스페이스만 오버라이드: overrideProvider(databaseConfig.KEY).useValue(testDbConfig). 4) ConfigModule.forFeature(databaseConfig)로 특정 모듈에만 설정을 노출하여 모듈 캡슐화 강화. 5) 설정 객체가 타입화되어 있으므로 IDE 자동 완성이 지원되어 오타를 방지한다.",
+    "deepDive": "ConfigModule.forRootAsync()로 외부에서 설정 값을 비동기적으로 로드해야 하는 시나리오(AWS Secrets Manager에서 런타임에 시크릿 조회)를 구체적으로 설명하면? → registerAs()로 만든 설정이 TypeOrmModule.forRootAsync()의 useFactory에서 inject로 참조되는 방식은? → 마이크로서비스 환경에서 여러 앱이 같은 설정 패키지를 공유할 때 환경별 오버라이드는 어떻게 구현하는가?",
+    "tags": [
+      "config",
+      "register-as",
+      "type-safety",
+      "environment-variables",
+      "testing"
+    ]
+  },
+  {
+    "id": "nestjs-054",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS E2E 테스트에서 supertest를 사용할 때, 데이터베이스 격리와 테스트 데이터 관리를 위한 패턴을 설명하라.",
+    "answer": "각 테스트 suite 전에 테스트 DB를 초기화(TRUNCATE 또는 Migration 재실행)하고, beforeEach에서 필요한 시드 데이터를 삽입한다. testcontainers로 테스트 전용 MySQL 컨테이너를 사용하면 CI 환경과 완전히 격리된다.",
+    "explanation": "E2E 테스트 격리 패턴: 1) afterEach에서 테스트 데이터 롤백(트랜잭션으로 감싸고 테스트 후 롤백). 2) 또는 beforeAll에서 테스트 DB 초기화, afterAll에서 연결 종료. 3) testcontainers 사용 시 MySQL 컨테이너를 테스트 코드가 제어하므로 환경 의존성이 없다.",
+    "seniorTip": "실무 E2E 전략: 1) jest --runInBand로 직렬 실행 — 병렬 실행 시 테스트 DB에서 데이터 충돌. 2) 각 테스트 파일마다 별도 트랜잭션을 열고, afterEach에서 ROLLBACK — 빠르고 깔끔한 격리. 3) 결제 E2E에서 외부 PG사 API는 nock으로 HTTP 레벨 모킹. 4) 인증이 필요한 E2E: beforeAll에서 로그인하여 JWT 토큰을 저장, 이후 모든 요청에 Authorization 헤더로 포함. 5) 성능: testcontainers는 첫 실행이 느리므로 CI 캐시를 활용. SQLite in-memory는 MySQL과 동작이 다를 수 있으므로 중요한 테스트는 실제 MySQL 사용.",
+    "deepDive": "E2E 테스트에서 각 테스트 케이스를 DB 트랜잭션으로 감싸고 afterEach에서 롤백하는 방법을 TypeORM DataSource.transaction()으로 어떻게 구현하는가? → testcontainers로 MySQL 컨테이너를 생성할 때 Jest의 globalSetup/globalTeardown에서 처리해야 하는 이유는? → NestJS E2E 테스트에서 SQS 메시지 발행을 모킹하지 않고 로컬 ElasticMQ로 실제 동작을 검증하는 방법은?",
+    "tags": [
+      "e2e-testing",
+      "supertest",
+      "testcontainers",
+      "database-isolation",
+      "jest"
+    ]
+  },
+  {
+    "id": "nestjs-055",
+    "category": "nestjs",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "NestJS에서 DiscoveryService를 활용하여 특정 데코레이터가 붙은 프로바이더를 동적으로 수집하고 등록하는 패턴을 설명하라. 이 패턴이 필요한 실제 사례는?",
+    "answer": "onModuleInit()에서 DiscoveryService.getProviders()로 모든 프로바이더를 순회하고, Reflect.getMetadata()로 커스텀 데코레이터 메타데이터를 읽어 특정 데코레이터가 붙은 프로바이더를 Map에 동적으로 등록한다.",
+    "explanation": "구현: 1) @SqsMessageHandler('order-created') 커스텀 데코레이터에 SetMetadata('SQS_HANDLER', queueName)을 설정. 2) SqsConsumerService의 onModuleInit에서 DiscoveryService.getProviders().filter()로 'SQS_HANDLER' 메타데이터가 있는 프로바이더를 수집. 3) 각 핸들러를 queueName → handler Map에 등록. 4) SQS 메시지 수신 시 queueName으로 핸들러 조회 후 실행.",
+    "seniorTip": "DiscoveryService 패턴을 사용하는 실제 사례: 1) SQS 핸들러 자동 등록(@SqsMessageHandler). 2) 이벤트 핸들러 자동 등록(@EventHandler). 3) Strategy 패턴에서 전략 자동 수집(@CouponPublisher). 4) @nestjs/schedule의 @Cron() 메타데이터 수집. 5) @nestjs/swagger의 API 메타데이터 수집. 이 패턴의 핵심 장점: 새 핸들러/전략 추가 시 데코레이터만 붙이면 자동 등록되므로 OCP 준수. 단, 메타데이터 키 충돌과 DiscoveryService 초기화 타이밍(onModuleInit에서 실행)에 주의해야 한다.",
+    "deepDive": "DiscoveryService.getProviders()가 반환하는 InstanceWrapper에서 실제 클래스 인스턴스를 꺼내는 방법은? → onModuleInit이 아닌 onApplicationBootstrap에서 수집해야 하는 경우는 어떤 때인가? → DiscoveryService로 수집한 프로바이더가 REQUEST 스코프인 경우 getInstance()로 직접 인스턴스를 가져올 수 없는 이유는? → 이 패턴이 NestJS가 아닌 프레임워크에서도 동일하게 구현 가능한가?",
+    "tags": [
+      "discovery-service",
+      "metadata",
+      "decorator",
+      "dynamic-registration",
+      "ocp"
+    ]
   }
 ]

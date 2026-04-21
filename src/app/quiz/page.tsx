@@ -61,31 +61,32 @@ export default function QuizPage() {
       timestamp: Date.now(),
     });
 
-    // AI Feedback for short-answer
-    if (q.type === "short-answer") {
-      const apiKey = getApiKey();
-      if (apiKey) {
-        setLoadingAI(true);
-        try {
-          const res = await fetch("/api/feedback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              question: q.question,
-              correctAnswer: q.answer,
-              userAnswer,
-              explanation: q.explanation,
-              seniorTip: q.seniorTip,
-              apiKey,
-            }),
-          });
-          const data = await res.json();
-          setAiFeedback(data.feedback || "");
-        } catch {
-          setAiFeedback("");
-        }
-        setLoadingAI(false);
-      }
+    // AI Feedback disabled temporarily - will be re-enabled
+    // eslint-disable-next-line no-constant-condition
+    if (false && q.type === "short-answer") {
+      // const apiKey = getApiKey();
+      // if (apiKey) {
+      //   setLoadingAI(true);
+      //   try {
+      //     const res = await fetch("/api/feedback", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify({
+      //         question: q.question,
+      //         correctAnswer: q.answer,
+      //         userAnswer,
+      //         explanation: q.explanation,
+      //         seniorTip: q.seniorTip,
+      //         apiKey,
+      //       }),
+      //     });
+      //     const data = await res.json();
+      //     setAiFeedback(data.feedback || "");
+      //   } catch {
+      //     setAiFeedback("");
+      //   }
+      //   setLoadingAI(false);
+      // }
     }
   }, [q, selectedOption, userAnswer]);
 

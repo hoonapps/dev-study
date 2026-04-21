@@ -19,7 +19,9 @@ export type Category =
   | "argocd"
   | "opensearch"
   | "algorithm"
-  | "design-pattern";
+  | "design-pattern"
+  | "java"
+  | "spring";
 
 export interface Question {
   id: string;
@@ -68,6 +70,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   opensearch: "OpenSearch",
   algorithm: "Algorithm/DS",
   "design-pattern": "Design Pattern",
+  java: "Java",
+  spring: "Spring",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -90,6 +94,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   opensearch: "#005eb8",
   algorithm: "#e11d48",
   "design-pattern": "#0891b2",
+  java: "#ed8b00",
+  spring: "#6db33f",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

@@ -1238,5 +1238,320 @@
       "observability",
       "sampling"
     ]
+  },
+  {
+    "id": "aws-061",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS PrivateLink, VPC Peering, Transit Gateway의 차이를 설명하고, 각각의 적합한 사용 시나리오를 제시하라.",
+    "answer": "VPC Peering은 1:1 VPC 연결로 CIDR이 겹치면 불가. Transit Gateway는 허브 앤 스포크 방식으로 N개 VPC를 중앙에서 연결. PrivateLink는 서비스를 NLB 뒤에 두고 소비자 VPC에서 ENI(Interface Endpoint)로 접근하며 CIDR 겹침 문제 없음.",
+    "explanation": "VPC Peering: 단순 1:1 연결. 전이적 라우팅 불가(A-B-C 연결 시 A에서 C로 직접 통신 불가). 비용: 데이터 전송 요금만. Transit Gateway: 중앙 허브로 수백 개 VPC/VPN 연결. 전이적 라우팅 지원. 비용: 연결당 시간 요금 + 데이터 처리 요금. PrivateLink: 서비스 단위 노출. CIDR 겹침 OK. NLB 필요. 서비스 소비자는 인터페이스 엔드포인트만 알면 됨. AWS 서비스(S3, DynamoDB 등) 접근에도 Gateway/Interface Endpoint로 활용.",
+    "deepDive": "니콘내콘에서 마이크로서비스 간 통신 아키텍처에 PrivateLink를 도입하면 어떤 장점이 있나? → 서비스 A의 VPC CIDR이 서비스 B와 겹쳐도 PrivateLink로 통신 가능. 서비스 팀이 독립적으로 VPC를 관리하면서 서비스를 노출하고 소비 가능. 하지만 단점은? → NLB를 각 서비스마다 생성해야 하므로 비용 증가. Interface Endpoint도 AZ당 ENI가 생성되어 추가 비용. VPC Peering 대비 복잡도 높음. 그러면 니콘내콘 규모에서 Transit Gateway가 유리한 경우는? → 개발/스테이징/프로덕션 VPC + 공통 인프라 VPC(Vault, 모니터링)를 연결할 때 Transit Gateway로 중앙화하면 Peering 조합보다 관리가 단순. Terraform으로 aws_ec2_transit_gateway와 aws_ec2_transit_gateway_vpc_attachment를 관리.",
+    "seniorTip": "비용 최적화: 1) 같은 리전 내 같은 AZ의 VPC Peering은 데이터 전송 무료. 2) Transit Gateway는 AZ 경계 통신에도 요금 발생. 3) PrivateLink의 Interface Endpoint는 AZ당 $0.01/hr. 자주 쓰는 AWS 서비스(S3, ECR, Secrets Manager)는 모두 Endpoint 설정하면 비용 절감과 보안 강화 동시 달성.",
+    "tags": [
+      "privatelink",
+      "vpc-peering",
+      "transit-gateway",
+      "networking",
+      "vpc-endpoint"
+    ]
+  },
+  {
+    "id": "aws-062",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "EKS Fargate의 제약 중 프로덕션 아키텍처에서 가장 자주 문제가 되는 것은?",
+    "options": [
+      "Fargate는 EKS에서만 사용 가능하다",
+      "DaemonSet이 지원되지 않아 노드 수준 에이전트(Datadog Agent, Fluentd 등)를 모든 Pod에 사이드카로 추가해야 한다",
+      "Fargate는 IPv4만 지원한다",
+      "Fargate Pod는 최대 1개의 컨테이너만 포함할 수 있다"
+    ],
+    "answer": 1,
+    "explanation": "EKS Fargate의 주요 제약: 1) DaemonSet 미지원: 각 Fargate Pod가 격리된 마이크로VM이라 노드 공유 개념이 없음. 2) EBS 볼륨 직접 마운트 불가(EFS 가능). 3) Privileged 컨테이너 미지원. 4) Pod당 최대 4vCPU/30GB. 5) 특정 네트워킹 기능 제한(hostNetwork 불가). 6) EC2 인스턴스 대비 가격이 높을 수 있음. DaemonSet이 없으므로 Datadog Agent는 Fargate 전용 사이드카 방식으로 구성.",
+    "deepDive": "Fargate에서 Datadog Agent를 사이드카로 구성할 때 발생하는 문제는? → 1) 모든 Pod의 spec에 사이드카 컨테이너를 추가해야 함. 관리 부담. MutatingAdmissionWebhook으로 자동 주입 가능(Datadog Admission Controller). 2) 사이드카 Agent가 Pod의 CPU/메모리 requests를 소비. 3) 노드 레벨 메트릭(Node CPU, 메모리)은 Fargate에서 수집 불가. 4) 비용: 사이드카 리소스만큼 Fargate 요금 추가. 그러면 Fargate와 EC2 노드를 혼용하는 최적 전략은? → stateless 웹 서비스: Fargate(운영 부담 최소화). DaemonSet이 필요한 인프라 서비스(모니터링): EC2 노드 전용. 비용 집약적 배치 처리: EC2 Spot 노드.",
+    "seniorTip": "EKS Fargate Logging은 Fluent Bit 사이드카를 AWS가 자동으로 주입하는 aws-logging ConfigMap으로 설정. CloudWatch Logs로 자동 전달 가능. Fargate의 컨테이너 이미지는 ECR에서만 효율적으로 받을 수 있도록 VPC Endpoint(ECR, S3)를 반드시 설정하자.",
+    "tags": [
+      "eks",
+      "fargate",
+      "daemonset",
+      "sidecar",
+      "datadog",
+      "limitations"
+    ]
+  },
+  {
+    "id": "aws-063",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Distro for OpenTelemetry(ADOT)와 표준 OpenTelemetry의 차이, 그리고 EKS에서의 구성 방법을 설명하라.",
+    "answer": "ADOT는 AWS가 지원하는 OpenTelemetry 배포판으로 AWS X-Ray, CloudWatch, AMP(Amazon Managed Prometheus) 등 AWS 백엔드로 텔레메트리를 전송하는 컴포넌트가 사전 통합되어 있다. EKS에서 ADOT Operator를 사용하면 OpenTelemetryCollector CRD로 수집기를 선언적으로 배포할 수 있다.",
+    "explanation": "ADOT 구성요소: 1) ADOT Collector: OTel Collector에 AWS 익스포터 추가(xray, awsemf, prometheus 등). 2) ADOT Operator: K8s에서 Collector를 CRD로 관리. 3) auto-instrumentation: Java, Python, Node.js 앱에 코드 변경 없이 OTel SDK 자동 주입(K8s Mutating Webhook). EKS에서 구성: ADOT Operator를 EKS Add-on으로 설치. OpenTelemetryCollector CR 생성. IRSA로 X-Ray/CloudWatch 권한 부여.",
+    "deepDive": "ADOT auto-instrumentation으로 NestJS(Node.js) 앱을 계측하면 어떤 데이터가 수집되나? → HTTP 요청 트레이스(req/res), DB 쿼리(TypeORM, MySQL), Redis 명령, 외부 HTTP 호출. 코드 변경 없이 Pod에 OTEL_NODE_ENABLED_INSTRUMENTATIONS 환경변수와 @opentelemetry/auto-instrumentations-node가 자동 주입. 데이터가 X-Ray와 Datadog에 동시에 가야 한다면? → ADOT Collector에서 두 익스포터를 동시에 설정. pipeline에서 xray 익스포터와 otlp(Datadog) 익스포터로 traces를 팬아웃. 이렇게 하면 X-Ray의 서비스 맵과 Datadog의 APM을 동시에 활용 가능하다.",
+    "seniorTip": "ADOT Operator를 EKS Add-on으로 설치하면 AWS가 버전 관리를 해준다. Terraform에서 aws_eks_addon 리소스로 adot를 관리. 단, ADOT Operator 권한(ClusterRole)이 상당히 넓으므로 IRSA로 권한을 최소화하고 네트워크 정책으로 Collector의 외부 통신을 제한하는 것이 보안 best practice.",
+    "tags": [
+      "adot",
+      "opentelemetry",
+      "eks",
+      "x-ray",
+      "observability",
+      "auto-instrumentation"
+    ]
+  },
+  {
+    "id": "aws-064",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "CloudFront Functions와 Lambda@Edge의 차이로 올바른 것은?",
+    "options": [
+      "CloudFront Functions는 Lambda@Edge보다 실행 시간이 길고 메모리가 많다",
+      "CloudFront Functions는 뷰어 요청/응답에서만 실행되며 1ms 미만의 초저지연이 특징이다. Lambda@Edge는 오리진 요청/응답에서도 실행되며 더 많은 리소스와 기능을 제공한다",
+      "Lambda@Edge는 CloudFront 없이 단독으로 실행된다",
+      "CloudFront Functions는 JavaScript만 지원하고 Lambda@Edge는 지원 언어가 없다"
+    ],
+    "answer": 1,
+    "explanation": "CloudFront Functions: Viewer Request/Response에서만 실행. 실행 시간 < 1ms. 메모리 2MB. JavaScript(ECMAScript 5.1)만 지원. 외부 네트워크 호출 불가. URL 재작성, 헤더 조작, 간단한 인증에 적합. 비용: Lambda@Edge의 1/6. Lambda@Edge: 4개 이벤트 포인트 모두 지원. 실행 시간 최대 5초(Viewer), 30초(Origin). 메모리 최대 10GB. Node.js, Python 지원. 네트워크 호출 가능. A/B 테스트, 서버 사이드 렌더링, 동적 오리진 선택에 적합.",
+    "deepDive": "실무에서 CloudFront Functions vs Lambda@Edge 선택 기준은? → 1) 헤더 추가/제거, URL 정규화, 기본 인증(Basic Auth): CloudFront Functions. 비용 저렴하고 레이턴시 최소. 2) JWT 검증(외부 JWKS 조회 필요): Lambda@Edge. 네트워크 호출 가능. 3) A/B 테스트(쿠키 기반 오리진 선택): Lambda@Edge. 오리진 요청에서 실행. 4) 이미지 리사이징(오리진 응답): Lambda@Edge. 니콘내콘 기프티콘 이미지 최적화에 활용 가능. 5) 지리적 차단(CloudFront가 Country 헤더를 제공): CloudFront Functions로 충분. Lambda@Edge에서 주의사항은? → 함수가 us-east-1에 배포됨. IAM 역할이 edgelambda.amazonaws.com을 Principal로 포함해야 함. 배포에 수분이 걸림.",
+    "seniorTip": "CloudFront Functions는 KV Store(CloudFront KeyValueStore)와 연동하여 런타임에 설정을 읽을 수 있다(2023년 출시). 이로 인해 코드 재배포 없이 차단 IP 목록이나 리다이렉트 규칙을 동적으로 업데이트 가능. Lambda@Edge의 유지보수 비용과 복잡성을 많이 줄일 수 있다.",
+    "tags": [
+      "cloudfront-functions",
+      "lambda-edge",
+      "cdn",
+      "edge-computing",
+      "performance"
+    ]
+  },
+  {
+    "id": "aws-065",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "S3 Multipart Upload의 동작 원리와 대용량 파일 업로드에서 반드시 사용해야 하는 이유를 설명하라.",
+    "answer": "Multipart Upload는 파일을 여러 파트로 분할하여 병렬로 업로드하고 최종적으로 합쳐 하나의 객체를 생성한다. 100MB 이상 파일에서 단순 PUT의 네트워크 오류 위험과 속도 한계를 극복하는 방식이다.",
+    "explanation": "Multipart Upload 단계: 1) CreateMultipartUpload로 Upload ID 발급. 2) 각 파트(최소 5MB, 최대 5GB)를 UploadPart로 병렬 업로드. 파트 번호(1-10000)와 ETag 수신. 3) CompleteMultipartUpload로 모든 파트를 합쳐 최종 객체 생성. 4) 실패 시 AbortMultipartUpload로 임시 저장소 정리. S3 SDK(aws-sdk)는 자동으로 Multipart를 처리(기본 100MB 임계값).",
+    "deepDive": "니콘내콘에서 기프티콘 이미지가 아닌 대용량 파일(동영상, 데이터 덤프 등)을 S3에 업로드할 때 Multipart Upload 없이 단순 PUT을 쓰면 어떤 문제가 생기나? → 1) 파일 크기 한계: 단일 PUT은 최대 5GB. 2) 네트워크 불안정 시 전체 재업로드 필요. 3) 속도: 단일 스트림의 업로드 속도 한계. Multipart에서 파트별 재시도로 실패한 파트만 재전송 가능. 그러면 미완료 Multipart Upload가 누적되면? → S3 비용이 발생하는 임시 저장소가 쌓인다. S3 Lifecycle 정책으로 AbortIncompleteMultipartUpload(예: 7일 후 자동 중단)를 설정해야 한다. Terraform으로 aws_s3_bucket_lifecycle_configuration에 이 규칙을 반드시 포함하는 게 best practice다.",
+    "seniorTip": "Presigned URL을 활용한 클라이언트 직접 업로드: 서버가 각 파트에 대한 Presigned URL을 생성하고 클라이언트가 직접 S3에 Multipart Upload. 서버를 통하지 않아 대역폭 절감. NestJS에서 @aws-sdk/client-s3의 createPresignedPost 또는 S3RequestPresigner로 구현. S3 Transfer Acceleration과 함께 사용하면 글로벌 사용자의 업로드 속도를 추가로 개선.",
+    "tags": [
+      "s3",
+      "multipart-upload",
+      "large-file",
+      "presigned-url",
+      "performance"
+    ]
+  },
+  {
+    "id": "aws-066",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "S3 Intelligent-Tiering의 비용 최적화 원리와 적합한 사용 시나리오는?",
+    "options": [
+      "Intelligent-Tiering은 파일을 압축하여 저장 비용을 줄인다",
+      "액세스 패턴을 자동으로 모니터링하여 자주 쓰이는 객체는 Frequent Access, 30일 이상 미사용은 Infrequent Access, 90일+ 미사용은 Archive 티어로 자동 이동한다",
+      "Intelligent-Tiering은 S3 Standard보다 항상 비용이 적다",
+      "Intelligent-Tiering은 100MB 이하 파일에 가장 효과적이다"
+    ],
+    "answer": 1,
+    "explanation": "Intelligent-Tiering: 1) 모니터링 비용: 1000개 객체당 $0.0025/월. 2) Frequent Access: Standard와 동일 비용. 3) Infrequent Access(30일 미사용): ~40% 저렴. 4) Archive Instant Access(90일 미사용): ~68% 저렴. 5) Archive/Deep Archive(180일+): 가장 저렴하지만 복구 시간 발생. 128KB 미만 파일은 자동으로 Frequent Access에 유지(모니터링 비용이 저장 비용보다 비쌀 수 있음).",
+    "deepDive": "니콘내콘에서 S3에 저장되는 기프티콘 이미지의 저장 전략을 설계한다면? → 최근 업로드된 기프티콘 이미지는 자주 접근(Frequent Access). 유효기간이 지난 기프티콘 이미지는 거의 접근 안 함 → Intelligent-Tiering으로 자동 Infrequent Access 전환. 비용 계산: 100GB 데이터가 있고 80%가 Infrequent라면 Standard 대비 약 32% 절감. 단, 모니터링 비용(객체 수 × $0.0025)을 감안해야 함. 파일 수가 매우 많고(1억 개 이상) 개당 크기가 작으면? → 모니터링 비용이 저장 비용을 초과할 수 있어 수동 Lifecycle 정책이 더 경제적일 수 있다. S3 Storage Lens로 전체 현황을 분석 후 결정.",
+    "seniorTip": "Terraform으로 S3 Intelligent-Tiering 설정: aws_s3_bucket_intelligent_tiering_configuration 리소스로 Archive 티어 활성화. 기본 Intelligent-Tiering은 Archive 티어가 비활성화. 비용 절감 극대화를 위해 90일 Archive Instant와 180일 Deep Archive를 활성화. S3 Storage Lens 대시보드로 티어별 저장 용량을 모니터링하여 전략을 검증하자.",
+    "tags": [
+      "s3",
+      "intelligent-tiering",
+      "cost-optimization",
+      "storage-class",
+      "lifecycle"
+    ]
+  },
+  {
+    "id": "aws-067",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS CloudTrail Lake와 기존 CloudTrail의 차이, 그리고 보안 이벤트 분석에서의 활용 방법을 설명하라.",
+    "answer": "CloudTrail Lake는 CloudTrail 이벤트를 Event Data Store에 SQL로 조회 가능한 형태로 저장한다. 기존 CloudTrail은 S3에 JSON 파일로 저장하고 Athena로 분석해야 했으나, CloudTrail Lake는 관리형 스토리지에 직접 SQL 쿼리를 실행한다.",
+    "explanation": "CloudTrail Lake 특징: 1) 보존 기간: 7년까지. 2) SQL 쿼리: 복잡한 이벤트 분석을 Athena + Glue 설정 없이 직접 실행. 3) 여러 계정/조직의 이벤트를 단일 Data Store에 통합. 4) 이벤트 유형: Management, Data, Network Activity, Insights. 5) 비용: 스토리지($0.023/GB/월) + 조회($0.005/GB 스캔). 기존 CloudTrail: S3에 저장, Athena로 분석, Glue Crawler로 파티션 관리 필요. 더 복잡하지만 S3 비용이 상대적으로 저렴.",
+    "deepDive": "CloudTrail Lake에서 보안 이벤트를 분석하는 실제 쿼리 예시는? → 특정 기간 동안 특정 IAM 사용자가 실행한 모든 API 호출: SELECT eventName, sourceIPAddress, requestParameters FROM <event-data-store-arn> WHERE userIdentity.arn = 'arn:aws:iam::123456:user/dev' AND eventTime > '2024-01-01'. 루트 계정 사용 탐지: WHERE userIdentity.type = 'Root'. 비정상 리전에서의 접근: WHERE awsRegion NOT IN ('ap-northeast-2', 'us-east-1'). AWS Config Conformance Pack과의 차이는? → Config는 리소스 상태 변화(설정 컴플라이언스)를 추적. CloudTrail은 API 호출(누가 무엇을 했는가)을 추적. 보안 감사에서 두 서비스를 함께 사용.",
+    "seniorTip": "CloudTrail Lake + Amazon Security Lake를 연동하면 CloudTrail 이벤트를 OCSF(Open Cybersecurity Schema Framework) 형식으로 표준화하여 SIEM 도구(Splunk, Datadog Security 등)로 통합 분석 가능. 니콘내콘처럼 PCI-DSS나 개인정보보호법 컴플라이언스가 필요한 서비스는 CloudTrail Lake 7년 보존으로 감사 요구를 충족하자.",
+    "tags": [
+      "cloudtrail-lake",
+      "cloudtrail",
+      "security",
+      "audit",
+      "sql-query",
+      "compliance"
+    ]
+  },
+  {
+    "id": "aws-068",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS Control Tower의 Landing Zone이 멀티 계정 거버넌스에서 해결하는 핵심 문제는?",
+    "options": [
+      "Control Tower는 단일 AWS 계정의 비용을 최적화한다",
+      "Control Tower는 Organizations 기반으로 OU 구조, SCP, 가드레일을 자동화하여 새 계정 생성 시 보안/컴플라이언스 정책이 자동으로 적용되는 Landing Zone을 제공한다",
+      "Control Tower는 멀티 리전 배포만 관리한다",
+      "Control Tower는 IAM 역할을 자동으로 삭제한다"
+    ],
+    "answer": 1,
+    "explanation": "Control Tower Landing Zone: 1) Account Factory: 표준화된 새 계정 자동 생성. 2) Organizational Units(OU): Core(Log Archive, Audit 계정), Custom OU 자동 구성. 3) 가드레일(SCP + Config Rules): 필수 가드레일(루트 MFA 강제, CloudTrail 비활성화 금지 등) + 강력 권고 가드레일. 4) AWS IAM Identity Center(SSO) 자동 통합. 5) Log Archive 계정: 모든 계정의 CloudTrail, Config 로그 중앙 저장.",
+    "deepDive": "Control Tower가 없을 때 멀티 계정 거버넌스의 어려움은? → 각 계정마다 수동으로 CloudTrail 활성화, SCP 적용, IAM 기본 설정을 해야 함. 새 계정이 만들어질 때마다 보안 누락 위험. Control Tower의 Account Factory를 Terraform으로 자동화하면? → Account Factory for Terraform(AFT)을 사용. 새 계정 요청이 Git 커밋으로 제출되면 Terraform이 자동으로 계정을 생성하고 기본 설정을 적용. 하지만 기존에 이미 여러 계정이 있는 상황에서 Control Tower를 도입하면? → Account Enrollment 기능으로 기존 계정을 Control Tower에 등록 가능하지만, 기존 리소스와의 충돌(예: 기존 CloudTrail이 이미 있는 경우) 처리가 필요하다.",
+    "seniorTip": "Control Tower 도입 결정 기준: 5개 이상의 AWS 계정을 운영하거나 앞으로 계정이 늘어날 예정이면 투자 가치가 있다. 단일 계정이나 2-3개 계정은 수동 SCP + Organizations만으로 충분. IAM Identity Center(SSO)는 Control Tower와 별개로도 사용 가능하므로 먼저 SSO만 도입하는 것도 좋은 시작점이다.",
+    "tags": [
+      "control-tower",
+      "landing-zone",
+      "multi-account",
+      "organizations",
+      "governance",
+      "scp"
+    ]
+  },
+  {
+    "id": "aws-069",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS IAM Identity Center(구 SSO)의 Permission Set과 기존 IAM 역할 기반 접근의 차이, 그리고 멀티 계정 환경에서의 장점을 설명하라.",
+    "answer": "IAM Identity Center는 중앙에서 사용자/그룹에 여러 AWS 계정의 Permission Set을 할당한다. 각 계정에 IAM 사용자를 별도로 생성할 필요 없이 SSO 포털에서 하나의 자격증명으로 여러 계정에 접근 가능하다.",
+    "explanation": "Permission Set: CloudFormation으로 각 계정에 IAM 역할을 자동 생성. 최대 인라인 정책 + 관리형 정책 조합. 사용자 로그인 → IdP(Active Directory, Okta 등) 인증 → IAM Identity Center → 계정별 임시 자격증명 발급. CLI: aws sso login으로 브라우저 인증 후 aws configure sso로 프로파일 설정. 임시 자격증명은 1-12시간 유효.",
+    "deepDive": "IAM Identity Center와 기존 IAM cross-account role 방식의 실무 차이는? → 기존 방식: 각 계정에 IAM 사용자 + 액세스 키 발급. 키 로테이션 관리 부담. 퇴직자 처리가 각 계정마다 필요. Identity Center: 중앙에서 사용자 비활성화 시 모든 계정 접근이 즉시 차단. 임시 자격증명이라 키 유출 시 짧은 유효기간으로 피해 최소화. SCIM으로 Okta/AD와 자동 동기화 가능. Terraform에서 Identity Center를 관리하려면? → aws_ssoadmin_permission_set, aws_ssoadmin_account_assignment 리소스 사용. 그러나 Identity Center가 별도 계정(Management Account)에 있어 Terraform 실행 시 profile 전환이 필요하다. 이를 assume_role로 처리하는 패턴을 Terragrunt로 구현하면 효율적이다.",
+    "seniorTip": "니콘내콘 같은 스타트업에서 멀티 계정 전환 시 IAM Identity Center를 먼저 설정하고 팀원을 그룹으로 관리하면 계정이 늘어나도 접근 관리가 선형적으로 확장된다. 개발팀: ViewOnly Permission Set. 인프라팀: AdministratorAccess. 앱 배포 자동화: 최소 권한 Permission Set으로 CI/CD 역할 분리.",
+    "tags": [
+      "iam-identity-center",
+      "sso",
+      "permission-set",
+      "multi-account",
+      "security",
+      "scim"
+    ]
+  },
+  {
+    "id": "aws-070",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "AWS Resource Access Manager(RAM)의 주요 사용 사례는?",
+    "options": [
+      "RAM은 IAM 역할을 다른 계정과 공유한다",
+      "RAM은 VPC 서브넷, Route53 Resolver Rules, License Manager 라이선스 등 AWS 리소스를 같은 Organizations 내 여러 계정이나 외부 계정과 공유한다",
+      "RAM은 S3 버킷을 퍼블릭으로 공개하는 서비스다",
+      "RAM은 계정 간 데이터를 실시간으로 동기화한다"
+    ],
+    "answer": 1,
+    "explanation": "RAM 공유 가능 리소스: 1) VPC 서브넷(공유 VPC): 중앙 네트워킹 계정에서 서브넷을 여러 계정과 공유. 각 계정은 공유 서브넷에 자체 리소스를 생성. VPC를 계정마다 만들 필요 없음. 2) Transit Gateway: 여러 계정에서 같은 TGW 사용. 3) Route53 Resolver Rules: 온프레미스 DNS 규칙을 여러 계정과 공유. 4) AWS License Manager: 온프레미스 소프트웨어 라이선스를 멀티 계정에서 추적.",
+    "deepDive": "공유 VPC(Shared VPC) 패턴의 장점은 무엇인가? → 1) 네트워킹 팀이 중앙에서 VPC, 서브넷, NAT GW, TGW를 관리. 2) 개발 계정은 공유 서브넷에 EKS, RDS 등을 배포. IP 주소 관리가 중앙화됨. 3) VPC 피어링/TGW 없이 같은 VPC 내 통신. 레이턴시 최소. 단점은? → 네트워킹 계정이 단일 장애점. 서브넷 공유 취소 시 해당 서브넷의 다른 계정 리소스가 영향 받음. CIDR 설계가 처음부터 올바르게 되어야 함. 니콘내콘 규모에서 Shared VPC가 적합한가? → 계정 수가 5-10개 수준이면 효과적. 단, 각 팀의 네트워크 독립성이 중요하다면 계정별 VPC + TGW가 더 유연하다.",
+    "seniorTip": "Terraform으로 RAM 공유: aws_ram_resource_share, aws_ram_principal_association, aws_ram_resource_association 리소스를 사용. Organizations 통합 시 aws_ram_sharing_with_organization_enabled를 활성화하면 계정 초대 없이 자동 공유 가능. 서브넷 공유는 공유받는 계정의 Terraform provider에 소유자 계정 subnet_id를 data source로 사용.",
+    "tags": [
+      "ram",
+      "resource-sharing",
+      "shared-vpc",
+      "multi-account",
+      "networking"
+    ]
+  },
+  {
+    "id": "aws-071",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Backup을 사용한 크로스 리전 백업 전략과 RTO/RPO 목표 달성 방법을 설명하라.",
+    "answer": "AWS Backup은 중앙화된 백업 정책으로 RDS, EBS, EFS, DynamoDB, S3 등을 스케줄 기반으로 백업하고 다른 리전으로 복사한다. Backup Plan의 CopyAction으로 크로스 리전 복사를 자동화하며, Vault Lock으로 백업 불변성을 보장한다.",
+    "explanation": "AWS Backup 구성: 1) Backup Vault: 백업 저장소(리전별). 2) Backup Plan: 스케줄(cron), 보존 기간, 라이프사이클(cold storage 전환), CopyAction(타 리전 복사) 정의. 3) Resource Assignment: 태그 기반 또는 리소스 ARN으로 백업 대상 지정. 4) Backup Jobs: 실행 현황 모니터링. 크로스 리전: CopyAction에 destinationBackupVaultArn을 타 리전 Vault로 지정.",
+    "deepDive": "RTO와 RPO 목표에 따른 백업 전략 차이는? → RPO 1시간: RDS 자동 백업(5분 단위 트랜잭션 로그) + DynamoDB PITR(35일 보존). RPO 24시간: 일 1회 AWS Backup. RTO 1시간 미만: 멀티 리전 Active-Active 또는 Aurora Global Database(빠른 promote). RTO 4시간: 크로스 리전 백업에서 restore. 복구 테스트를 어떻게 자동화하나? → AWS Backup의 Restore Testing 기능(2023년 출시)으로 주기적으로 백업에서 자동 복구 테스트 실행. 성공 여부를 CloudWatch 메트릭으로 추적. Terraform으로 aws_backup_restore_testing_plan 리소스를 설정.",
+    "seniorTip": "Vault Lock(WORM 모드): 백업을 삭제/수정할 수 없도록 잠금. 랜섬웨어 공격 시 백업을 보호하는 핵심 기능. Compliance Mode는 잠금 후 절대 해제 불가. 금융/의료 컴플라이언스 요구사항 충족. 니콘내콘처럼 사용자 결제 데이터를 다루는 서비스는 Vault Lock + 크로스 리전 백업 + 정기 복구 테스트를 DR 전략의 기본으로 삼자.",
+    "tags": [
+      "aws-backup",
+      "cross-region",
+      "rto-rpo",
+      "disaster-recovery",
+      "vault-lock",
+      "restore-testing"
+    ]
+  },
+  {
+    "id": "aws-072",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS Config Conformance Pack의 역할과 AWS Security Hub의 차이는?",
+    "options": [
+      "Conformance Pack은 실시간 위협을 탐지하고 Security Hub는 리소스 설정을 감사한다",
+      "Conformance Pack은 여러 AWS Config 규칙을 하나의 패키지로 배포하여 컴플라이언스를 평가한다. Security Hub는 여러 보안 서비스(GuardDuty, Inspector, Config 등)의 결과를 통합하여 보안 상태를 종합 평가한다",
+      "두 서비스는 동일한 기능을 수행하며 하나만 사용하면 된다",
+      "Conformance Pack은 자동 수정 기능을 포함하고 Security Hub는 수동 검토만 지원한다"
+    ],
+    "answer": 1,
+    "explanation": "Config Conformance Pack: AWS Config 규칙들을 번들. 예: CIS AWS Foundations, PCI-DSS, NIST 등 표준 컴플라이언스를 한 번에 배포. 리소스 설정 변경 시 규칙 평가 → 준수/비준수 결과. 자동 수정(SSM Automation)과 연동 가능. Security Hub: Guard Duty(위협 탐지), Inspector(취약점), Macie(데이터 분류), Config, IAM Access Analyzer 등의 결과를 통합. ASFF(Amazon Security Finding Format)로 표준화. Security Score로 전체 보안 수준 파악.",
+    "deepDive": "실무에서 두 서비스를 어떻게 함께 사용하는가? → Config Conformance Pack으로 리소스 설정 컴플라이언스 확인(S3 버킷 퍼블릭 접근 차단 여부, EBS 암호화 여부 등). Security Hub에서 Config 결과 + GuardDuty 알림 + Inspector CVE를 통합 조회. Slack/PagerDuty와 EventBridge로 연동하여 보안 이슈 알림 자동화. 멀티 계정에서 Security Hub를 중앙화하려면? → Organizations의 Delegated Administrator 계정으로 Security Hub 통합. 모든 계정의 보안 결과가 중앙 계정에서 조회됨. Terraform으로 aws_securityhub_organization_configuration 설정.",
+    "seniorTip": "Config 규칙의 비용: 규칙당 월 $2 + 평가당 $0.001. 규칙이 많으면 비용이 상당해진다. 처음에는 필수 CIS 기준(20-30개 규칙)만 활성화하고, 상황에 따라 확장하는 것이 현실적이다. Security Hub의 무료 기간은 30일. 그 후 결과 수 기반 과금이므로 사용 전 비용 추산이 필요하다.",
+    "tags": [
+      "config",
+      "conformance-pack",
+      "security-hub",
+      "compliance",
+      "guardrails",
+      "multi-account"
+    ]
+  },
+  {
+    "id": "aws-073",
+    "category": "aws",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "S3 Transfer Acceleration은 CloudFront의 엣지 로케이션을 활용하여 글로벌 사용자가 가까운 엣지로 업로드하고, 최적화된 경로로 S3 버킷으로 전달하여 업로드 속도를 향상시킨다.",
+    "answer": "O",
+    "explanation": "S3 Transfer Acceleration: 활성화 시 버킷에 .s3-accelerate.amazonaws.com 엔드포인트가 생성됨. 클라이언트가 이 엔드포인트로 업로드하면 가장 가까운 CloudFront PoP으로 먼저 전달. PoP에서 AWS 내부 고속 네트워크로 버킷 리전까지 전달. 인터넷 구간을 최소화하여 원거리 업로드 속도 향상. 비용: 가속 전송 데이터당 추가 요금($0.04/GB). 가까운 리전에서는 오히려 느릴 수 있어 Transfer Acceleration Speed Comparison Tool로 사전 확인 필요.",
+    "deepDive": "S3 Transfer Acceleration이 효과적인 시나리오는? → 1) 한국 사용자가 us-east-1 버킷에 업로드(약 140ms RTT → 가속 후 단축). 2) 전 세계 분산 팀이 하나의 버킷에 업로드. 3) 수십 MB 이상의 대용량 파일 업로드. 효과가 없거나 부정적인 시나리오는? → 1) 같은 리전 내 업로드(CloudFront PoP이 더 멀 수 있음). 2) 소용량 파일 다수(RTT 절감 효과가 작음). Multipart Upload와 함께 사용하면? → 가속 엔드포인트로 각 파트를 병렬 업로드. 두 기능이 시너지를 발휘하여 대용량 파일의 원거리 업로드에서 최대 효과.",
+    "seniorTip": "니콘내콘이 글로벌 서비스로 확장할 때 해외 판매자가 기프티콘 이미지를 업로드한다면 Transfer Acceleration이 UX를 크게 개선할 수 있다. 단, 현재 한국 서비스만 제공한다면 ap-northeast-2에 버킷을 두고 Transfer Acceleration이 불필요. 추가 비용을 지불하기 전에 Speed Comparison Tool로 실측하는 것이 원칙이다.",
+    "tags": [
+      "s3",
+      "transfer-acceleration",
+      "cloudfront",
+      "performance",
+      "global"
+    ]
+  },
+  {
+    "id": "aws-074",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS App Mesh와 Istio의 차이를 설명하고, EKS에서 서비스 메시를 도입할 때의 결정 기준을 제시하라.",
+    "answer": "App Mesh는 AWS 관리형 서비스 메시로 Envoy 프록시를 사이드카로 사용하고 AWS 콘솔/API로 관리한다. Istio는 오픈소스로 더 풍부한 기능(mTLS, traffic policy, telemetry)을 제공하지만 운영 복잡도가 높다. EKS에서는 운영 역량과 필요 기능에 따라 선택한다.",
+    "explanation": "App Mesh: 1) AWS 관리형: Control Plane을 AWS가 운영. 2) AWS 서비스 통합: Cloud Map, ECS, EKS 통합. 3) 상대적으로 단순한 기능(L7 라우팅, 헬스체크, retries). 4) Terraform으로 aws_appmesh_* 리소스 관리. Istio: 1) 강력한 트래픽 관리(canary, circuit breaker, fault injection). 2) mTLS 자동화. 3) 내장 텔레메트리(Prometheus, Grafana, Kiali). 4) 운영 복잡성: istiod 관리, Envoy 버전 업그레이드. 5) 리소스 오버헤드: 모든 Pod에 사이드카.",
+    "deepDive": "서비스 메시 없이도 EKS에서 mTLS를 구현할 수 있는가? → cert-manager로 각 서비스에 인증서를 발급하고 NestJS에서 TLS 설정을 직접 구현. 하지만 인증서 갱신, 검증 로직을 모든 서비스에서 처리해야 해 복잡하다. Istio의 mTLS가 자동화해주는 부분이다. App Mesh가 deprecate 수순인가? → AWS는 2024년에 App Mesh 신규 고객 수용 중단을 발표했다. 기존 사용자는 유지되지만 신규 도입은 권장하지 않는다. 대안으로 Amazon VPC Lattice(서비스 연결) 또는 Istio를 AWS가 권장. VPC Lattice는 서비스 메시 없이 서비스 간 통신을 관리하는 새 방식이다.",
+    "seniorTip": "서비스 메시 도입 결정 기준: 1) 마이크로서비스 10개 미만, 단순 통신: 불필요. ALB + NestJS만으로 충분. 2) mTLS 의무화, 정교한 카나리 배포, 서비스 간 rate limiting이 필요: Istio 검토. 3) AWS 네이티브 통합이 중요하고 운영 복잡성을 줄이고 싶다면: VPC Lattice. 4) 사이드카 오버헤드(각 Pod에 ~50-100MB 추가)를 감당할 수 있는지 먼저 리소스 계산.",
+    "tags": [
+      "app-mesh",
+      "istio",
+      "service-mesh",
+      "mtls",
+      "envoy",
+      "vpc-lattice"
+    ]
+  },
+  {
+    "id": "aws-075",
+    "category": "aws",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS EKS에서 Windows 노드 그룹을 Linux 노드와 혼합 운영할 때의 구성 방법과 주의사항을 설명하라.",
+    "answer": "EKS에서 Windows 노드는 Self-Managed 또는 Managed Node Group으로 추가할 수 있다. VPC CNI 대신 Amazon VPC CNI의 Windows 지원을 사용하고, nodeSelector/tolerations로 Windows Pod를 Windows 노드에만 스케줄링해야 한다.",
+    "explanation": "Windows 노드 구성: 1) aws-vpc-cni를 Windows 지원 버전 사용. 2) Windows 노드에 자동으로 os=windows 레이블 부여. 3) Windows 워크로드의 Pod spec에 nodeSelector: {kubernetes.io/os: windows} 설정. 4) Linux DaemonSet에 nodeAffinity 또는 nodeSelector로 Windows 노드 제외. 5) Windows 노드는 Linux 노드와 다른 AMI(Windows Server 2019/2022 EKS 최적화). 제약: Fargate 미지원. Linux 컨테이너 이미지는 Windows에서 실행 불가.",
+    "deepDive": "Linux와 Windows Pod가 같은 클러스터에서 통신할 때 네트워킹 고려사항은? → VPC CNI를 통해 각 Pod에 VPC IP가 할당되므로 동일 VPC 내 라우팅 가능. Windows Pod에서 Linux Service 호출, 반대도 가능. 단, Windows 노드의 ENI당 IP 수 제한이 Linux와 다를 수 있어 인스턴스 타입 선택 시 확인 필요. Windows 노드의 DaemonSet(Datadog Agent 등)을 어떻게 처리하나? → Datadog의 Windows 전용 DaemonSet을 따로 배포(nodeSelector: kubernetes.io/os: windows). 이미지도 Windows 기반이어야 함. 운영 복잡도가 상당히 증가하므로 Windows 워크로드를 EKS에 올려야 하는 비즈니스 요구가 명확할 때만 도입 권장.",
+    "seniorTip": "Windows 노드 업그레이드는 Linux보다 시간이 오래 걸린다. AMI 교체 시 Windows 이미지 크기가 수십 GB라 다운로드에 시간이 걸림. Managed Node Group의 maxUnavailable을 1로 설정하고 업그레이드 윈도우를 충분히 확보. 또한 Windows 컨테이너는 호스트 OS와 같은 커널 버전이어야 하므로 컨테이너 이미지와 노드 OS 버전 매칭이 중요하다.",
+    "tags": [
+      "eks",
+      "windows-nodes",
+      "mixed-nodes",
+      "nodeselector",
+      "daemonset",
+      "vpc-cni"
+    ]
   }
 ]

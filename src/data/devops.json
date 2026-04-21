@@ -1002,5 +1002,305 @@
       "mttr"
     ],
     "deepDive": "니콘내콘의 DORA 메트릭을 추정해보자. ArgoCD + GitOps로 main 머지 → 자동 배포. 1) 배포 빈도: 179개 서비스이므로 하루에 수십 번 배포. Elite 수준. 하지만 모노레포에서 한 커밋이 여러 서비스를 배포하면 '의미 있는' 배포 횟수와 다를 수 있다. → 서비스별로 측정해야 진짜 빈도를 알 수 있다. 2) 리드타임: PR 생성 → 리뷰 → 머지 → 빌드 → 배포. 코드 리뷰가 병목이면 리드타임이 하루 이상. → 리드타임을 줄이려면? 자동 테스트로 리뷰어 부담 감소 + 작은 PR 문화 + pair programming. 3) MTTR: 장애 감지(Datadog 알림)부터 복구(ArgoCD 롤백)까지. ArgoCD 롤백은 1분이면 되지만, 장애 감지까지 10분 걸리면 MTTR은 11분. → 감지 속도가 핵심. SLO burn rate 알림이 도움. 4) 변경 실패율: 배포 후 1시간 이내 롤백 또는 핫픽스 횟수. 이걸 자동으로 측정하려면 ArgoCD의 sync 이력과 rollback 이력을 비교."
+  },
+  {
+    "id": "devops-051",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MySQL InnoDB의 클러스터 인덱스(Clustered Index)가 UUID v4를 기본 키로 사용할 때 성능에 미치는 영향과, UUID v7 또는 ULID로 교체했을 때의 차이를 설명하라.",
+    "answer": "UUID v4는 완전 랜덤이므로 B-tree 인덱스의 임의 위치에 삽입되어 페이지 스플릿과 인덱스 단편화가 빈번히 발생한다. UUID v7/ULID는 시간 기반 단조 증가로 인덱스 끝에 순차 삽입되어 페이지 스플릿이 최소화되고 쓰기 성능이 2-3배 향상된다.",
+    "explanation": "InnoDB 클러스터 인덱스: PK 순서로 데이터가 물리적으로 정렬된다. UUID v4 삽입: 랜덤 위치에 삽입 → 이미 가득 찬 페이지에 삽입하면 페이지를 반으로 나누는 Split 발생 → I/O 증가 + 캐시 효율 저하. UUID v7: 상위 48비트가 밀리초 타임스탬프 → 최신 레코드는 항상 인덱스 끝에 삽입 → Split 최소화.",
+    "seniorTip": "선택 가이드: 1) UUID v7 — RFC 9562 표준, 기존 UUID 도구와 호환, 128비트. 2) ULID — 26자 Base32 문자열, URL-safe, 대소문자 구분 없음. 3) Snowflake — Twitter/Discord 방식, 64비트 정수(bigint), 가장 컴팩트. K8s Pod ordinal이나 ZooKeeper로 Worker ID 관리. 4) 자동증가 정수(AUTO_INCREMENT) — 가장 성능 좋지만 분산 환경에서 중복 방지가 어려움. 마이그레이션: 기존 UUID v4 → ULID로 전환 시 새 컬럼 추가 후 애플리케이션에서 생성, 이전 데이터는 백그라운드 배치로 변환. MySQL에서 ULID를 VARCHAR(26) 또는 BINARY(16)으로 저장.",
+    "deepDive": "UUID v4에서 UUID v7으로 PK를 마이그레이션할 때 기존 외래 키 관계를 어떻게 처리하는가? → Snowflake ID에서 워커 ID가 중복 할당되면 ID 충돌이 발생하는데, K8s StatefulSet의 Pod ordinal을 워커 ID로 사용하면 안전한가? → MySQL에서 ULID를 BINARY(16)으로 저장할 때와 VARCHAR(26)으로 저장할 때의 저장 공간과 인덱스 성능 차이는?",
+    "tags": [
+      "mysql",
+      "uuid",
+      "ulid",
+      "primary-key",
+      "index-performance"
+    ]
+  },
+  {
+    "id": "devops-052",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "K8s에서 수평 확장(HPA) 시 새 Pod의 cold start 문제를 완화하는 가장 효과적인 방법은?",
+    "options": [
+      "HPA의 최소 replica를 0으로 설정한다",
+      "Readiness Probe가 통과할 때까지 트래픽을 보내지 않도록 설정하고, preStop 훅과 terminationGracePeriodSeconds를 조합하여 scale-in 시 진행 중인 요청을 완료 후 종료한다",
+      "Pod의 자원 한계를 최대한 높게 설정한다",
+      "HPA 대신 VPA(Vertical Pod Autoscaler)만 사용한다"
+    ],
+    "answer": 1,
+    "explanation": "Cold Start 완화: 1) readinessProbe — 새 Pod가 트래픽을 받을 준비가 될 때까지(DB 연결, 캐시 워밍) 대기. failureThreshold=3, periodSeconds=10으로 30초까지 허용. 2) minReadySeconds — Pod가 Ready 상태가 된 후 추가 대기 시간. 3) PodDisruptionBudget — scale-in 시 최소 가용 Pod 수 보장. 4) preStop 훅 — SIGTERM 전 sleep 5를 추가하여 로드밸런서가 해당 Pod를 제거한 후 종료.",
+    "seniorTip": "NestJS 앱의 cold start 최소화: 1) 이미지 최적화 — Multi-stage Docker 빌드로 이미지 크기 최소화(250MB → 80MB). 2) TypeORM 연결 풀 warming — onApplicationBootstrap에서 DB 쿼리 1회 실행으로 연결 미리 생성. 3) 캐시 warming — 자주 쓰는 설정/상품 데이터를 시작 시 Redis에 미리 로드. 4) KEDA로 SQS 큐 깊이 기반 스케일링 — CPU/메모리보다 비즈니스 메트릭 기반으로 사전 스케일아웃. 5) Cluster Autoscaler 튜닝 — scaleUp.stabilizationWindowSeconds를 줄여 노드 추가 속도 향상.",
+    "deepDive": "K8s의 HPA가 CPU 메트릭 기반으로 스케일아웃 결정을 내리기까지 걸리는 지연(메트릭 수집 → 판단 → Pod 생성 → Ready)의 총 소요 시간과, 이 지연을 줄이기 위한 KEDA의 이점은? → preStop 훅의 sleep 5와 terminationGracePeriodSeconds의 관계와, graceful shutdown이 완료되기 전에 terminationGracePeriodSeconds가 만료되면 어떻게 되는가? → 결제 서비스처럼 스파이크 트래픽이 예측 가능한 경우(쿠폰 이벤트) Predictive Autoscaling을 어떻게 구현하는가?",
+    "tags": [
+      "kubernetes",
+      "hpa",
+      "cold-start",
+      "readiness-probe",
+      "autoscaling"
+    ]
+  },
+  {
+    "id": "devops-053",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Chaos Mesh와 AWS FIS(Fault Injection Simulator)를 사용한 카오스 엔지니어링 실험을 설계할 때, 결제 서비스의 회복탄력성(Resilience)을 검증하는 시나리오를 설명하라.",
+    "answer": "실험 설계: '가설 → 실험 → 관찰 → 결론' 과학적 접근. 결제 서비스의 첫 번째 실험: 'PG사 API가 5초 응답 지연 시 서킷 브레이커가 Open되고 사용자에게 적절한 에러가 표시된다'는 가설 검증. Chaos Mesh NetworkChaos로 PG사 엔드포인트에 5초 지연 주입.",
+    "explanation": "실험 설계 3단계: 1) 정상 상태 정의 — 결제 성공률 > 99%, P99 응답시간 < 3초. 2) 가설 수립 — PG사 지연 시 서킷 브레이커 작동, 사용자는 '결제 시스템 점검 중' 메시지 수신. 3) 실험 설계 — Chaos Mesh로 대상 Pod(PG사 어댑터)에만 네트워크 지연 주입. 범위 최소화(Blast Radius). 4) Kill Switch — 문제 발생 시 즉시 실험 중단 가능. 5) 관찰 — Datadog에서 에러율, 서킷 브레이커 상태, 알림 발생 여부 확인.",
+    "seniorTip": "카오스 실험 도입 순서: 1) 준비 조건 확인 — 충분한 모니터링, 롤백 절차, 팀 준비. 2) 스테이징 환경에서 먼저 실행. 3) 프로덕션 실험은 1% 트래픽으로 시작. Chaos Mesh vs AWS FIS: Chaos Mesh는 K8s 네이티브로 Pod/Node 레벨 실험에 강점. AWS FIS는 RDS 장애, EC2 종료, AZ 장애 같은 AWS 서비스 레벨 실험에 강점. 결합 사용 추천. 실험 결과: 가설이 틀렸다면(서킷 브레이커가 작동하지 않음) 설계 개선. 가설이 맞았다면 자동화된 상시 실험으로 회귀 테스트화.",
+    "deepDive": "Chaos Mesh의 PodChaos, NetworkChaos, StressChaos 중 결제 서비스 회복탄력성 검증에 가장 효과적인 조합과 실험 순서는? → AWS FIS에서 AZ 전체 장애를 시뮬레이션할 때 Multi-AZ RDS와 ALB 헬스 체크의 자동 장애조치(Failover) 시간을 측정하는 방법은? → 카오스 실험이 실제 프로덕션 장애를 유발하지 않도록 하는 기술적 안전장치와 팀 프로세스는?",
+    "tags": [
+      "chaos-engineering",
+      "chaos-mesh",
+      "aws-fis",
+      "resilience",
+      "fault-injection"
+    ]
+  },
+  {
+    "id": "devops-054",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "k6를 사용한 부하 테스트(Load Testing)에서 결제 API의 목표 처리량을 결정하고 테스트하는 올바른 접근은?",
+    "options": [
+      "가능한 최대 VU(Virtual User)를 설정하여 서버가 다운될 때까지 테스트한다",
+      "비즈니스 요구사항(예: 블랙프라이데이 피크 트래픽 3배)에서 목표 RPS를 도출하고, 단계적으로 부하를 증가시키면서 응답시간과 에러율을 측정하여 병목 지점을 찾는다",
+      "부하 테스트는 스테이징 환경에서 하면 의미가 없다",
+      "TPS(Transaction Per Second) 목표는 항상 현재 트래픽의 10배로 설정한다"
+    ],
+    "answer": 1,
+    "explanation": "k6 부하 테스트 설계: 1) 기준 트래픽 파악 — 현재 결제 API의 평균 RPS, 피크 RPS. 2) 목표 설정 — 피크의 3배(쿠폰 이벤트 대비). 3) 테스트 유형 선택 — Smoke(최소 부하), Load(정상 부하), Stress(피크 + 3배), Soak(장시간 지속), Spike(급격한 트래픽 증가). 4) SLO 기준 — P99 < 3초, 에러율 < 0.1%. 5) 병목 분석 — DB 커넥션 풀, Redis, 외부 PG사 API 중 어디서 포화되는가.",
+    "seniorTip": "k6 스크립트 포인트: 1) 결제 시나리오를 실제 사용자 흐름으로 작성(로그인 → 장바구니 → 결제). 2) think time(sleep)을 추가하여 실제 사용자 행동 모방. 3) k6 Cloud 또는 k6 Operator for K8s로 분산 부하 생성. 4) 테스트 결과를 Datadog으로 실시간 모니터링. 5) 스테이징 DB를 프로덕션과 유사한 데이터 크기로 준비(1000만 건 주문 데이터 없이 테스트하면 의미 없음). 6) 외부 PG사 API는 k6 mock 또는 실제 테스트 환경 사용.",
+    "deepDive": "k6의 scenarios와 executors 중 constant-arrival-rate가 VU 기반(constant-vus)보다 목표 RPS 테스트에 더 적합한 이유는? → 부하 테스트 중 DB 커넥션 풀이 먼저 포화되는 것과 애플리케이션 메모리가 먼저 포화되는 것을 구분하는 방법은? → 결제 API 부하 테스트에서 실제 PG사 API를 테스트하면 안 되는 이유와 현실적인 모킹 전략은?",
+    "tags": [
+      "k6",
+      "load-testing",
+      "capacity-planning",
+      "performance",
+      "slo"
+    ]
+  },
+  {
+    "id": "devops-055",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "ChatOps를 도입하여 Slack에서 배포, 롤백, 장애 대응을 실행할 때의 아키텍처와 보안 고려사항을 설명하라.",
+    "answer": "Slack Slash Command 또는 Bot이 웹훅을 통해 CI/CD 시스템(ArgoCD, GitHub Actions)을 트리거한다. 보안: 명령어 실행 전 사용자 검증(Slack User ID → 권한 맵핑), 중요 작업(프로덕션 배포)은 추가 승인(두 명 이상)을 요구한다.",
+    "explanation": "ChatOps 아키텍처: 1) Slack Bot(Bolt SDK) → 명령어 수신. 2) 사용자 권한 검증(Slack User ID → RBAC). 3) 액션 실행(ArgoCD API, GitHub Actions workflow_dispatch). 4) 진행 상황을 Slack 채널에 실시간 업데이트. 5) 완료/실패 알림. 중요 명령(/deploy production v2.3.1)은 2인 승인 플로우.",
+    "seniorTip": "보안 체크리스트: 1) Slack 서명 검증(X-Slack-Signature 헤더)으로 실제 Slack에서 온 요청인지 확인. 2) Slack 사용자 ID와 시스템 권한 맵핑 — 특정 팀만 프로덕션 배포 허용. 3) 모든 ChatOps 액션을 감사 로그에 기록(누가, 언제, 무엇을 실행). 4) 민감한 명령어는 특정 채널에서만 허용(#ops-prod-deploy). 5) Rate Limiting — 실수로 반복 명령어 실행 방지. 실무 효과: 장애 대응 시 Slack에서 /rollback payment-service를 실행하고 채널에서 진행 상황을 팀 전체가 실시간으로 볼 수 있어 협업이 극적으로 개선된다.",
+    "deepDive": "ChatOps Bot이 ArgoCD API를 호출할 때 사용하는 서비스 어카운트 토큰의 보안 관리(로테이션, 최소 권한)는? → Slack의 Block Kit UI로 구현한 배포 승인 플로우에서 두 번째 승인자의 응답을 타임아웃(30분 내 승인 없으면 취소) 처리하는 방법은? → ChatOps와 GitOps가 공존할 때 Slack 명령과 Git 커밋 두 가지 소스에서 동시에 배포가 트리거되는 충돌을 어떻게 방지하는가?",
+    "tags": [
+      "chatops",
+      "slack",
+      "argocd",
+      "deployment",
+      "automation"
+    ]
+  },
+  {
+    "id": "devops-056",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "GitHub Actions self-hosted runner를 K8s 클러스터 위에서 운영할 때의 아키텍처와, Actions Runner Controller(ARC)를 사용하는 이점을 설명하라.",
+    "answer": "ARC는 K8s Operator로 GitHub Actions의 워크플로우 요청에 따라 Runner Pod를 자동으로 스케일인/아웃한다. 워크플로우가 없을 때는 Runner가 0개이고, 빌드 요청이 오면 Pod를 생성하여 실행 후 삭제한다. GitHub-hosted runner 대비 VPC 내 AWS 리소스 접근, 커스텀 Docker 이미지, 비용 절감이 가능하다.",
+    "explanation": "ARC 구성: 1) ARC Operator가 K8s에 설치. 2) RunnerDeployment/RunnerSet CRD로 runner 설정. 3) GitHub App 인증으로 워크플로우 이벤트 수신. 4) 요청 시 Runner Pod 생성(ECR에서 커스텀 이미지 pull). 5) 워크플로우 완료 후 Pod 삭제. 6) HPA 또는 HorizontalRunnerAutoscaler로 동시 실행 수 제어.",
+    "seniorTip": "실무 운영 포인트: 1) Runner Pod에 AWS IAM Role(IRSA)을 부여하여 ECR, S3, EKS 접근 가능. 2) 빌드 캐시 — Runner Pod는 매번 새로 생성되므로 S3 캐시(actions/cache) 또는 BuildKit 캐시가 필수. 3) Docker-in-Docker 대신 Buildah 또는 Kaniko 사용 — privileged Pod 없이 컨테이너 이미지 빌드. 4) Runner 리소스(CPU/메모리) 설정 — 빌드 실패의 50%는 OOM. 5) 스팟 인스턴스 노드 그룹 — 빌드 워크로드는 중단 허용이므로 비용 절감. 6) 장기 빌드(TypeScript 컴파일, E2E 테스트)는 별도 노드 그룹으로 격리.",
+    "deepDive": "ARC의 ephemeral runner(한 번 사용 후 삭제)가 dind(Docker-in-Docker) runner보다 보안적으로 우수한 이유는? → GitHub Actions 워크플로우에서 AWS Secrets를 주입하는 두 가지 방법(GitHub Secrets, IRSA)의 보안 수준 차이는? → Runner Pod가 빌드 중에 Node가 스팟 종료되면 어떻게 되고, 자동 재시작 메커니즘은?",
+    "tags": [
+      "github-actions",
+      "self-hosted-runner",
+      "arc",
+      "kubernetes",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "devops-057",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform으로 Datadog 모니터와 대시보드를 코드로 관리(Observability as Code)하는 이유와 이점은?",
+    "options": [
+      "Terraform은 인프라만 관리하고 모니터링 도구는 관리할 수 없다",
+      "Datadog 모니터를 코드로 관리하면 PR 리뷰로 알림 임계값 변경을 검토하고, 서비스 배포와 함께 모니터를 자동으로 생성/삭제할 수 있어 모니터링 설정의 드리프트를 방지한다",
+      "GUI보다 코드로 설정하는 것이 항상 느리다",
+      "Datadog은 Terraform을 공식 지원하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "Observability as Code: 인프라뿐 아니라 모니터링, 알림, 대시보드도 코드로 관리. Datadog Terraform Provider: datadog_monitor, datadog_dashboard, datadog_slo 리소스를 지원. 장점: 1) 모니터 설정을 코드 리뷰로 검토. 2) 서비스 삭제 시 관련 모니터도 자동 삭제. 3) 모든 환경(dev/staging/prod)에 동일한 모니터 설정. 4) 드리프트 방지.",
+    "seniorTip": "실무 패턴: 1) 새 NestJS 서비스를 배포할 때 Terraform 모듈로 Datadog 모니터(에러율, 레이턴시, SQS 큐 깊이)를 자동 생성. 2) SLO를 datadog_slo 리소스로 코드화하고 error budget alert도 함께 생성. 3) 대시보드를 JSON으로 내보내고 Terraform에 포함하여 버전 관리. 4) 모니터 임계값을 변수(var.error_rate_threshold)로 추상화하여 서비스별로 다른 값 사용. 5) terraform plan으로 임계값 변경이 PR 리뷰에 표시되어 팀이 인지. 이렇게 하면 장애 후 '왜 이 알림이 설정되지 않았는가?'라는 질문에 코드 히스토리로 답할 수 있다.",
+    "deepDive": "Datadog의 모니터를 GUI에서 만들었다가 Terraform으로 import(terraform import)할 때의 절차와 주의사항은? → Terraform으로 관리하는 Datadog SLO와 Error Budget Alert를 함께 설정하여 SLO 위반을 자동으로 감지하는 방법은? → 다수의 MSA 서비스에서 공통 모니터(HTTP 500 에러율, Pod Restart 등)를 Terraform 모듈로 표준화하고 서비스별 파라미터만 다르게 하는 방법은?",
+    "tags": [
+      "terraform",
+      "datadog",
+      "observability-as-code",
+      "monitoring",
+      "slo"
+    ]
+  },
+  {
+    "id": "devops-058",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS Cost Anomaly Detection과 FinOps 접근법으로 클라우드 비용을 관리하는 방법을 설명하고, 비용 급증의 흔한 원인과 예방 방법을 설명하라.",
+    "answer": "Cost Anomaly Detection은 ML을 사용하여 예상 비용 패턴에서 벗어난 급증을 자동으로 탐지하고 알림을 발송한다. FinOps: 엔지니어링, 재무, 비즈니스가 협업하여 클라우드 비용을 투명하게 관리하는 방법론.",
+    "explanation": "흔한 비용 급증 원인: 1) HPA가 과도하게 스케일아웃(메트릭 오설정). 2) NAT Gateway 비용 급증(Pod에서 외부 API를 과도하게 호출). 3) 로그 과다 저장(CloudWatch Logs 비용). 4) 데이터 전송 비용(리전 간 데이터 복사). 5) EC2 Spot 가격 상승. 6) RDS 스냅샷 자동화 설정 누락.",
+    "seniorTip": "FinOps 실천 방법: 1) AWS Cost Explorer에서 서비스/태그별 비용 분석. 태그(team, service, environment)를 모든 리소스에 필수 적용. 2) Compute Optimizer로 과다 프로비저닝된 인스턴스 식별. 3) S3 Intelligent-Tiering으로 접근 빈도에 따른 스토리지 티어링 자동화. 4) Reserved Instances 또는 Savings Plans로 예측 가능한 워크로드 비용 30-40% 절감. 5) K8s에서 VPC CNI(오버레이 없음)로 노드-Pod 간 불필요한 NAT를 제거. 6) 월간 비용 리뷰를 팀 스프린트에 포함. 목표: '이 비용이 비즈니스 가치를 주는가?'를 지속적으로 검토.",
+    "deepDive": "AWS Cost Anomaly Detection이 탐지하지 못하는 점진적 비용 증가(매월 5%씩)를 어떻게 발견하고 예방하는가? → K8s Pod에서 NAT Gateway를 통한 외부 트래픽 비용을 줄이기 위해 VPC Endpoint(Interface Endpoint, Gateway Endpoint)를 어떤 서비스에 적용해야 하는가? → AWS Graviton3(ARM) 인스턴스로 전환할 때 NestJS 앱과 컨테이너 이미지의 호환성 확인 방법은?",
+    "tags": [
+      "finops",
+      "aws-cost",
+      "cost-anomaly-detection",
+      "cloud-cost",
+      "optimization"
+    ]
+  },
+  {
+    "id": "devops-059",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "SPACE 메트릭 프레임워크에서 '생산성(Productivity)'을 단순히 코드 줄 수나 커밋 수로만 측정하면 안 되는 이유는?",
+    "options": [
+      "코드 줄 수가 많으면 항상 생산성이 높기 때문이다",
+      "개발자 생산성은 개인 활동뿐 아니라 시스템 성능, 협업, 만족도, 활동량, 효율성을 포함하는 다차원적 개념이어서, 단일 지표로 측정하면 Goodhart's Law에 의해 지표 달성 행동이 목표를 왜곡한다",
+      "SPACE는 스포츠 팀에만 적용되는 프레임워크이다",
+      "커밋 수 측정이 기술적으로 불가능하기 때문이다"
+    ],
+    "answer": 1,
+    "explanation": "SPACE: Satisfaction/Well-being, Performance, Activity, Communication/Collaboration, Efficiency/Flow. 단일 지표(PR 수) 최적화: PR을 여러 개 쪼개서 수를 늘리는 행동 발생. Goodhart's Law: '측정 지표가 목표가 되면, 좋은 지표이기를 그친다.' 복합 지표 사용이 필요하다.",
+    "seniorTip": "팀 성과 측정 시니어 접근: 1) Activity — PR 수, 커밋 빈도, 코드 리뷰 참여(정량). 2) Performance — 배포 성공률, 테스트 통과율(품질). 3) Satisfaction — 분기별 개발자 설문(Net Promoter Score). 4) Communication — PR 리뷰 응답 시간, 문서화 품질. 5) Efficiency — PR Cycle Time(첫 커밋부터 머지까지). 중요: 이 지표들은 개인 성과 평가가 아닌 팀 시스템 개선을 위해 사용. 개인 활동을 공개하면 심리적 안전감이 무너지고 행동 왜곡이 발생한다.",
+    "deepDive": "개발자 생산성 향상에 가장 효과적인 투자(도구 개선, 미팅 감소, 기술 부채 해소, 온보딩 강화) 중 어느 것을 우선해야 하는가? → 원격 근무 환경에서 Communication/Collaboration 지표가 악화될 때 개선하는 방법은? → 고성과 팀(DORA Elite)에서도 번아웃이 발생하는 이유와 예방 방법은?",
+    "tags": [
+      "space-metrics",
+      "developer-productivity",
+      "engineering-culture",
+      "goodharts-law",
+      "team-performance"
+    ]
+  },
+  {
+    "id": "devops-060",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "엔지니어링 매니저(EM)와 테크니컬 리드(TL)의 역할을 명확하게 구분하고, 두 역할이 협업하는 방법을 설명하라.",
+    "answer": "EM은 사람과 팀을 관리(채용, 성장, 1:1, 팀 문화). TL은 기술적 방향을 리드(아키텍처 결정, 코드 품질, 기술 스택 선택). 두 역할이 명확히 분리되면 각자의 영역에서 더 깊은 집중이 가능하다.",
+    "explanation": "EM 핵심 책임: 1) 팀원 성장(커리어 패스, 피드백, 코칭). 2) 팀 분위기와 심리적 안전감. 3) 프로젝트 일정/리소스 조율. 4) 상위 조직과의 커뮤니케이션. TL 핵심 책임: 1) 기술 비전과 로드맵. 2) 아키텍처 결정 리드(ADR 작성). 3) 코드 리뷰 기준 설정. 4) 기술 부채 우선순위. 5) 주니어 엔지니어 기술 멘토링.",
+    "seniorTip": "EM-TL 협업 패턴: 1) 주간 1:1 EM-TL 미팅 — 팀 이슈와 기술 방향을 함께 논의. 2) 새 기능 기획 시 TL은 기술 추정, EM은 일정 계획. 3) 성과 평가 시 TL이 기술 성장 피드백, EM이 종합 평가. 4) 장애 대응 시 TL이 기술 대응 리드, EM이 이해관계자 커뮤니케이션. 5) 팀 채용 시 TL이 기술 인터뷰, EM이 문화 인터뷰. 6-7년차에서 TL이 되는 것이 전형적인 경로. EM과 TL 둘 다 하는 'TEM(Tech-EM)'은 팀 규모가 작을 때 가능하지만, 성장하면 분리가 필요하다.",
+    "deepDive": "TL이 코딩 업무와 기술 리드 역할을 균형 있게 수행하는 방법과, 코딩을 완전히 멈추면 어떤 장기적 문제가 발생하는가? → EM이 기술적 결정에 개입하면 TL의 권위가 약해지는 문제를 어떻게 방지하는가? → 팀에서 TL을 육성하기 위해 EM이 할 수 있는 구체적인 기회 제공 방법은?",
+    "tags": [
+      "engineering-manager",
+      "tech-lead",
+      "leadership",
+      "team-structure",
+      "career"
+    ]
+  },
+  {
+    "id": "devops-061",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "프로덕션 장애 발생 시 팀 리더로서 Post-mortem을 퍼실리테이션(Facilitation)하는 방법과, 심리적 안전감을 유지하면서 근본 원인을 도출하는 기법을 설명하라.",
+    "answer": "Blameless Post-mortem 퍼실리테이션: 사실 기반 타임라인 작성, 5-Why로 시스템적 원인 탐색, 개인 비난 대신 시스템/프로세스 개선에 집중. '왜 이 사람이 실수했는가'가 아닌 '왜 이 시스템이 실수를 쉽게 만들었는가'로 질문을 전환한다.",
+    "explanation": "퍼실리테이션 절차: 1) 미팅 전 — 타임라인 데이터 수집(로그, 알림 이력, Slack 메시지). 2) 미팅 시작 — '이 미팅의 목적은 학습이지 비난이 아니다' 선언. 3) 타임라인 검토 — 모든 참여자가 사실을 공유. 4) 5-Why — '왜 알림이 늦었는가? → 왜 메트릭 임계값이 낮게 설정되었는가? → 왜 임계값 설정 프로세스가 없었는가?'. 5) Action Items — 각 항목에 담당자와 마감일.",
+    "seniorTip": "심리적 안전감을 해치는 패턴과 대응: 1) '누가 이 코드를 작성했나?' → '이 코드가 어떤 맥락에서 만들어졌나?'. 2) 비난하는 분위기가 형성되면 즉시 리디렉션 — '지금 우리가 원하는 건 재발 방지 방법 찾기'. 3) 모든 참여자의 의견을 구함 — 경험이 적은 팀원도 귀중한 관찰자. 4) 리더가 먼저 자신의 역할에서 실수를 인정 — '내가 On-call 프로세스를 명확히 하지 못한 것도 원인이다'. 5) Action Item 완료를 다음 스프린트에서 공유하여 Post-mortem이 실제로 개선으로 이어짐을 보여준다.",
+    "deepDive": "연속된 장애로 팀이 번아웃되고 Post-mortem 참여 의지가 낮아졌을 때 어떻게 팀의 활력을 회복하는가? → 장애를 경험하지 않은 팀에게 카오스 엔지니어링을 통한 사전 Post-mortem 경험이 효과적인 이유는? → Post-mortem에서 도출된 Action Item의 완료율이 낮을 때 근본 원인과 해결 방법은?",
+    "tags": [
+      "post-mortem",
+      "facilitation",
+      "blameless",
+      "psychological-safety",
+      "incident"
+    ]
+  },
+  {
+    "id": "devops-062",
+    "category": "devops",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "K8s의 Terraform State와 실제 K8s 클러스터 상태 간 드리프트(Drift)는 terraform apply를 실행하면 항상 자동으로 수정된다.",
+    "answer": "X",
+    "explanation": "Terraform은 state에 기록된 상태를 '원하는 상태'로 관리한다. 하지만 state에 없는 K8s 리소스(kubectl로 직접 생성)는 Terraform이 인식하지 못하고 삭제하지 않는다. 반대로 state에는 있지만 실제로 삭제된 리소스는 terraform apply 시 재생성된다. terraform plan --refresh-only로 state를 현재 상태로 업데이트할 수 있지만, 이는 state만 수정하고 실제 인프라를 수정하지는 않는다.",
+    "seniorTip": "K8s + Terraform 실무: 1) K8s 리소스는 Helm/ArgoCD로 관리하고, 인프라(EKS 클러스터, 노드 그룹, VPC)는 Terraform으로 관리하는 관심사 분리를 권장한다. 2) 같은 리소스를 Terraform과 kubectl 양쪽에서 관리하면 드리프트가 불가피하다. 3) Crossplane을 사용하면 K8s CR(Custom Resource)로 AWS 리소스를 선언적으로 관리 가능. 4) terraformer 또는 Terragrunt import_blocks로 수동 생성된 리소스를 state에 추가.",
+    "deepDive": "GitOps 환경에서 Terraform state를 S3에 원격으로 관리할 때 DynamoDB Lock이 필요한 이유와, Lock이 만료되지 않는 경우(프로세스 비정상 종료) 수동으로 해제하는 방법은? → Terraform workspace와 ArgoCD ApplicationSet을 조합하여 멀티 환경(dev/staging/prod)을 관리하는 방법은? → K8s 클러스터를 Terraform으로 프로비저닝할 때 EKS Add-on(CoreDNS, kube-proxy, VPC CNI) 버전 관리를 Terraform에서 하는 이점과 위험은?",
+    "tags": [
+      "terraform",
+      "kubernetes",
+      "drift",
+      "gitops",
+      "state-management"
+    ]
+  },
+  {
+    "id": "devops-063",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis Cluster와 Redis Sentinel의 차이를 설명하고, K8s 환경에서 고가용성 Redis를 운영하는 방법과 AWS ElastiCache 사용 시의 트레이드오프를 설명하라.",
+    "answer": "Redis Sentinel은 Master-Replica 구조에서 장애 감지 및 자동 Failover를 제공한다. Redis Cluster는 데이터를 16384개의 슬롯으로 샤딩하여 수평 확장을 지원한다. K8s에서는 Bitnami Redis Helm Chart로 Sentinel/Cluster를 배포하거나 AWS ElastiCache를 관리형 서비스로 사용한다.",
+    "explanation": "Sentinel: 홀수 개(최소 3)의 Sentinel 프로세스가 Master 상태를 모니터링하고, 장애 시 Replica를 Master로 승격. 슬롯 기반 샤딩 없음. Cluster: 모든 노드가 데이터의 일부를 소유. Multi-key 명령(MGET, Pipeline)은 같은 슬롯에 있어야 한다. 클라이언트가 클러스터 토폴로지를 인식해야 한다.",
+    "seniorTip": "선택 기준: 1) 쓰기 처리량이 단일 Master의 한계를 넘는 경우 → Redis Cluster. 2) 단순 HA(장애 복구)가 목적이면 → Sentinel. 3) K8s 자체 관리 vs ElastiCache: K8s에서 직접 운영하면 비용 절감 + 유연성, 하지만 운영 복잡도. ElastiCache는 자동 패치, 백업, 모니터링이 제공되지만 VPC 접근만 가능하고 비용이 높음. 실무: NestJS의 ioredis가 Cluster 모드를 지원한다. session 관리나 분산 락처럼 단일 노드 명령인 경우 Sentinel, BullMQ 큐처럼 처리량이 중요한 경우 Cluster 고려.",
+    "deepDive": "Redis Cluster에서 Pipeline을 사용할 때 여러 키가 다른 슬롯에 있으면 클라이언트가 자동으로 분할 실행하는가, 아니면 에러가 발생하는가? → K8s StatefulSet으로 Redis Cluster를 배포할 때 노드 IP 변경(Pod 재스케줄링) 시 클러스터 토폴로지가 깨지는 문제를 어떻게 해결하는가? → ElastiCache Global Datastore가 멀티 리전 Redis를 제공하는 방식과 싱크 지연(Replication Lag)의 영향은?",
+    "tags": [
+      "redis",
+      "redis-cluster",
+      "redis-sentinel",
+      "high-availability",
+      "elasticache"
+    ]
+  },
+  {
+    "id": "devops-064",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Terraform으로 AWS 인프라를 관리할 때 Module 버전 고정과 Provider 잠금(Lockfile)이 중요한 이유는?",
+    "options": [
+      "모듈과 프로바이더를 최신 버전으로 자동 업데이트하기 위해서이다",
+      "버전을 고정하지 않으면 terraform init 시 최신 버전이 설치되어 예상치 못한 변경(Breaking Change)이 프로덕션 인프라에 적용될 수 있다. Lockfile(.terraform.lock.hcl)은 팀 전체가 동일한 프로바이더 버전을 사용함을 보장한다",
+      "Terraform Cloud에서만 버전 고정이 필요하다",
+      "lockfile은 보안 취약점을 방지하기 위한 파일이다"
+    ],
+    "answer": 1,
+    "explanation": "버전 고정 없이 source = \"terraform-aws-modules/eks/aws\"만 지정하면 다음 init 시 최신 버전이 설치된다. EKS 모듈이 major 버전업되면 API가 변경되어 기존 Terraform 코드가 동작하지 않거나 예상치 못한 인프라 변경이 발생한다. .terraform.lock.hcl을 Git에 커밋하면 CI와 로컬 환경이 동일한 프로바이더 버전을 사용한다.",
+    "seniorTip": "버전 관리 모범 사례: 1) 모듈 버전: source = \"terraform-aws-modules/eks/aws\" version = \"~> 20.0\"(minor만 자동 업데이트). 2) 프로바이더 버전: required_providers { aws = { version = \"~> 5.0\" } }. 3) .terraform.lock.hcl을 Git에 커밋(절대 .gitignore에 추가하지 말 것). 4) Dependabot 또는 Renovate Bot으로 Terraform 모듈/프로바이더 자동 PR 생성. 5) Major 버전 업그레이드는 별도 PR + 스테이징 환경 검증 + 테스트 적용 후 프로덕션. 6) Atlantis 또는 Spacelift로 PR에서 terraform plan 자동 실행하여 변경 사항을 PR 리뷰에서 확인.",
+    "deepDive": "Terraform provider version constraint에서 ~>(틸드 부등호)와 >=(크거나 같음)의 실제 동작 차이와, Semantic Versioning 관점에서 안전한 버전 범위를 설정하는 방법은? → terraform init -upgrade 명령이 .terraform.lock.hcl에 미치는 영향과, 의도치 않게 프로바이더를 업그레이드하는 것을 방지하는 방법은? → 팀에서 로컬 terraform과 CI의 terraform 버전이 다를 때 발생하는 문제와 tfenv, asdf로 버전을 통일하는 방법은?",
+    "tags": [
+      "terraform",
+      "versioning",
+      "lockfile",
+      "infrastructure-as-code",
+      "dependency-management"
+    ]
+  },
+  {
+    "id": "devops-065",
+    "category": "devops",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "AWS에서 MySQL RDS와 K8s 기반 NestJS 서비스를 운영할 때 커넥션 풀 고갈이 발생하는 원인과, ProxySQL 또는 RDS Proxy를 통한 커넥션 멀티플렉싱으로 해결하는 방법을 설명하라.",
+    "answer": "K8s에서 NestJS Pod 수가 늘어날수록 각 Pod의 커넥션 풀(10개)이 RDS에 직접 연결된다. Pod 50개 * 풀 크기 10 = 500 연결이 RDS max_connections(기본 1000)의 절반을 소비한다. RDS Proxy는 커넥션을 풀링하여 수천 개의 Pod가 수십 개의 실제 DB 연결을 공유하게 한다.",
+    "explanation": "문제 발생 패턴: HPA가 Pod를 100개로 스케일아웃하면 커넥션이 1000개가 되어 RDS 한계에 도달. 새 연결이 거부되면 'too many connections' 에러로 서비스 장애. RDS Proxy: 클라이언트의 커넥션을 프록시가 받아 RDS와의 연결을 최소화. 커넥션 재사용(Multiplexing). Aurora Serverless v2와 함께 사용 시 자동 스케일링과 커넥션 관리가 모두 해결된다.",
+    "seniorTip": "RDS Proxy vs ProxySQL: 1) RDS Proxy — AWS 관리형, 설정 간단, IAM 인증 지원. 추가 비용(vCPU * 시간). 2) ProxySQL — 오픈소스, K8s에 DaemonSet으로 배포, 읽기/쓰기 분리 설정 가능. 더 많은 기능이지만 운영 복잡도 증가. 실무 권장: HPA 최대 Pod 수 * 풀 크기 < RDS max_connections * 0.7의 공식으로 커넥션 예산을 관리. 커넥션 부족 징후: Datadog에서 db.connections 메트릭 모니터링, TypeORM의 extra.connectionTimeout 에러 알림 설정.",
+    "deepDive": "RDS Proxy가 IAM 인증을 사용할 때 NestJS TypeORM에서 매 연결마다 IAM 토큰을 갱신하는 방법은? → ProxySQL을 K8s DaemonSet으로 배포하면 애플리케이션에서 localhost를 통해 연결할 수 있는 이점과, 노드 장애 시 ProxySQL도 함께 죽는 문제는? → TypeORM의 커넥션 풀에서 'connection lost'와 'too many connections' 에러를 구분하고 각각 대응하는 방법은?",
+    "tags": [
+      "mysql",
+      "rds-proxy",
+      "connection-pool",
+      "proxysql",
+      "kubernetes"
+    ]
   }
 ]

@@ -999,5 +999,313 @@
       "network-debugging"
     ],
     "deepDive": "K8s Pod에서 tcpdump를 실행하기 위해 NET_ADMIN capability를 부여하는 것의 보안 위험과, 대안으로 ephemeral container나 kubectl debug를 활용하는 방법은? → Wireshark의 TLS 복호화 기능(TLS master secret 로깅)을 개발 환경에서 NestJS HTTPS 트래픽 분석에 활용하는 방법은? → dig의 DNSSEC 검증(+dnssec 플래그)이 실제로 확인하는 서명 체인의 각 레코드(RRSIG, NSEC)는?"
+  },
+  {
+    "id": "net-051",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "HTTP/2의 HOL(Head-of-Line) Blocking 문제를 HTTP/3(QUIC)이 해결하는 방식으로 올바른 것은?",
+    "options": [
+      "HTTP/3는 TCP 대신 UDP 기반 QUIC 프로토콜을 사용해 스트림 단위 독립적 전송으로 패킷 손실이 해당 스트림에만 영향을 미친다",
+      "HTTP/3는 연결당 요청 수를 제한해 HOL Blocking을 방지한다",
+      "HTTP/3는 멀티플렉싱을 제거하고 각 요청에 별도 TCP 연결을 사용한다",
+      "HTTP/3는 서버 측 큐잉을 우선순위 기반으로 재정렬해 HOL Blocking을 해결한다"
+    ],
+    "answer": 0,
+    "explanation": "HTTP/2는 단일 TCP 연결에서 멀티플렉싱을 지원하지만, TCP 레이어에서 하나의 패킷 손실이 발생하면 TCP 재전송을 기다리는 동안 모든 스트림이 블로킹된다(Transport-level HOL Blocking). HTTP/3는 QUIC(UDP 기반)을 사용해 각 스트림이 독립적인 패킷 시퀀스를 가지므로, 한 스트림의 패킷 손실이 다른 스트림에 영향을 주지 않는다. QUIC은 TLS 1.3을 내장해 0-RTT 연결 재개도 지원한다.",
+    "seniorTip": "AWS CloudFront는 HTTP/3(QUIC) 지원을 제공한다. 모바일 환경처럼 패킷 손실률이 높은 네트워크에서 HTTP/3가 HTTP/2 대비 유의미한 성능 향상을 보인다. NestJS 백엔드 자체는 HTTP/3를 직접 서빙하지 않고 ALB/CloudFront가 클라이언트와 HTTP/3로 통신하고 백엔드와는 HTTP/1.1 또는 HTTP/2로 통신하는 패턴이 일반적이다.",
+    "tags": [
+      "http3",
+      "quic",
+      "http2",
+      "hol-blocking",
+      "cloudfront"
+    ],
+    "deepDive": "QUIC의 연결 마이그레이션(Connection ID 기반)이 모바일 사용자가 Wi-Fi에서 LTE로 전환할 때 TCP 재연결 없이 통신을 유지하는 방식은? → HTTP/3의 0-RTT 재연결이 Replay Attack에 취약한 이유와 POST 요청에서 0-RTT를 비활성화해야 하는 이유는? → Cloudflare와 Google이 QUIC 표준화 과정에서 초기 구현 차이(gQUIC vs IETF QUIC)를 조율한 방식은?"
+  },
+  {
+    "id": "net-052",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "WebSocket과 WebTransport의 차이점과 각각의 적합한 사용 사례를 설명하라.",
+    "answer": "WebSocket은 HTTP/1.1 업그레이드 기반 양방향 통신이고, WebTransport는 HTTP/3(QUIC) 위에서 멀티플렉싱 스트림과 데이터그램을 지원하는 차세대 프로토콜이다.",
+    "explanation": "WebSocket: HTTP/1.1의 Upgrade 헤더로 TCP 연결을 업그레이드. 단일 전이중(Full-duplex) 스트림. 메시지 순서 보장. 실시간 채팅, 알림, 주가 피드에 적합. HOL Blocking 취약. WebTransport: QUIC(HTTP/3) 위에서 동작. 여러 독립 스트림과 비신뢰성 데이터그램(UDP-like) 동시 지원. 게임, 라이브 스트리밍, 저지연 미디어 전송에 적합. 아직 브라우저 지원이 제한적(2024년 기준 Chrome/Edge 지원).",
+    "seniorTip": "NestJS는 @nestjs/websockets로 WebSocket 게이트웨이를 쉽게 구현할 수 있으며 Socket.io와 ws 어댑터를 지원한다. K8s에서 WebSocket은 ALB의 idle timeout(기본 60초) 설정이 중요하다 — 장기 연결 시 클라이언트 측 heartbeat를 구현하거나 ALB timeout을 늘려야 한다. WebTransport는 아직 NestJS 기본 지원이 없으므로 직접 구현이 필요하다.",
+    "tags": [
+      "websocket",
+      "webtransport",
+      "quic",
+      "http3",
+      "realtime"
+    ],
+    "deepDive": "Socket.io가 WebSocket 외에 HTTP Long Polling 폴백을 사용하는 경우와 K8s 멀티 파드 환경에서 Socket.io sticky session 또는 Redis Adapter가 필요한 이유는? → WebTransport의 비신뢰성 데이터그램이 게임 네트워킹에서 TCP의 순서 보장보다 유리한 경우와 패킷 손실 허용 설계 패턴은? → gRPC-Web의 한계(Trailer 헤더 미지원)를 Connect 프로토콜이 해결하는 방식과 NestJS gRPC 마이크로서비스에서의 적용 방법은?"
+  },
+  {
+    "id": "net-053",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "Anycast, Unicast, Multicast, Broadcast의 차이와 CDN/DNS에서 Anycast가 활용되는 방식을 설명하라.",
+    "answer": "Unicast는 1:1 전송, Multicast는 1:그룹, Broadcast는 1:전체, Anycast는 1:가장 가까운 노드 전송이다. Anycast는 동일 IP를 여러 지점에 공고해 클라이언트를 최적 노드로 라우팅한다.",
+    "explanation": "Unicast: 특정 단일 목적지로 전송. 일반 HTTP 통신. Multicast: IGMP로 구성된 그룹 멤버에만 전송. IPTV, 주식 시장 데이터 피드. Broadcast: 서브넷 전체에 전송. ARP 요청. IPv6에서 Broadcast 없음. Anycast: 동일 IP 주소를 BGP로 전 세계 여러 POP(Point of Presence)에 공고. 클라이언트의 DNS 쿼리는 BGP 라우팅으로 가장 가까운 POP로 자동 전달. 1.1.1.1(Cloudflare), 8.8.8.8(Google) DNS가 대표적인 Anycast IP.",
+    "seniorTip": "AWS Route53은 Anycast를 사용해 전 세계 엣지 위치에서 DNS를 서빙한다. CloudFront도 Anycast로 사용자를 가장 가까운 엣지 PoP로 연결한다. DDoS 방어에서도 Anycast가 유용하다 — 공격 트래픽이 여러 PoP로 분산되어 단일 지점 과부하를 방지한다. Cloudflare Magic Transit은 고객 IP 대역을 Anycast로 공고해 DDoS를 흡수한다.",
+    "tags": [
+      "anycast",
+      "unicast",
+      "multicast",
+      "cdn",
+      "dns",
+      "ddos"
+    ],
+    "deepDive": "Anycast 기반 DNS에서 동일 IP의 응답이 지역마다 다른 서버에서 오는데 DNSSEC 서명 검증이 올바르게 동작하는 이유는? → AWS Global Accelerator가 Anycast를 사용해 TCP/UDP 트래픽을 가속화하는 방식과 CloudFront와의 선택 기준은? → IPv6 Anycast와 Multicast의 경계가 모호한 이유와 IPv6 전용 네트워크에서 ARP를 대체하는 NDP(Neighbor Discovery Protocol)는?"
+  },
+  {
+    "id": "net-054",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Cloudflare Workers와 AWS Lambda@Edge의 핵심 아키텍처 차이로 올바른 것은?",
+    "options": [
+      "Cloudflare Workers는 V8 Isolate로 콜드 스타트 없이 엣지에서 실행되고, Lambda@Edge는 Node.js/Python 컨테이너로 CloudFront 이벤트에 반응한다",
+      "Cloudflare Workers는 서버리스가 아니고 Lambda@Edge만 서버리스이다",
+      "Lambda@Edge는 콜드 스타트가 없고 Cloudflare Workers는 콜드 스타트가 있다",
+      "둘 다 동일한 V8 Isolate 기술을 사용하며 차이가 없다"
+    ],
+    "answer": 0,
+    "explanation": "Cloudflare Workers: V8 JavaScript Isolate 사용. 전통적인 컨테이너/VM이 아닌 Isolate를 재사용해 콜드 스타트가 사실상 0ms. 전 세계 300+ 엣지 PoP에서 실행. CPU 시간 제한(10ms~30s). Lambda@Edge: Node.js/Python Lambda를 CloudFront 트리거(Viewer Request/Response, Origin Request/Response)로 실행. 콜드 스타트 발생. 실행 위치는 CloudFront 리전 엣지(전 세계 13개 리전). 더 긴 실행 시간(5-30초) 허용.",
+    "seniorTip": "선택 기준: (1) 인증/A-B 테스트/지역 리디렉션 같은 경량 로직 → Cloudflare Workers (낮은 지연, 콜드 스타트 없음). (2) AWS 생태계(S3, DynamoDB, VPC) 접근 필요 → Lambda@Edge 또는 CloudFront Functions. (3) Cloudflare R2, KV, Durable Objects와 통합 → Cloudflare Workers. NestJS를 엣지에서 실행하려면 Hono 프레임워크를 Cloudflare Workers 위에 사용하는 패턴이 있다.",
+    "tags": [
+      "cloudflare-workers",
+      "lambda-edge",
+      "edge-computing",
+      "cdn",
+      "serverless"
+    ],
+    "deepDive": "Cloudflare Durable Objects가 분산 엣지에서 단일 JavaScript 객체를 통한 글로벌 상태 일관성을 유지하는 메커니즘과 WebSocket Hibernation API는? → Lambda@Edge의 Origin Request 트리거에서 동적 오리진 라우팅(A/B 테스트, 카나리 배포)을 구현할 때 고려할 캐시 키 오염 문제는? → Cloudflare Workers의 V8 Isolate가 Node.js 런타임과 다른 API(예: fetch, Web Crypto API만 사용 가능)가 NestJS 마이그레이션에 미치는 제약은?"
+  },
+  {
+    "id": "net-055",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "CORS Preflight 요청의 캐싱 메커니즘과 성능 최적화 방법을 설명하라.",
+    "answer": "CORS Preflight(OPTIONS 요청)는 Access-Control-Max-Age 헤더로 브라우저가 결과를 캐시하는 시간을 지정할 수 있다. 최적화를 통해 매 요청마다 OPTIONS 왕복을 없앨 수 있다.",
+    "explanation": "Preflight 발생 조건: Simple Request가 아닌 경우(PUT/DELETE/PATCH 메서드, 커스텀 헤더, application/json Content-Type). 브라우저가 OPTIONS 요청을 먼저 보내 서버가 허용하는지 확인. 성능 영향: 매 API 요청 전 OPTIONS RTT 추가. 최적화: (1) Access-Control-Max-Age: 86400 설정으로 24시간 캐시(Chrome 최대 7200초, Firefox 86400초). (2) Simple Request로 변경(Content-Type: text/plain 등). (3) 같은 오리진에서 API 서빙(리버스 프록시로 경로 통일). (4) CDN 레이어에서 OPTIONS 응답 캐시.",
+    "seniorTip": "NestJS에서 CORS 설정: app.enableCors({ origin: allowedOrigins, methods: ['GET','POST','PUT','DELETE'], allowedHeaders: ['Content-Type','Authorization'], maxAge: 7200 }). AWS API Gateway에서 CORS를 설정하면 Lambda 응답에서도 중복으로 CORS 헤더를 반환하지 않도록 주의가 필요하다(이중 헤더 문제). CloudFront와 ALB 조합에서 OPTIONS 메서드를 CloudFront가 오리진으로 전달하도록 캐시 정책을 설정해야 한다.",
+    "tags": [
+      "cors",
+      "preflight",
+      "http",
+      "performance",
+      "nestjs"
+    ],
+    "deepDive": "CORS의 credentialed request(withCredentials: true)에서 Access-Control-Allow-Origin에 와일드카드(*)를 사용할 수 없는 이유와 동적 오리진 허용 목록 구현 시 Vary: Origin 헤더 설정이 CDN 캐시 오염을 방지하는 방식은? → CORS 정책이 Same-Site 쿠키 정책(Lax/Strict/None)과 상호작용할 때 서드파티 임베디드 위젯이 인증 쿠키를 전송하지 못하는 문제는? → CORP(Cross-Origin Resource Policy), COEP(Cross-Origin Embedder Policy), COOP(Cross-Origin Opener Policy) 세 가지 헤더가 Spectre 공격을 방어하기 위해 SharedArrayBuffer를 보호하는 원리는?"
+  },
+  {
+    "id": "net-056",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "Server Timing 헤더와 Navigation Timing API를 활용한 백엔드 성능 가시성 확보 방법을 설명하라.",
+    "answer": "Server-Timing 헤더로 서버 처리 단계별 시간을 브라우저 DevTools에 노출하고, Navigation Timing API로 클라이언트 측 페이지 로드 전체 구간을 측정해 E2E 성능 분석이 가능하다.",
+    "explanation": "Server-Timing 헤더: 예) Server-Timing: db;dur=53, cache;dur=2, total;dur=120. 브라우저 DevTools Network 탭에 시각화. JavaScript에서 performance.getEntriesByType('navigation') 또는 PerformanceObserver로 접근 가능. Navigation Timing API(Performance API): TTFB(Time to First Byte), DOMContentLoaded, Load 이벤트 타이밍 등을 ms 단위로 측정. Resource Timing API: 개별 리소스(JS, CSS, API 호출) 로드 타이밍. NestJS에서 인터셉터로 Server-Timing 헤더를 자동 주입 가능.",
+    "seniorTip": "NestJS Server-Timing 인터셉터 패턴: beforeHandle에서 시작 시간을 기록하고, afterSend에서 response.setHeader('Server-Timing', ...) 설정. DB 쿼리 타이밍은 TypeORM의 QueryLogger로 측정해 포함할 수 있다. RUM(Real User Monitoring) 도구(Datadog RUM, New Relic Browser)는 Navigation Timing API 데이터를 자동 수집해 실제 사용자 성능 데이터를 집계한다. Core Web Vitals(LCP, FID/INP, CLS)도 동일한 Performance API 기반이다.",
+    "tags": [
+      "server-timing",
+      "navigation-timing",
+      "performance",
+      "rum",
+      "web-vitals"
+    ],
+    "deepDive": "Performance API의 PerformanceObserver가 LCP(Largest Contentful Paint) 측정에서 이미지 로드 완료 시점을 비동기적으로 관찰하는 방식과 INP(Interaction to Next Paint) 메트릭이 FID를 대체한 이유는? → Server-Timing 헤더에 포함된 타이밍 정보가 공격자에게 노출될 경우 타이밍 기반 SQL Injection 탐지를 도울 수 있는 보안 위험과 Timing-Allow-Origin 헤더의 역할은? → OpenTelemetry의 W3C TraceContext(traceparent 헤더)가 서버 응답의 Server-Timing 헤더에 trace ID를 포함해 프론트엔드 RUM과 백엔드 분산 추적을 연결하는 방법은?"
+  },
+  {
+    "id": "net-057",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "WebRTC에서 NAT 통과를 위한 STUN과 TURN 서버의 역할로 올바른 것은?",
+    "options": [
+      "STUN은 공인 IP/포트를 발견하고, TURN은 직접 P2P 연결이 불가할 때 미디어를 중계한다",
+      "STUN은 미디어를 중계하고, TURN은 공인 IP를 발견하는 데 사용된다",
+      "STUN과 TURN 모두 미디어 암호화를 담당한다",
+      "TURN 서버 없이는 WebRTC가 전혀 동작하지 않는다"
+    ],
+    "answer": 0,
+    "explanation": "STUN(Session Traversal Utilities for NAT): 클라이언트가 자신의 공인 IP와 포트를 발견하기 위해 사용. P2P 연결을 위한 ICE candidate 수집. 비용이 적고 클라이언트가 직접 P2P 연결 가능. TURN(Traversal Using Relays around NAT): Symmetric NAT처럼 STUN으로 P2P 연결이 불가할 때 TURN 서버가 미디어를 중계. 모든 트래픽이 TURN 서버를 통과 → 서버 대역폭 비용 발생. ICE(Interactive Connectivity Establishment): STUN, TURN, 직접 연결을 모두 시도해 최적의 경로를 선택.",
+    "seniorTip": "실무에서 WebRTC TURN 서버 선택: (1) Coturn: 오픈소스 STUN/TURN 서버. EC2에 배포 가능. (2) Cloudflare Calls(TURN as a Service). (3) Twilio/Daily.co 등 WebRTC 플랫폼. TURN 트래픽 비용이 큰 경우 P2P 성공률 높이기: ICE candidate 수집 타임아웃 최적화, STUN 서버 다수 구성. 화상 회의에서 다자간 통화는 SFU(Selective Forwarding Unit) 아키텍처로 TURN 부하를 줄인다.",
+    "tags": [
+      "webrtc",
+      "stun",
+      "turn",
+      "nat",
+      "p2p"
+    ],
+    "deepDive": "ICE candidate 수집 과정에서 host, srflx(STUN), relay(TURN) 세 가지 candidate 유형이 우선순위를 결정하는 ICE Trickle 방식과 연결 수립 지연 최적화 방법은? → Symmetric NAT에서 STUN이 실패하는 이유와 Port Restricted NAT vs Full Cone NAT의 차이가 P2P 연결 가능성에 미치는 영향은? → WebRTC의 DTLS-SRTP가 미디어를 암호화하는 방식과 MITM 방지를 위해 SDP의 핑거프린트가 사용되는 방식은?"
+  },
+  {
+    "id": "net-058",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "eBPF를 활용한 네트워크 옵저버빌리티와 K8s 환경에서의 실용적 적용 사례를 설명하라.",
+    "answer": "eBPF는 커널을 수정하지 않고 네트워크 이벤트를 커널 레벨에서 관찰할 수 있어, K8s에서 사이드카 없이 서비스 메시와 관찰 가능성을 구현할 수 있다.",
+    "explanation": "eBPF(extended Berkeley Packet Filter): 커널 소스 변경 없이 안전하게 커널에서 프로그램 실행. 네트워크 패킷 처리, 시스템 콜 추적, 성능 프로파일링 가능. K8s 적용 사례: (1) Cilium: eBPF 기반 CNI. kube-proxy 없이 서비스 라우팅, NetworkPolicy 적용. L7 정책(HTTP, gRPC) 지원. (2) Hubble: Cilium 위에서 동작하는 네트워크 관찰 도구. 서비스 간 트래픽 흐름 시각화. (3) Pixie(px.dev): eBPF로 인스트루멘테이션 없이 K8s 애플리케이션 성능 데이터 자동 수집. (4) Falco: eBPF로 런타임 보안 이벤트 감지.",
+    "seniorTip": "EKS에서 Cilium은 AWS VPC CNI 대신 사용할 수 있다. Cilium + Hubble 조합으로 사이드카 없이 L7 메트릭을 수집해 Istio/Envoy 대비 오버헤드를 줄일 수 있다. eBPF는 커널 5.10+ 에서 안정적으로 동작하므로 Amazon Linux 2023 또는 Ubuntu 22.04 노드를 사용하는 것이 권장된다. Datadog Agent도 내부적으로 eBPF를 사용해 네트워크 성능 메트릭을 수집한다.",
+    "tags": [
+      "ebpf",
+      "cilium",
+      "kubernetes",
+      "observability",
+      "networking"
+    ],
+    "deepDive": "Cilium의 XDP(eXpress Data Path) 오프로딩이 일반 eBPF 소켓 필터 대비 패킷 처리 속도를 높이는 방식과 DDoS 방어에서 활용하는 방법은? → eBPF Map(Hash, Array, Ring Buffer)의 데이터 구조가 커널과 사용자 공간 간 데이터를 공유하는 메커니즘과 Perf Event Array를 이용한 고성능 이벤트 스트리밍은? → Hubble의 서비스 맵이 gRPC 스트리밍 연결에서 L7 메트릭을 추출할 때 프로토콜 파싱에 사용하는 eBPF 프로그램 유형(socket filter vs kprobe vs tracepoint)은?"
+  },
+  {
+    "id": "net-059",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "TCP Fast Open(TFO)은 SYN 패킷에 데이터를 포함시켜 3-way 핸드셰이크 완료 전에 서버가 데이터를 처리할 수 있게 하므로, 첫 번째 연결에서도 항상 RTT를 절감한다.",
+    "answer": "X",
+    "explanation": "TCP Fast Open은 첫 번째 연결에서 TFO 쿠키를 발급받는 추가 왕복이 필요하다. RTT 절감은 두 번째 연결부터 가능하다. 첫 번째 연결: SYN + TFO 요청 → 서버가 TFO 쿠키 발급. 두 번째 이후 연결: SYN + TFO 쿠키 + 데이터를 함께 전송 → 서버가 쿠키 검증 후 핸드셰이크 완료 전 데이터 처리 시작(1-RTT 절감). 또한 TFO는 보안 위험(SYN+DATA 재전송에 의한 부작용)으로 인해 비멱등 요청(POST)에 주의가 필요하다.",
+    "seniorTip": "Linux에서 TFO 활성화: sysctl net.ipv4.tcp_fastopen=3(클라이언트+서버 모두 활성화). Nginx에서 listen 80 fastopen=256 설정. AWS ALB는 TFO를 투명하게 처리한다. 실제 성능 이득은 지리적으로 멀리 떨어진 클라이언트-서버 간 레이턴시가 클 때 유의미하다. HTTP/2와 QUIC이 보편화되면서 TFO의 중요도는 상대적으로 낮아졌지만, HTTP/1.1 레거시 연결 최적화에서 여전히 유용하다.",
+    "tags": [
+      "tcp-fast-open",
+      "tcp",
+      "latency",
+      "handshake",
+      "performance"
+    ],
+    "deepDive": "TFO 쿠키가 서버 측 비밀키로 생성되는 방식과 쿠키 유효기간 만료 또는 서버 재시작 시 쿠키 재발급이 이루어지는 과정은? → TFO의 SYN 재전송 시 SYN+DATA가 재전송되어 서버 측에서 멱등하지 않은 작업이 중복 실행되는 위험을 방지하기 위해 RFC 7413이 권고하는 제약은? → QUIC의 0-RTT 재연결과 TFO의 RTT 절감 방식 비교 — 두 프로토콜이 초기 데이터 전송의 보안 트레이드오프를 다르게 접근하는 이유는?"
+  },
+  {
+    "id": "net-060",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "IPFS(InterPlanetary File System)의 콘텐츠 주소 지정(Content Addressing) 방식이 전통적인 위치 기반 주소(URL)와 다른 점은?",
+    "options": [
+      "IPFS는 콘텐츠의 해시(CID)로 데이터를 식별해 내용이 같으면 어디서든 동일 CID를 가지므로, 출처와 무관하게 무결성이 보장된다",
+      "IPFS는 중앙 서버 없이 동작하지만 데이터 조회는 여전히 특정 IP 주소에 의존한다",
+      "IPFS의 CID는 IP 주소를 해시한 값이다",
+      "IPFS는 오직 파일 시스템에만 사용되고 HTTP와 호환되지 않는다"
+    ],
+    "answer": 0,
+    "explanation": "Content Addressing: 데이터를 SHA-256(또는 SHA3)으로 해시한 CID(Content Identifier)로 주소 지정. 동일 콘텐츠는 항상 동일 CID → 캐시 효율적, 위변조 감지 자동화. Location Addressing(URL): 서버 위치에 의존. 서버가 내려가면 404. 같은 URL이 다른 콘텐츠를 반환할 수 있음. IPFS 동작: DHT(분산 해시 테이블)로 CID를 가진 피어 탐색 → 가장 가까운 피어에서 다운로드. Filecoin: IPFS의 지속적 스토리지 인센티브 레이어.",
+    "seniorTip": "백엔드 실용 관점: Immutable Asset 배포(프론트엔드 빌드 결과물)에서 Content-Hash 기반 캐싱은 이미 표준이다(webpack contenthash). IPFS는 Web3/블록체인 NFT 메타데이터 저장에 많이 사용된다. 일반 백엔드에서는 S3 객체의 ETag(MD5 해시)가 컨텐츠 주소 지정의 실용적 구현이다. CloudFront에서 Immutable Cache-Control 헤더와 콘텐츠 해시 파일명 조합으로 영구 캐싱을 구현한다.",
+    "tags": [
+      "ipfs",
+      "content-addressing",
+      "distributed",
+      "caching",
+      "web3"
+    ],
+    "deepDive": "IPFS의 DAG-CBOR 데이터 구조가 대용량 파일을 청크로 나누어 Merkle DAG를 구성하는 방식과 부분 검증(특정 청크의 무결성만 확인)이 가능한 이유는? → Cloudflare의 IPFS 게이트웨이(cloudflare-ipfs.com)가 DNSLink와 함께 기존 도메인으로 IPFS 콘텐츠를 서빙하는 방식은? → Content Addressing과 Blockchain의 스마트 컨트랙트 이벤트 로그가 결합되어 NFT 소유권 이전과 실제 에셋 조회를 연결하는 아키텍처의 단점(IPFS 핀닝 미보장 시 콘텐츠 사라짐)과 해결책은?"
+  },
+  {
+    "id": "net-061",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "BGP Hijacking의 원리와 RPKI(Resource Public Key Infrastructure)가 이를 방어하는 방식을 설명하라.",
+    "answer": "BGP Hijacking은 악의적인 AS가 다른 AS의 IP 프리픽스를 자신의 것으로 공고해 트래픽을 탈취하는 공격이며, RPKI는 디지털 서명으로 프리픽스 소유권을 증명해 유효하지 않은 공고를 필터링한다.",
+    "explanation": "BGP 기본 신뢰 모델의 취약점: BGP는 AS가 공고한 라우팅 정보를 기본적으로 신뢰한다. 악의적인 AS(또는 잘못된 설정)가 더 구체적인 프리픽스(예: /24 대신 /25)를 공고하면 더 긴 프리픽스 매칭으로 트래픽이 납치된다. 실제 사례: 2018년 Amazon Route53 Hijacking(MyEtherWallet 공격), 2010년 China Telecom의 미국 트래픽 흡수. RPKI 방어: RIR(ARIN, RIPE 등)이 AS와 IP 프리픽스 매핑을 X.509 인증서(ROA, Route Origin Authorization)로 서명. 라우터가 BGP UPDATE를 받을 때 RPKI 검증(Origin Validation)으로 ROA에 없는 공고를 INVALID로 표시하고 필터링.",
+    "seniorTip": "AWS는 2022년부터 모든 IP 프리픽스에 RPKI ROA를 등록했다. CloudFront, Route53 IP 대역도 RPKI로 보호된다. 국내 ISP의 RPKI 배포는 아직 낮지만, Cloudflare RPKI(cloudflare.com/rpki)에서 현재 인터넷의 RPKI 커버리지를 확인할 수 있다. Routinator, OctoRPKI 같은 오픈소스 RPKI Validator를 네트워크에 배포해 자체 검증할 수 있다.",
+    "tags": [
+      "bgp",
+      "bgp-hijacking",
+      "rpki",
+      "routing",
+      "security"
+    ],
+    "deepDive": "RPKI의 ROA(Route Origin Authorization)가 AS path 전체를 검증하지 못하는 한계와 이를 보완하기 위한 BGPsec의 AS PATH 서명 방식은? → 2021년 Facebook의 BGP 전체 경로 철수 사고에서 자사 DNS 서버에 도달 불가능해진 원인과 이를 방지하기 위한 'never announce learned routes to upstreams' 정책은? → RPKI Invalid로 표시된 프리픽스를 실제로 드롭할지 우선순위를 낮출지 결정하는 운영 정책(Hard vs Soft Fail)의 트레이드오프는?"
+  },
+  {
+    "id": "net-062",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "gRPC-Web의 주요 한계와 이를 극복하기 위한 대안 기술은?",
+    "options": [
+      "gRPC-Web은 브라우저에서 HTTP/2 트레일러를 지원하지 않아 스트리밍에 제한이 있으며, Connect 프로토콜이나 gRPC Gateway가 대안이다",
+      "gRPC-Web은 HTTP/1.1만 지원해 성능이 낮고, HTTP/3로 업그레이드하면 문제가 해결된다",
+      "gRPC-Web은 인증을 지원하지 않아 REST를 사용해야 한다",
+      "gRPC-Web은 브라우저 전용이고 모바일 앱에서는 사용할 수 없다"
+    ],
+    "answer": 0,
+    "explanation": "gRPC-Web의 한계: (1) 브라우저는 HTTP/2 Trailer 헤더를 직접 접근할 수 없어 gRPC의 트레일링 메타데이터(상태 코드 등)를 전달하기 위해 프록시(Envoy, Nginx)가 필요하다. (2) 서버 스트리밍은 지원하지만 클라이언트 스트리밍과 양방향 스트리밍은 미지원(HTTP/1.1 단방향 제약). (3) Envoy 또는 grpc-web 프록시 레이어 추가 운영 부담. 대안: Connect 프로토콜(Buf.build) — gRPC와 호환되며 Trailer를 다르게 인코딩해 프록시 없이 브라우저에서 동작. gRPC-Gateway — REST/JSON ↔ gRPC 변환.",
+    "seniorTip": "NestJS에서 gRPC 마이크로서비스는 서버 간 통신에 이상적이지만, 프론트엔드에서 직접 gRPC를 호출하려면 프록시가 필요하다. 일반적인 패턴: 프론트엔드 ↔ REST/GraphQL Gateway ↔ gRPC 마이크로서비스. Connect 프로토콜 라이브러리(connect-go, connect-es)는 Buf Schema Registry와 통합해 타입 안전 API를 제공한다.",
+    "tags": [
+      "grpc",
+      "grpc-web",
+      "connect-protocol",
+      "protobuf",
+      "browser"
+    ],
+    "deepDive": "Envoy 프록시가 gRPC-Web 클라이언트 요청을 실제 gRPC로 변환하는 과정에서 HTTP/1.1 framing을 HTTP/2 DATA/HEADERS 프레임으로 변환하는 방식은? → Connect 프로토콜이 Trailer 메타데이터를 End-Stream DATA 프레임에 인코딩해 브라우저가 Trailer에 접근하지 않아도 되는 메커니즘은? → Buf Schema Registry를 사용한 Proto 스키마 버저닝과 브레이킹 체인지(필드 제거, 타입 변경) 감지 자동화가 팀 협업에서 갖는 의미는?"
+  },
+  {
+    "id": "net-063",
+    "category": "network",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "mTLS(Mutual TLS) 인증서 교체(rotation)의 핵심 문제와 K8s 환경에서의 자동화 방법을 설명하라.",
+    "answer": "mTLS 인증서 교체 시 클라이언트와 서버 인증서 갱신 타이밍 불일치로 인증 실패가 발생할 수 있다. K8s에서 cert-manager와 서비스 메시(Istio/Linkerd)로 무중단 자동 교체가 가능하다.",
+    "explanation": "문제: mTLS는 서버와 클라이언트 모두 인증서가 필요하다. 교체 시 (1) 갱신된 클라이언트 인증서를 구 서버가 신뢰하지 않거나 (2) 갱신된 서버 인증서를 구 클라이언트가 신뢰하지 않으면 연결 실패. 해결 전략: (1) 이중 신뢰 기간 — 갱신 전 기간 동안 구/신 인증서 모두를 신뢰 목록에 포함. (2) 서비스 메시 활용: Istio는 Citadel(istiod)이 모든 워크로드에 단기 인증서(24시간)를 자동 발급/교체. (3) cert-manager + Vault PKI: Vault가 내부 CA 역할, cert-manager가 K8s Secret으로 자동 갱신.",
+    "seniorTip": "Istio의 mTLS 자동 교체는 PeerAuthentication 정책으로 STRICT(mTLS 강제) 또는 PERMISSIVE(mTLS 선택) 모드를 설정할 수 있다. 마이그레이션 시 PERMISSIVE로 시작해 모든 서비스가 mTLS를 지원하면 STRICT로 전환한다. EKS에서 AWS ACM Private CA + cert-manager 통합으로 AWS 관리형 PKI를 사용할 수 있다. 인증서 만료 알림은 cert-manager의 Prometheus exporter로 certmanager_certificate_expiration_timestamp_seconds 메트릭을 모니터링한다.",
+    "tags": [
+      "mtls",
+      "certificate-rotation",
+      "cert-manager",
+      "istio",
+      "kubernetes"
+    ],
+    "deepDive": "Istio의 SPIFFE(Secure Production Identity Framework for Everyone) ID가 Pod의 서비스 어카운트를 기반으로 SVID(SPIFFE Verifiable Identity Document)를 생성하고, 이를 통해 서비스 간 신원을 암호학적으로 검증하는 방식은? → cert-manager의 Certificate 리소스에서 renewBefore 필드가 인증서 교체 타이밍을 제어하는 방식과, 교체 중 이전 인증서와 새 인증서를 동시에 신뢰하기 위한 CA Bundle 업데이트 순서는? → Vault의 PKI Secret Engine에서 단기 인증서(TTL 24시간)와 장기 루트 CA의 분리가 인증서 침해(compromise) 시 피해 범위를 제한하는 이유는?"
+  },
+  {
+    "id": "net-064",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "서비스 메시 없이 K8s에서 East-West 트래픽(파드 간 통신)의 성능과 보안을 최적화하는 방법을 설명하라.",
+    "answer": "NetworkPolicy로 최소 권한 통신 정책을 적용하고, Headless Service + DNS로 직접 Pod IP를 사용해 kube-proxy 오버헤드를 줄이며, eBPF 기반 CNI(Cilium)로 커널 레벨에서 효율적인 패킷 처리를 구현한다.",
+    "explanation": "서비스 메시 없는 최적화 방법: (1) NetworkPolicy: Ingress/Egress 규칙으로 허용된 Pod 간 통신만 허용(Zero Trust 기반). Calico, Cilium이 NetworkPolicy 구현. (2) Headless Service(ClusterIP: None): 클라이언트가 DNS로 Pod IP 목록을 직접 받아 kube-proxy의 iptables/IPVS 규칙을 거치지 않고 직접 통신. 레이턴시 감소. (3) Cilium eBPF: kube-proxy를 대체해 eBPF로 서비스 라우팅. iptables 체인 없이 O(1) 룩업. (4) Pod Affinity: 자주 통신하는 파드를 같은 노드에 스케줄링해 네트워크 홉 제거.",
+    "seniorTip": "EKS에서 Cilium을 kube-proxy 대체로 배포할 수 있다(kube-proxy replacement: strict 설정). iptables 규칙이 수천 개 이상이 되면 업데이트 지연이 발생하는데, Cilium eBPF는 이 문제를 해결한다. NestJS gRPC 마이크로서비스 간 통신에서 Headless Service를 사용하면 gRPC 클라이언트 측 로드밸런싱이 가능해진다(kube-proxy는 TCP 연결 단위로 밸런싱해 gRPC 멀티플렉싱과 충돌). Connection-level(L4) 대신 Request-level(L7) 로드밸런싱이 필요하다.",
+    "tags": [
+      "kubernetes",
+      "east-west",
+      "networkpolicy",
+      "cilium",
+      "ebpf",
+      "headless-service"
+    ],
+    "deepDive": "K8s kube-proxy의 iptables 모드 vs IPVS 모드의 성능 차이와, Cilium eBPF kube-proxy replacement가 두 모드 대비 Service 라우팅 레이턴시를 낮추는 메커니즘은? → gRPC 마이크로서비스에서 Headless Service + gRPC Client-side LB(round_robin 정책)가 Long-lived HTTP/2 연결에서 로드를 균등 분배하는 원리와 Envoy 사이드카 없이 구현할 때의 한계는? → Cilium의 L7 NetworkPolicy가 HTTP 경로나 gRPC 메서드 단위로 접근 제어를 적용할 때 내부적으로 프록시 없이 eBPF만으로 HTTP 파싱을 처리하는 방식은?"
+  },
+  {
+    "id": "net-065",
+    "category": "network",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "HTTP/2 서버 푸시(Server Push)가 실제 운영 환경에서 기대만큼 성능 향상을 주지 못하는 이유는?",
+    "options": [
+      "브라우저가 이미 캐시한 리소스를 서버 푸시로 다시 받아 대역폭이 낭비되고, 브라우저의 푸시 수신 취소(RST_STREAM)가 늦게 처리되어 불필요한 데이터 전송이 발생하기 때문이다",
+      "서버 푸시는 HTTP/2에서 작동하지 않고 HTTP/1.1에서만 지원된다",
+      "서버 푸시는 보안 위험으로 인해 Chrome이 기본적으로 비활성화했다",
+      "서버 푸시는 정적 리소스에만 사용할 수 없고 동적 콘텐츠에만 적용된다"
+    ],
+    "answer": 0,
+    "explanation": "HTTP/2 Server Push의 문제점: (1) Cache Awareness 부재 — 서버는 클라이언트가 이미 해당 리소스를 캐시하고 있는지 알 수 없어, 캐시된 리소스도 푸시해 대역폭 낭비. (2) RST_STREAM 지연 — 클라이언트가 푸시를 거부(RST_STREAM)하더라도 서버가 이미 데이터를 전송 중이면 취소가 늦어짐. (3) 복잡한 구현 — 어떤 리소스를 언제 푸시할지 결정 로직이 어려움. 결과: Chrome은 2022년 HTTP/2 Server Push 지원을 제거했다. 대안: 103 Early Hints — 서버가 최종 응답 전에 리소스 힌트를 전송해 브라우저가 미리 프리로드할 수 있게 한다. Preload 링크 헤더와 함께 사용.",
+    "seniorTip": "103 Early Hints는 Cloudflare와 Chrome 108+ 에서 지원된다. NestJS에서 103 Early Hints 구현: res.writeEarlyHints({ 'Link': '</style.css>; rel=preload; as=style' }). HTTP/3(QUIC)에서도 Server Push는 폐기되고 103 Early Hints가 권장 방식이다. CDN 레이어에서 103 Early Hints를 지원하면 오리진 서버 응답을 기다리는 동안 정적 에셋을 미리 로드할 수 있다.",
+    "tags": [
+      "http2",
+      "server-push",
+      "early-hints",
+      "performance",
+      "browser"
+    ],
+    "deepDive": "103 Early Hints와 HTTP/2 Server Push의 근본적인 설계 차이 — 서버가 리소스를 '직접 전송'하는 것과 클라이언트에게 '힌트만 제공'하는 것의 캐시 친화적 차이는? → Cloudflare의 Early Hints 구현에서 CDN이 오리진 서버의 Link 헤더를 캐시하고 다음 요청에서 103 응답을 먼저 전송하는 방식과 동적 페이지에서 힌트가 스테일해질 위험은? → Preload Scanner(브라우저의 HTML 파서와 독립적으로 동작하는 리소스 힌트 수집기)가 LCP 최적화에서 Early Hints와 함께 사용될 때 동작 방식은?"
   }
 ]

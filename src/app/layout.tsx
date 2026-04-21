@@ -1,10 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "DevSenior",
-  description: "10년차 시니어 개발자 수준의 지식을 만드는 학습 플랫폼",
+  description: "시니어 개발자 지식 트레이닝",
+  manifest: "/dev-study/manifest.json",
+  icons: {
+    icon: "/dev-study/icon-192.png",
+    apple: "/dev-study/icon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "DevSenior",
+  },
 };
 
 export const viewport: Viewport = {
@@ -12,6 +23,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
@@ -22,6 +34,15 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/dev-study/sw.js', { scope: '/dev-study/' }).catch(() => {});
+              });
+            }
+          `}
+        </Script>
         <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
           {children}
         </main>

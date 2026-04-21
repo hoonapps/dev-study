@@ -1,0 +1,25 @@
+{
+  "name": "DevSenior",
+  "short_name": "DevSenior",
+  "description": "시니어 개발자 지식 트레이닝",
+  "start_url": "/dev-study/",
+  "scope": "/dev-study/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/dev-study/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/dev-study/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

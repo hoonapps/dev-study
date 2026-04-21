@@ -20,6 +20,8 @@ import argocdQuestions from "@/data/argocd.json";
 import opensearchQuestions from "@/data/opensearch.json";
 import algorithmQuestions from "@/data/algorithm.json";
 import designPatternQuestions from "@/data/design-pattern.json";
+import javaQuestions from "@/data/java.json";
+import springQuestions from "@/data/spring.json";
 
 const allQuestions: Question[] = [
   ...(mysqlQuestions as Question[]),
@@ -42,6 +44,8 @@ const allQuestions: Question[] = [
   ...(opensearchQuestions as Question[]),
   ...(algorithmQuestions as Question[]),
   ...(designPatternQuestions as Question[]),
+  ...(javaQuestions as Question[]),
+  ...(springQuestions as Question[]),
 ];
 
 export function getAllQuestions(): Question[] {

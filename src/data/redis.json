@@ -1093,5 +1093,315 @@
       "monitoring",
       "elasticache-cloudwatch"
     ]
+  },
+  {
+    "id": "redis-056",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis Enterprise와 Redis OSS(오픈소스)의 핵심 차이점과, 각각을 선택하는 기준을 설명하라.",
+    "answer": "Redis Enterprise는 클러스터 관리, Active-Active 지리적 분산, Redis 모듈(RediSearch, RedisJSON, RedisTimeSeries), 99.999% 가용성 보장 등 엔터프라이즈 기능을 추가로 제공한다. OSS는 무료이지만 클러스터 관리와 고급 기능은 직접 구현해야 한다.",
+    "explanation": "Redis Enterprise 추가 기능: 1) Active-Active Geo-Distribution: CRDT 기반으로 여러 리전에서 동시 쓰기 후 자동 충돌 해결. 2) Redis 모듈 통합: RediSearch(전문 검색), RedisJSON(JSON 네이티브 저장), RedisTimeSeries(시계열). 3) Auto Tiering: 메모리+SSD 계층화로 비용 절감. 4) 세분화된 클러스터 토폴로지 관리. 5) 24/7 엔터프라이즈 지원. ElastiCache와 비교: ElastiCache는 OSS Redis를 AWS가 관리형으로 제공. Redis Enterprise는 별도 라이선스 계약.",
+    "deepDive": "Redis Enterprise의 Active-Active와 ElastiCache Global Datastore의 차이는? → ElastiCache Global Datastore: Primary 클러스터에서만 쓰기. 보조 리전은 읽기 전용. Primary 장애 시 수동 promote. Redis Enterprise Active-Active: 모든 리전에서 쓰기 가능. CRDT로 충돌 자동 해결. 양방향 동기화. 더 낮은 쓰기 레이턴시(사용자와 가까운 리전에서 즉시 응답). 그러면 CRDT 충돌 해결이란 구체적으로 어떻게 동작하나? → Counter는 Last-Write-Wins(LWW)나 increment 합산. Set은 합집합. String은 LWW. 모든 자료구조가 충돌 없이 병합 가능하도록 CRDT semantics로 설계됨. 어떤 경우에 Active-Active가 필요한가? → 글로벌 실시간 게임 리더보드, 전 세계 사용자가 동시에 데이터를 수정하는 서비스.",
+    "seniorTip": "니콘내콘 규모에서 Redis Enterprise가 필요한 시점은? → 한국 단일 리전 서비스라면 ElastiCache로 충분. 글로벌 확장 시 Active-Active 검토. RediSearch가 필요하면(전문 검색 기능) Redis Enterprise 또는 K8s에서 Redis Stack(OSS 모듈 포함)으로 자체 운영. 비용 대비 기능을 따지면 대부분 ElastiCache + Elasticsearch 조합이 더 경제적이다.",
+    "tags": [
+      "redis-enterprise",
+      "redis-oss",
+      "active-active",
+      "crdt",
+      "elasticache",
+      "modules"
+    ]
+  },
+  {
+    "id": "redis-057",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Redis 7.0에서 도입된 Redis Functions가 기존 Lua 스크립트(EVAL)와 다른 핵심 차이는?",
+    "options": [
+      "Redis Functions는 Lua보다 빠르다",
+      "Redis Functions는 서버에 영구 저장되어 재시작 후에도 유지되며, 라이브러리 단위로 관리하여 여러 함수를 모듈화할 수 있다. Lua EVAL은 매 호출마다 스크립트를 전송하고 재시작 시 사라진다",
+      "Redis Functions는 Python을 지원한다",
+      "Lua EVAL은 Redis 7.0부터 deprecated다"
+    ],
+    "answer": 1,
+    "explanation": "Redis Functions: 1) FUNCTION LOAD로 서버에 영구 저장. RDB/AOF에 포함되어 재시작 후에도 유지. 2) 라이브러리 단위 관리: 여러 함수를 하나의 라이브러리로 묶음. 3) FCALL로 호출. 4) Lua(기본) 또는 JavaScript(V8 엔진, Redis Stack 필요). Lua EVAL: 매 호출마다 스크립트 전송(EVALSHA로 SHA 캐싱 가능). 스크립트가 서버에 영구 저장되지 않음(SCRIPT LOAD로 캐싱 가능하지만 재시작 시 소멸). 개념적으로 Functions가 더 애플리케이션 다운. 스크립트는 임시 실행에 적합.",
+    "deepDive": "Redis Functions가 실제 프로덕션에서 Lua EVAL보다 나은 점은? → 1) 배포 자동화: 서버에 함수를 로드하는 과정을 CI/CD에 포함. 재시작 후에도 자동 복구. EVAL에서는 앱 기동 시마다 스크립트를 서버에 로드해야 함. 2) 버전 관리: FUNCTION LIST로 현재 로드된 함수 확인. 3) FUNCTION STATS로 함수 실행 통계 확인. 그러면 Redis Functions의 한계는? → 1) Lua 스크립트와 동일하게 싱글 스레드에서 실행되어 긴 함수는 블로킹. 2) 디버깅 어려움. 3) ElastiCache(관리형 Redis)에서 FUNCTION LOAD 지원 여부 확인 필요(버전에 따라 다름). 4) Redis Functions는 Redis 7.0+ 필요. ElastiCache에서 7.0 버전 출시 이후 사용 가능.",
+    "seniorTip": "EVAL vs Functions 선택 기준: 일회성 원자적 연산(분산 락, 조건부 업데이트): EVALSHA가 간단하고 충분. 복잡한 비즈니스 로직을 서버 사이드로 이동, 여러 명령어 조합의 원자적 실행이 자주 필요: Functions. NestJS에서 ioredis의 defineCommand로 EVALSHA를 래핑하면 Functions와 유사한 DX를 제공한다.",
+    "tags": [
+      "redis-functions",
+      "lua",
+      "eval",
+      "redis-7",
+      "server-side-scripting"
+    ]
+  },
+  {
+    "id": "redis-058",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis keyspace notification의 동작 원리와 프로덕션에서 활성화 시 성능에 미치는 영향을 설명하라.",
+    "answer": "keyspace notification은 키의 변경/만료/삭제 이벤트를 Pub/Sub 채널로 발행한다. notify-keyspace-events 설정으로 원하는 이벤트 타입을 선택한다. 모든 키 이벤트를 활성화하면 CPU 사용량이 크게 증가하므로 필요한 이벤트 타입만 선택적으로 활성화해야 한다.",
+    "explanation": "notify-keyspace-events 코드: K(keyspace), E(keyevent), x(expired), g(generic), s(set), l(list), z(sorted set), $(string). 예: KExx로 키스페이스 + 키이벤트 + expired 이벤트만 활성화. 채널: __keyevent@0__:expired (DB 0의 만료 이벤트). 구독: SUBSCRIBE __keyevent@0__:expired. TTL이 만료된 키 이름을 실시간으로 수신 가능.",
+    "deepDive": "keyspace notification으로 TTL 만료 시 처리를 구현할 때의 함정은? → Redis의 TTL 만료는 lazy expiration이다. 키에 접근하거나 백그라운드 스캔이 해당 키를 발견할 때 실제로 삭제된다. 그래서 정확히 TTL이 지난 순간에 이벤트가 발행되지 않고 약간의 지연이 있다. 또한 클러스터 모드에서는 각 샤드에서 이벤트가 발행되므로 모든 샤드를 구독해야 한다. 더 큰 문제: Redis가 재시작되면 메모리에 있던 만료 이벤트가 유실될 수 있다. 그러면 어떤 대안이 있나? → 만료 시 처리가 중요한 비즈니스 로직(주문 타임아웃, 세션 만료 후 처리)은 Redis keyspace notification 대신 명시적인 스케줄러(CronJob, SQS visibility timeout)를 사용하는 것이 더 신뢰성이 높다.",
+    "seniorTip": "ElastiCache에서 keyspace notification 활성화: 파라미터 그룹에서 notify-keyspace-events를 설정. 단, ElastiCache에서는 일부 이벤트 타입이 지원되지 않을 수 있다. 성능 영향을 최소화하려면 x(expired)와 g(generic, DEL 등)만 활성화하고 나머지는 비활성화. 프로덕션 활성화 전 개발 환경에서 CPU 사용량을 반드시 측정하자.",
+    "tags": [
+      "keyspace-notification",
+      "pubsub",
+      "ttl",
+      "expired",
+      "performance",
+      "elasticache"
+    ]
+  },
+  {
+    "id": "redis-059",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Redis ACL(Access Control List)을 사용한 멀티 테넌시 구현에서 각 테넌트에게 자신의 키 접두사만 접근 허용하는 방법은?",
+    "options": [
+      "ACL에서 IP 주소로 접근 제어를 한다",
+      "ACL USER 명령으로 테넌트별 사용자를 생성하고, ~tenant1:* 패턴으로 특정 키 접두사에만 접근 가능하도록 키 패턴과 허용 명령어를 제한한다",
+      "Redis에서 ACL은 비밀번호 설정만 지원한다",
+      "멀티 테넌시는 별도 Redis 인스턴스만으로 구현 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "ACL USER 구문: ACL SETUSER tenant1 on >password123 ~tenant1:* &tenant1-* +GET +SET +DEL +EXPIRE. ~tenant1:*: tenant1: 접두사의 키만 접근 허용. &tenant1-*: tenant1- 접두사의 Pub/Sub 채널만 허용. +GET +SET...: 허용 명령어 목록. +@read로 읽기 명령어 그룹 전체 허용. -@dangerous으로 위험 명령어 전체 차단. ACL LOG로 거부된 접근 기록. ACL WHOAMI로 현재 사용자 확인.",
+    "deepDive": "단일 Redis 클러스터에서 ACL로 멀티 테넌시를 구현하는 것이 별도 인스턴스보다 나쁜 이유는? → 1) 메모리 격리 없음: 한 테넌트가 메모리를 많이 써서 OOM이 발생하면 모든 테넌트에 영향. 2) CPU 격리 없음: 한 테넌트의 느린 명령이 다른 테넌트 레이턴시에 영향. 3) 백업/복구 단위가 클러스터 전체. 4) 보안: ACL 설정 실수가 크로스 테넌트 접근으로 이어질 수 있음. 그럼 언제 ACL 기반 멀티 테넌시가 적합한가? → 테넌트 수가 많지 않고 각 테넌트의 부하가 예측 가능하며, 완전한 격리보다 비용 효율이 중요한 경우. 또는 개발/스테이징 환경에서 여러 팀이 하나의 Redis를 나눠 쓸 때.",
+    "seniorTip": "ElastiCache에서 ACL 지원: Redis 6.0부터 ACL이 지원되고 ElastiCache도 파라미터 그룹에서 ACL 설정 가능. 단, ElastiCache의 관리 사용자(awsuser)는 제한된 명령어만 허용하므로 ACL USER로 테넌트 사용자를 추가하는 권한이 제한될 수 있다. Terraform으로 ElastiCache ACL을 관리하려면 aws_elasticache_user와 aws_elasticache_user_group 리소스를 사용.",
+    "tags": [
+      "redis-acl",
+      "multi-tenancy",
+      "security",
+      "access-control",
+      "key-pattern"
+    ]
+  },
+  {
+    "id": "redis-060",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Dragonfly(Redis 대안)의 기술적 특징과 Redis와의 호환성, 프로덕션 전환 시 고려사항을 설명하라.",
+    "answer": "Dragonfly는 멀티스레드 아키텍처와 shared-nothing 메모리 모델로 단일 인스턴스에서 Redis보다 25배 이상 처리량을 제공한다고 주장한다. Redis 프로토콜과 호환되어 대부분의 Redis 클라이언트를 교체 없이 사용할 수 있다.",
+    "explanation": "Dragonfly 특징: 1) 멀티스레드: CPU 코어 수에 비례하여 처리량 확장. Redis의 싱글 스레드 병목 제거. 2) shared-nothing: 스레드 간 공유 메모리 없이 각 스레드가 독립 처리. lock 없는 고속 연산. 3) 효율적 메모리 압축: 동일 데이터 더 적은 메모리 사용. 4) Redis API 호환: RESP2/RESP3 프로토콜 지원. Redis Cluster 프로토콜은 부분 지원. 5) 오픈소스지만 BSL 라이선스(commercial use 제한).",
+    "deepDive": "실제 Dragonfly로 전환할 때 어떤 Redis 기능에서 호환성 문제가 발생하나? → 1) WAIT 명령어(복제 동기화 확인): 미지원. 2) Redis Cluster 프로토콜: 부분 지원. 클러스터 모드를 사용하는 ioredis는 재설정 필요. 3) Redis Module: RedisSearch, RedisJSON 등의 외부 모듈 불가. 4) Lua 스크립트 일부 동작 차이. 5) RDB/AOF 포맷이 Redis와 다를 수 있어 데이터 마이그레이션이 필요. 벤치마크 주의사항은? → Dragonfly의 25배 성능 주장은 특정 워크로드(소규모 단순 명령)에서이다. 실제 워크로드(복잡한 데이터 구조, 대용량 키)에서는 차이가 줄어든다. 프로덕션 전환 전 반드시 실제 워크로드로 벤치마크.",
+    "seniorTip": "Dragonfly를 프로덕션에서 사용하기 전 체크리스트: 1) Redis 호환 기능 목록을 사용 중인 명령어와 대조. 2) ElastiCache처럼 관리형 서비스가 없어 자체 운영 필요(K8s StatefulSet). 3) 커뮤니티와 생태계가 Redis보다 작음. 장기 지원과 보안 패치 불확실. 4) BSL 라이선스 확인. 상업적 사용 시 제약. 니콘내콘처럼 안정성이 중요한 서비스에서는 검증된 Redis/ElastiCache를 유지하는 것이 현명하다.",
+    "tags": [
+      "dragonfly",
+      "redis-alternative",
+      "multi-thread",
+      "performance",
+      "compatibility"
+    ]
+  },
+  {
+    "id": "redis-061",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis Cluster의 resharding과 slot migration 과정을 설명하고, 운영 중 resharding 시 주의사항을 제시하라.",
+    "answer": "Resharding은 해시 슬롯(0-16383)을 노드 간에 재분배하는 작업이다. redis-cli --cluster reshard로 슬롯 이동을 수행하며, 슬롯 마이그레이션 중에도 클라이언트 요청은 MOVED/ASKING 리다이렉션으로 정상 처리된다.",
+    "explanation": "슬롯 마이그레이션 절차: 1) CLUSTER SETSLOT <slot> MIGRATING <target-id>: 소스 노드에 슬롯 이동 중 상태 설정. 2) CLUSTER SETSLOT <slot> IMPORTING <source-id>: 대상 노드에 슬롯 수신 중 상태 설정. 3) MIGRATE로 키를 소스에서 대상으로 이동. 4) CLUSTER SETSLOT <slot> NODE <target-id>: 슬롯 소유권 변경 완료. 클라이언트: MOVED 응답 수신 시 올바른 노드로 재시도. ASKING: 아직 마이그레이션 중인 슬롯에 대한 임시 리다이렉션.",
+    "deepDive": "Resharding 중 핫 슬롯(hot slot, 대용량 키가 있는 슬롯)을 마이그레이션하면 어떤 문제가 생기나? → MIGRATE 명령은 키를 직렬화하여 전송하는데 대용량 키(Big Key)면 수십 ms~수초가 걸릴 수 있다. 이 동안 해당 키에 대한 요청이 블로킹. 실무 대응: 1) 마이그레이션 전 Big Key를 식별하고 TTL 설정 또는 삭제. 2) redis-cli --cluster reshard의 파이프라인 크기와 배치 크기를 줄여 영향 분산. 3) 트래픽 저점 시간대에 실행. ElastiCache에서 resharding은? → ElastiCache Cluster에서 노드 추가/제거 시 AWS가 자동으로 resharding. 단, AWS의 resharding도 시간이 걸리고 노드 추가 중 약간의 레이턴시 증가 가능. Terraform으로 aws_elasticache_replication_group의 num_cache_nodes를 변경하면 자동 resharding 트리거.",
+    "seniorTip": "Redis Cluster의 최적 샤드 수 결정: 1) 현재 데이터 크기와 메모리 계획. 2) 예상 키 수와 QPS. 3) 나중에 샤드 추가(resharding)보다 처음에 여유 있게 설계하는 것이 운영이 편하다. resharding은 가능하지만 시간이 걸리고 리스크가 있다. 일반적으로 노드당 25-30GB 미만을 권장하여 OOM과 BGSAVE 시간을 최소화한다.",
+    "tags": [
+      "redis-cluster",
+      "resharding",
+      "slot-migration",
+      "moved",
+      "asking",
+      "big-key"
+    ]
+  },
+  {
+    "id": "redis-062",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "ioredis에서 Redis Cluster 모드로 연결 시 클러스터 노드 자동 발견(cluster discovery)의 동작 방식은?",
+    "options": [
+      "ioredis는 모든 노드의 IP를 사전에 설정 파일에 명시해야 한다",
+      "ioredis는 시드 노드 1-3개만 알면 되고, CLUSTER NODES 명령으로 전체 노드 목록을 자동 발견한다. MOVED 응답을 받으면 슬롯 맵을 갱신한다",
+      "ioredis Cluster 모드는 단일 연결만 사용한다",
+      "ioredis는 Redis Sentinel만 지원하고 Cluster는 별도 라이브러리가 필요하다"
+    ],
+    "answer": 1,
+    "explanation": "ioredis Cluster 동작: 1) 생성 시 시드 노드 배열 제공(new Redis.Cluster([{host: 'node1', port: 6379}])). 2) 시드 노드에 CLUSTER NODES 명령으로 전체 클러스터 토폴로지(모든 노드 IP/포트, 슬롯 범위)를 가져옴. 3) 슬롯 맵을 메모리에 유지. 명령 실행 시 키의 해시 슬롯을 계산 → 해당 슬롯의 노드로 직접 요청. 4) MOVED 응답: 슬롯 맵 갱신 후 올바른 노드로 재시도. 5) 노드 장애 시 자동 재발견.",
+    "deepDive": "ioredis Cluster에서 멀티 키 명령(MGET, MSET, DEL 여러 키)은 어떻게 처리되는가? → 여러 키가 서로 다른 슬롯에 분산될 수 있어 단일 명령으로 처리 불가. ioredis는 키를 슬롯별로 그룹화하고 각 노드에 병렬 요청 후 결과 병합. 이를 위해 모든 키가 같은 슬롯에 있어야 하는 트랜잭션(MULTI/EXEC)은 클러스터에서 제한적. 해결책은? → 해시 태그(hash tag): {user}:id1, {user}:id2처럼 {} 안의 문자열로만 슬롯을 계산. 같은 해시 태그를 공유하는 키들은 같은 슬롯. 하지만 특정 슬롯에 키가 집중되어 핫 샤드가 생길 수 있는 부작용. 클러스터 모드에서 Pub/Sub 사용은? → PUBLISH와 SUBSCRIBE가 모든 노드에 브로드캐스트되지 않아 제한적. Pub/Sub 메시지가 특정 노드에만 전달될 수 있음. 클러스터에서 Pub/Sub을 쓰려면 특별한 처리 또는 Redis Streams 사용.",
+    "seniorTip": "ioredis Cluster 설정 팁: 1) enableReadyCheck: false로 초기 연결 속도 향상. 2) redisOptions.tls를 ElastiCache에 맞게 설정. 3) clusterRetryStrategy로 재연결 시도 횟수와 대기 시간 설정. 4) maxRedirections 옵션으로 MOVED/ASKING 리다이렉션 최대 횟수 제어. NestJS에서 @nestjs/bull과 함께 Cluster를 사용할 때 ioredis Cluster 인스턴스를 직접 생성하여 주입하는 패턴을 사용한다.",
+    "tags": [
+      "ioredis",
+      "redis-cluster",
+      "cluster-discovery",
+      "hash-tag",
+      "pubsub",
+      "client-library"
+    ]
+  },
+  {
+    "id": "redis-063",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s에서 Redis를 Operator 방식과 수동 StatefulSet 방식으로 운영하는 차이와 각각의 장단점을 설명하라.",
+    "answer": "Redis Operator(예: Redis Operator by Spotahome, KubeDB)는 CRD로 Redis 클러스터를 선언적으로 관리하며 자동 Sentinel 구성, 노드 교체, 백업을 처리한다. 수동 StatefulSet은 유연하지만 Redis 클러스터 로직(Sentinel 구성, 페일오버)을 직접 구현해야 한다.",
+    "explanation": "Redis Operator 장점: 1) RedisCluster CRD로 클러스터 선언. Operator가 StatefulSet, Service, Sentinel을 자동 생성. 2) 자동 페일오버: Primary 장애 시 Operator가 새 Primary를 선출하고 Sentinel 설정 업데이트. 3) 스케일링: 레플리카 수 변경 시 자동 재설정. 4) 백업 CRD로 스케줄 백업. 수동 StatefulSet 단점: Sentinel 설정(sentinel.conf), 페일오버 핸들링, 노드 교체 시 데이터 재동기화를 직접 구현해야 함. 매우 복잡하다.",
+    "deepDive": "KubeDB와 Redis Enterprise Kubernetes Operator의 차이는? → KubeDB: 오픈소스(상업 지원 옵션). MySQL, PostgreSQL, Redis 등 다양한 DB를 통합 관리. Redis OSS 클러스터/센티널/독립 모드 지원. Redis Enterprise Operator: Redis Inc가 공식 제공. Redis Enterprise의 Active-Active, 모듈 등 엔터프라이즈 기능 지원. 라이선스 필요. Operator 패턴의 한계는? → Operator 자체가 복잡한 코드라 버그가 있을 수 있다. Operator 업그레이드 시 동작 변경. 특수한 Redis 설정(커스텀 redis.conf)이 Operator의 제약 안에서만 가능. 매우 세밀한 제어가 필요한 경우 수동 방식이 더 유연할 수 있다.",
+    "seniorTip": "니콘내콘처럼 ElastiCache를 사용하는 서비스라면 K8s Redis Operator가 불필요하다. 비용과 운영 복잡성을 고려하면 관리형 ElastiCache가 압도적으로 유리하다. K8s Redis Operator가 유리한 경우: 특수 모듈(RedisSearch) 사용, ElastiCache가 지원하지 않는 기능, 완전한 제어가 필요한 경우, 온프레미스 K8s 환경.",
+    "tags": [
+      "redis-operator",
+      "statefulset",
+      "kubernetes",
+      "sentinel",
+      "kubedb",
+      "elasticache"
+    ]
+  },
+  {
+    "id": "redis-064",
+    "category": "redis",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "redis-benchmark를 사용한 Redis 성능 테스트 방법과 실제 워크로드를 반영한 정확한 벤치마크 설계 방법을 설명하라.",
+    "answer": "redis-benchmark -h host -p port -n 1000000 -c 100 -q --csv로 기본 성능 측정. 실제 워크로드를 반영하려면 실제 명령어 패턴, 키 크기, 동시 접속 수를 프로덕션 데이터에 맞게 설정해야 한다. 합성 벤치마크와 실제 성능 차이를 인지해야 한다.",
+    "explanation": "redis-benchmark 옵션: -n: 총 요청 수. -c: 동시 클라이언트 수. -d: 데이터 크기(바이트). -t: 테스트할 명령어(set,get,lpush 등). --pipeline: 파이프라인 크기. -P: 파이프라인으로 전송할 요청 수. 합성 벤치마크의 한계: 1) 로컬에서 실행하면 네트워크 지연이 제외됨. 2) 실제 키 분포(핫 키, 다양한 크기)를 반영 못함. 3) 실제 애플리케이션의 명령어 패턴과 다를 수 있음.",
+    "deepDive": "프로덕션 Redis를 정확하게 벤치마크하는 방법은? → 1) memtier_benchmark: Redis Labs가 만든 더 현실적인 벤치마크 도구. key-prefix, data-size-range, ratio(read:write 비율)를 세밀하게 설정 가능. 2) 실제 프로덕션 트래픽을 포착하여 재생(RedisGears 또는 tcpdump 기반). 3) Locust나 k6로 NestJS API를 통한 end-to-end 테스트(Redis 성능 포함). 벤치마크 결과 해석 시 주의사항은? → OPS/sec가 아닌 p99/p999 레이턴시가 더 중요. 평균 레이턴시가 낮아도 p99가 높으면 사용자 경험에 영향. 또한 Redis 벤치마크는 Redis만의 성능이므로 실제 앱 레이턴시에는 네트워크 + 직렬화 + 클라이언트 처리 시간이 추가된다.",
+    "seniorTip": "ElastiCache 성능 테스트 시 벤치마크 클라이언트는 같은 VPC, 같은 AZ의 EC2에서 실행해야 한다. 크로스 AZ 레이턴시가 포함되면 실제 운영 환경(같은 AZ)과 다른 결과가 나온다. ElastiCache Enhanced I/O Multiplexing(2023년 출시)을 활성화하면 대용량 커넥션 워크로드에서 성능이 향상되는데, 벤치마크로 전후 비교를 해보는 것을 권장한다.",
+    "tags": [
+      "redis-benchmark",
+      "performance-testing",
+      "memtier",
+      "latency",
+      "throughput",
+      "elasticache"
+    ]
+  },
+  {
+    "id": "redis-065",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis에서 소규모 컬렉션(Hash, List, Set, ZSet)의 인코딩이 자동으로 compact 형식(listpack, ziplist)에서 일반 형식으로 전환되는 조건과 메모리 최적화 전략을 설명하라.",
+    "answer": "Redis는 소규모 컬렉션에 메모리 효율적인 listpack(또는 ziplist) 인코딩을 사용하다가 크기 임계값(hash-max-listpack-entries, list-max-listpack-size 등)을 초과하면 hashtable, quicklist, skiplist로 전환한다. 임계값을 적절히 조정하면 메모리를 절감할 수 있다.",
+    "explanation": "자료구조별 인코딩 전환 임계값: 1) Hash: hash-max-listpack-entries=128(항목 수), hash-max-listpack-value=64(값 바이트) 초과 시 hashtable로 전환. 2) List: list-max-listpack-size로 listpack 항목 수 제어. 3) ZSet: zset-max-listpack-entries=128, zset-max-listpack-value=64 초과 시 skiplist+hashtable. 4) Set: set-max-intset-entries=512 이하 정수는 intset. 초과 시 hashtable. listpack은 연속 메모리 사용으로 캐시 친화적. hashtable은 포인터 오버헤드.",
+    "deepDive": "listpack 인코딩에서 hashtable로 전환되면 메모리가 얼마나 증가하는가? → 항목 수와 값 크기에 따라 다르지만 일반적으로 3-10배 메모리 증가. 예를 들어 100개 항목의 Hash가 listpack에서 1KB였다면 hashtable로 전환 시 3-5KB가 될 수 있다. 이 전환을 지연시키기 위해 hash-max-listpack-entries를 512로 늘리면? → 항목이 512개 미만인 동안 메모리는 절약되지만, HGET의 시간 복잡도가 O(1)에서 O(N) 스캔으로 변함. listpack은 선형 탐색이기 때문이다. 따라서 임계값을 무작정 높이는 것은 CPU-메모리 트레이드오프. 니콘내콘에서 세션 데이터를 Hash로 저장하는 경우 필드 수가 10-20개라면? → 기본 임계값(128)보다 훨씬 적으므로 자동으로 listpack 유지. 메모리 최적화가 자동으로 됨. OBJECT ENCODING key로 현재 인코딩 확인 가능.",
+    "seniorTip": "메모리 최적화 전략: 1) 자주 읽고 항목 수가 적은 Hash는 listpack이 유리. 2) OBJECT ENCODING으로 현재 인코딩 확인. 3) DEBUG OBJECT key로 serializedlength(압축 크기) 확인. 4) 메모리 단편화(mem_fragmentation_ratio > 1.5)가 높으면 MEMORY PURGE 또는 Redis 재시작으로 jemalloc 메모리 반환. 5) activedefrag yes(액티브 단편화 해소)로 자동 최적화 활성화(Redis 4.0+).",
+    "tags": [
+      "memory-optimization",
+      "listpack",
+      "ziplist",
+      "encoding",
+      "hashtable",
+      "compact-encoding"
+    ]
+  },
+  {
+    "id": "redis-066",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis client-side caching(클라이언트 사이드 캐싱, tracking 모드)의 동작 원리와 프로덕션 도입 시 고려사항을 설명하라.",
+    "answer": "CLIENT TRACKING ON으로 활성화하면 Redis가 클라이언트가 읽은 키를 추적한다. 해당 키가 서버에서 수정되면 Redis가 클라이언트에 invalidation 메시지를 보내 클라이언트 내 캐시를 무효화한다. 클라이언트가 인메모리 캐시를 유지하므로 Redis 네트워크 왕복이 줄어든다.",
+    "explanation": "동작 원리: 1) CLIENT TRACKING ON BCAST 또는 OPTIN 모드 활성화. 2) 클라이언트가 GET key를 실행 → Redis가 이 클라이언트가 key를 읽었음을 기록. 3) 다른 클라이언트가 SET key로 수정 → Redis가 key를 읽은 클라이언트에 __redis__:invalidate 채널로 메시지 발행. 4) 클라이언트가 인메모리 캐시에서 해당 키를 삭제 → 다음 읽기에서 Redis에서 최신 값 조회. RESP3 프로토콜에서 push 메시지로 더 효율적으로 처리.",
+    "deepDive": "클라이언트 사이드 캐싱이 프로덕션에서 복잡한 이유는? → 1) 클라이언트가 인메모리 캐시를 직접 구현해야 함(ioredis는 기본 제공 없음). 2) 연결이 끊기면 invalidation 메시지가 유실될 수 있어 캐시 일관성 문제. 3) BCAST 모드: 모든 키 변경을 모든 클라이언트에 전송 → 높은 메시지 수. OPTIN 모드: 클라이언트가 명시적으로 추적할 키를 선언. 4) 클라이언트 수가 많으면 Redis의 tracking table 메모리 증가. 실제로 어떤 케이스에서 도입 가치가 있는가? → 읽기 비율이 매우 높고(99% 읽기), 데이터 변경이 드물며, Redis 레이턴시를 더 줄여야 하는 고성능 케이스. 대부분의 서비스에서 일반 캐싱(Cache-Aside)으로 충분하다.",
+    "seniorTip": "ElastiCache에서 client-side caching 지원 여부: Redis 6.0+ 기반 ElastiCache에서 CLIENT TRACKING 명령을 지원하지만 완전한 기능을 보장하지 않을 수 있다. 도입 전 반드시 ElastiCache 버전 문서를 확인. 프로덕션에서 이 기능을 사용하는 라이브러리: Lettuce(Java Redis 클라이언트)가 가장 성숙한 client-side caching 구현을 제공한다. Node.js 생태계에서는 아직 표준 구현이 없어 직접 구현해야 한다.",
+    "tags": [
+      "client-side-caching",
+      "tracking",
+      "invalidation",
+      "resp3",
+      "performance",
+      "cache-consistency"
+    ]
+  },
+  {
+    "id": "redis-067",
+    "category": "redis",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Redis CLUSTER FAILOVER 명령은 Replica가 Primary로 승격하기 위해 현재 Primary에게 복제 동기화가 완료된 후 자신에게 투표하도록 요청하는 controlled failover 메커니즘이다.",
+    "answer": "O",
+    "explanation": "CLUSTER FAILOVER 동작: 1) Replica가 CLUSTER FAILOVER를 실행. 2) Replica가 Primary에게 쓰기 클라이언트를 거부하도록 PAUSE 요청. 3) Primary가 모든 pending 복제를 Replica에 전송하여 동기화. 4) Replica가 Primary보다 최신 복제 오프셋임을 확인. 5) Cluster에 투표 요청. 6) 과반수 master로부터 투표를 받으면 Primary 승격. FORCE 옵션: Primary 없이도 강제 승격(데이터 유실 가능). TAKEOVER: 자신을 즉시 Primary로 선언(클러스터 합의 없이).",
+    "deepDive": "StatefulSet으로 Redis Cluster를 운영할 때 계획 유지보수를 위해 Primary를 교체하는 안전한 절차는? → 1) 대상 Primary의 Replica에서 CLUSTER FAILOVER 실행(동기화 후 controlled failover). 2) Replica가 새 Primary가 됨. 3) 구 Primary는 이제 Replica. 4) kubectl delete pod <old-primary>로 노드 업그레이드/교체. 5) 새 Pod가 Replica로 조인하고 동기화 완료. 이 절차를 자동화하면? → Pre-Stop 훅에서 CLUSTER FAILOVER를 실행하여 kubectl rolling update가 Primary를 먼저 교체하는 것을 방지. StatefulSet OnDelete 전략과 조합하여 수동으로 안전하게 진행.",
+    "seniorTip": "ElastiCache에서 Primary failover를 테스트하려면 aws elasticache failover-primary-cluster 명령(CLI) 또는 콘솔에서 'Failover Primary' 버튼. 이 작업은 60초 내외의 다운타임이 있으므로 애플리케이션이 재연결을 처리하는지 확인(ioredis의 reconnectOnError 옵션). 니콘내콘처럼 ElastiCache를 사용한다면 정기적인 failover 테스트를 DR 훈련에 포함시키는 것을 권장한다.",
+    "tags": [
+      "cluster-failover",
+      "primary",
+      "replica",
+      "controlled-failover",
+      "statefulset",
+      "maintenance"
+    ]
+  },
+  {
+    "id": "redis-068",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Redis의 active-active 복제에서 CRDT(Conflict-free Replicated Data Type) 기반 충돌 해결과 일반 eventual consistency의 차이는?",
+    "options": [
+      "CRDT는 충돌이 발생하면 항상 마지막 쓰기를 유지한다",
+      "CRDT는 자료구조가 수학적으로 병합 가능하도록 설계되어 충돌 없이 항상 동일한 최종 상태로 수렴한다. 일반 eventual consistency는 충돌 해결 정책(LWW 등)이 명시적으로 필요하다",
+      "CRDT는 강한 일관성(strong consistency)을 보장한다",
+      "CRDT와 일반 eventual consistency는 동일한 개념이다"
+    ],
+    "answer": 1,
+    "explanation": "CRDT 예시: 1) G-Counter(grow-only counter): 각 노드가 자신의 카운터를 증가. 병합 시 각 노드의 최댓값을 선택하여 합산. 충돌 없음. 2) OR-Set(Observed-Remove Set): 원소 추가/삭제를 태그로 추적. 병합 시 모든 태그의 합집합. 동시 삭제와 추가가 충돌해도 결정론적으로 해결. 3) LWW-Element-Set: 타임스탬프로 최신 쓰기를 선택. 일반 eventual consistency: Cassandra의 LWW처럼 타임스탬프 기반. 클록 스큐(clock skew)로 인해 더 최신 쓰기가 무시될 수 있음.",
+    "deepDive": "Redis Enterprise Active-Active에서 String 타입은 CRDT가 아닌 LWW를 사용하는데 이 한계는? → String은 CRDT semantics로 병합할 방법이 없다. 두 리전에서 같은 키에 다른 값을 SET하면 타임스탬프 기반 LWW로 하나가 선택됨. 이 경우 덮어쓰기가 발생할 수 있다. 해결책: String 대신 CRDT를 완전히 지원하는 자료구조(Counter, Set) 사용. 글로벌 서비스에서 카운터 집계(페이지뷰, 좋아요)에 적합. 재고 관리에 CRDT를 쓰면? → G-Counter는 증가만 가능. 재고 감소가 필요하면 PN-Counter(Positive-Negative counter)를 사용. 재고 음수 방지는 CRDT만으로 보장할 수 없어 애플리케이션 레벨 검증이 필요.",
+    "seniorTip": "CRDT는 이론적으로 매력적이지만 프로덕션에서 제한이 많다. Redis Enterprise의 Active-Active는 한정된 자료구조만 CRDT를 완전 지원한다. 단순한 글로벌 카운터, 분산 세션, 글로벌 feature flag 같은 use case가 적합하다. 결제, 재고, 금융 데이터처럼 정확성이 중요한 데이터는 CRDT보다 단일 Primary에서 처리하는 것이 더 안전하다.",
+    "tags": [
+      "crdt",
+      "active-active",
+      "eventual-consistency",
+      "conflict-resolution",
+      "redis-enterprise"
+    ]
+  },
+  {
+    "id": "redis-069",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Redis Gears(RedisGears)를 사용한 서버 사이드 컴퓨팅 파이프라인의 개념과 실제 활용 사례를 설명하라.",
+    "answer": "RedisGears는 Redis 서버 내에서 Python 코드로 데이터 처리 파이프라인을 실행하는 서버리스 엔진이다. 데이터를 Redis에서 클라이언트로 가져와 처리하는 대신 Redis 서버 내에서 직접 처리하여 네트워크 오버헤드를 줄이고 원자적 처리를 보장한다.",
+    "explanation": "RedisGears 기능: 1) 이벤트 기반: 키 변경, 스트림 데이터 도착 시 자동 처리. keyspace event handler. 2) 배치 처리: 전체 키스페이스를 순회하며 처리. 3) 데이터 파이프라인: filter → map → groupby → reduce 체인. 4) 내장 Redis 명령어 실행: 파이프라인 내에서 Redis 읽기/쓰기. 5) 외부 연결: Redis 서버에서 직접 MySQL, Kafka에 데이터 전송. Redis 7.0에서는 Redis Functions가 일부 use case를 대체.",
+    "deepDive": "RedisGears를 실제로 어디에 쓰는가? → 1) Write-behind caching: Redis 쓰기 이벤트를 감지하여 MySQL에 자동 동기화. 애플리케이션 코드 없이 캐시와 DB를 동기화. 2) 실시간 집계: 스트림 데이터를 실시간으로 집계하고 결과를 별도 키에 저장. 3) 데이터 변환: 키 삽입 시 값을 파싱하고 인덱스 키를 자동 생성(RediSearch의 secondary index). RedisGears가 Redis Functions와 어떻게 다른가? → Functions는 단순 명령어 집합의 원자적 실행. Gears는 비동기 파이프라인, 이벤트 기반 처리, 외부 시스템 연결이 가능한 더 복잡한 워크플로우 엔진. Redis 7.2에서 Gears는 Redis Enterprise의 기능으로 통합되어 OSS에서 접근이 제한됨.",
+    "seniorTip": "RedisGears 도입 시 주의: Redis 서버 내에서 Python 코드가 실행되므로 잘못된 코드가 Redis 성능에 직접 영향. 무한 루프나 OOM이 Redis 프로세스를 죽일 수 있다. 프로덕션에서 Gears 스크립트는 반드시 개발 환경에서 충분히 테스트 후 배포. Write-behind 패턴은 장애 시 데이터 유실 가능성이 있으므로 Outbox Pattern(트랜잭션 테이블에 이벤트 저장 후 별도 worker가 처리)이 더 신뢰성이 높다.",
+    "tags": [
+      "redis-gears",
+      "server-side-computing",
+      "write-behind",
+      "pipeline",
+      "event-driven"
+    ]
+  },
+  {
+    "id": "redis-070",
+    "category": "redis",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Redis의 maxmemory-policy를 allkeys-lru로 설정하는 것이 적합한 상황과, volatile-lru와의 차이는?",
+    "options": [
+      "allkeys-lru는 메모리가 가득 찼을 때 TTL이 설정된 키만 삭제한다",
+      "allkeys-lru는 TTL 여부에 관계없이 전체 키 중 최근에 사용되지 않은 키를 삭제한다. volatile-lru는 TTL이 설정된 키 중에서만 삭제하며, TTL 없는 키는 절대 삭제하지 않는다",
+      "allkeys-lru와 volatile-lru는 같은 동작을 한다",
+      "volatile-lru는 Redis 7.0에서 삭제됐다"
+    ],
+    "answer": 1,
+    "explanation": "maxmemory-policy 옵션: 1) noeviction(기본): OOM 에러 반환. 쓰기 거부. 2) allkeys-lru: 전체 키 중 LRU로 삭제. 캐시 전용 사용에 적합. 3) volatile-lru: TTL 있는 키 중 LRU 삭제. TTL 없는 중요 데이터 보존. 4) allkeys-lfu: 사용 빈도 기반(최근 사용보다 자주 사용을 우선 보존). 5) volatile-ttl: TTL이 가장 짧은 키를 먼저 삭제. 6) allkeys-random/volatile-random: 무작위 삭제.",
+    "deepDive": "어떤 maxmemory-policy를 언제 선택하는가? → 1) Redis를 캐시 전용으로 사용(Cache-Aside 패턴): allkeys-lru. 모든 데이터가 재생성 가능하므로 어떤 키를 삭제해도 안전. 2) 중요 데이터(세션)와 캐시 데이터를 같은 Redis에 저장: volatile-lru. 세션 키에는 TTL 없이(또는 긴 TTL), 캐시 키에는 짧은 TTL을 설정. 3) 핫 키(자주 접근되는 키)를 우선 보존: allkeys-lfu. 4) Redis를 DB처럼 사용(데이터 유실 불가): noeviction. maxmemory 설정을 잊으면 어떻게 되나? → noeviction이 기본. 메모리가 가득 차면 모든 쓰기가 OOM 에러 반환. 클라이언트에 500 에러 폭발. ElastiCache는 maxmemory가 자동 설정됨. evictions 메트릭이 증가하면 인스턴스를 업그레이드해야 한다.",
+    "seniorTip": "니콘내콘 ElastiCache 설정: 캐시 레이어라면 allkeys-lru. Evictions CloudWatch 메트릭을 모니터링하여 eviction이 발생하면 메모리 여유가 부족하다는 신호. maxmemory의 75% 이상 사용 시 인스턴스 업그레이드나 데이터 정리를 고려. allkeys-lfu는 allkeys-lru보다 캐시 히트율이 높지만, maxmemory-samples(LFU 근사치 샘플 수)를 충분히 설정해야 정확도가 높아진다.",
+    "tags": [
+      "maxmemory-policy",
+      "eviction",
+      "lru",
+      "lfu",
+      "allkeys-lru",
+      "volatile-lru"
+    ]
   }
 ]

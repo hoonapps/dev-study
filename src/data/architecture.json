@@ -832,5 +832,305 @@
       "adr"
     ],
     "deepDive": "변경 빈도(churn)와 코드 복잡도(cyclomatic complexity)를 조합한 핫스팟 분석 도구(CodeScene, Code Climate)가 기술 부채 우선순위 결정에 어떻게 활용되는가? → 기술 부채 상환을 위한 리팩토링을 비즈니스 기능 개발과 동시에 진행할 때, 브랜치 전략과 릴리즈 계획을 어떻게 조율하는가? → '기술 부채를 갚을 시간이 없다'는 악순환에서 벗어나기 위해 경영진에게 기술 부채의 비즈니스 임팩트를 어떻게 정량적으로 보여주는가?"
+  },
+  {
+    "id": "arch-041",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "헥사고날 아키텍처(Hexagonal Architecture, Ports and Adapters)의 핵심 개념과, NestJS 프로젝트에 적용할 때 레이어 구조를 설명하라.",
+    "answer": "도메인 코어가 중심에 있고, 외부 세계(DB, HTTP, 메시지 큐)와는 Port(인터페이스)와 Adapter(구현체)로만 소통한다. NestJS에서는 Domain → Application(UseCases) → Infrastructure(Adapters) 방향으로 의존성을 단방향으로 설계한다.",
+    "explanation": "헥사고날 아키텍처: Alistair Cockburn이 제안. 도메인 로직을 외부 기술(TypeORM, Redis, HTTP)로부터 완전히 격리한다. Primary Adapter: HTTP Controller, CLI — 외부에서 앱을 구동. Secondary Adapter: TypeORM Repository, SQS Publisher — 앱이 외부를 호출. Port: 각 Adapter가 구현하는 인터페이스(IOrderRepository, IPaymentGateway).",
+    "seniorTip": "NestJS 레이어 구조: 1) domain/ — 순수 비즈니스 로직. 외부 의존성 없음. OrderEntity, Money 값객체, OrderRepository 인터페이스(Port). 2) application/ — Use Case 클래스. 도메인 서비스와 Port만 의존. CreateOrderUseCase. 3) infrastructure/ — Adapter 구현체. TypeOrmOrderRepository, SqsOrderPublisher. 4) presentation/ — NestJS Controller/Resolver. 의존성 규칙: 항상 외부에서 내부로. Infrastructure가 Domain을 알지만, Domain은 Infrastructure를 모른다. 핵심 효과: 도메인 로직을 DB 없이 순수 Jest로 테스트할 수 있다. TypeORM Repository 모킹 없이 테스트가 가능하다.",
+    "deepDive": "헥사고날 아키텍처에서 '포트'와 '어댑터'의 차이를 구체적인 코드 예시로 설명하면? → NestJS DI 컨테이너에서 IOrderRepository 인터페이스를 TypeOrmOrderRepository 구현체로 바인딩하는 방법은? → 클린 아키텍처(Clean Architecture)와 헥사고날 아키텍처의 공통점과 차이점은? 두 아키텍처가 해결하려는 본질적 문제는 동일한가?",
+    "tags": [
+      "hexagonal-architecture",
+      "ports-adapters",
+      "domain",
+      "clean-architecture",
+      "dependency-inversion"
+    ]
+  },
+  {
+    "id": "arch-042",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "DDD의 Aggregate와 Aggregate Root의 역할로 올바른 설명은?",
+    "options": [
+      "Aggregate는 단순히 관련 Entity를 묶은 패키지이다",
+      "Aggregate는 트랜잭션 일관성 경계를 정의하는 클러스터이며, Aggregate Root만이 외부에서 직접 접근할 수 있는 진입점으로 내부 Entity의 불변식을 보장한다",
+      "Aggregate Root는 DB 테이블 이름과 동일해야 한다",
+      "Aggregate 내부의 모든 Entity는 외부에서 직접 수정할 수 있다"
+    ],
+    "answer": 1,
+    "explanation": "Aggregate는 관련 Entity와 Value Object의 집합으로, 단일 단위로 취급된다. Aggregate Root(예: Order)만 외부에서 접근 가능하다. OrderLineItem을 수정하려면 반드시 Order를 통해야 한다. 이 규칙이 비즈니스 불변식(Order 총액 = LineItem 합계)을 항상 유지하도록 보장한다.",
+    "seniorTip": "설계 원칙: 1) 트랜잭션 경계 = Aggregate 경계. 하나의 트랜잭션은 하나의 Aggregate만 수정한다. 2) Aggregate 간 참조는 ID만 사용(Order에서 Product를 참조할 때 ProductId만 저장). 3) Aggregate 경계가 너무 크면 → 충돌이 잦아 낙관적 잠금 실패 증가. 4) 경계가 너무 작으면 → 여러 Aggregate에 걸친 트랜잭션이 필요해 분산 트랜잭션 문제 발생. 니콘내콘 주문 Aggregate: Order (Root) + OrderItems + DiscountInfo. 결제는 별도 Payment Aggregate. 주문 생성과 결제는 다른 트랜잭션으로 처리하고, 이벤트로 연결한다.",
+    "deepDive": "Aggregate 크기를 결정할 때 충돌률과 일관성 요구 사이의 트레이드오프는 어떻게 분석하는가? → 두 Aggregate를 한 트랜잭션에서 수정해야 할 때(재고 차감 + 주문 생성) 어떤 패턴으로 해결하는가? → TypeORM에서 Aggregate를 모델링할 때 Cascade 설정과 Lazy Loading이 Aggregate 경계를 어떻게 위반할 수 있는가?",
+    "tags": [
+      "ddd",
+      "aggregate",
+      "aggregate-root",
+      "transaction-boundary",
+      "domain-model"
+    ]
+  },
+  {
+    "id": "arch-043",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "DDD에서 Value Object(값 객체)가 Entity와 다른 핵심 차이는 무엇이고, Money, Address 같은 Value Object를 TypeScript로 구현할 때의 패턴을 설명하라.",
+    "answer": "Entity는 ID로 동일성을 판단하고, Value Object는 속성 값으로 동일성을 판단한다. Value Object는 불변(immutable)이며 ID가 없다. Money(amount, currency)는 참조가 달라도 amount=1000, currency=KRW이면 같은 값이다.",
+    "explanation": "Value Object 특징: 1) 불변성 — 생성 후 변경 불가. 값을 바꾸려면 새 Value Object를 생성. 2) 구조적 동등성 — 모든 속성이 같으면 같은 객체. 3) 자기 검증 — 생성자에서 유효성 검사. Money(-100, 'KRW')는 생성 불가. 4) Side-effect 없는 연산 — add(other: Money): Money는 새 Money를 반환.",
+    "seniorTip": "TypeScript 구현 패턴: class Money { private constructor(private readonly amount: number, private readonly currency: string) { if (amount < 0) throw new Error('음수 금액 불가'); } static of(amount: number, currency: string) { return new Money(amount, currency); } add(other: Money): Money { if (this.currency !== other.currency) throw new Error('통화 불일치'); return Money.of(this.amount + other.amount, this.currency); } equals(other: Money): boolean { return this.amount === other.amount && this.currency === other.currency; } }. TypeORM에서 Value Object는 @Column(() => Money)처럼 Embeddable로 매핑하거나, JSON 컬럼으로 직렬화한다.",
+    "deepDive": "Value Object의 불변성이 멀티스레드 환경(Node.js는 단일 스레드지만 Worker Threads 사용 시)에서 어떤 안전성을 보장하는가? → TypeORM에서 @Embedded() 또는 JSON 컬럼으로 Value Object를 저장할 때 각각의 장단점은? → Money Value Object에 통화 환산 로직을 추가해야 한다면 Domain Service와 Value Object 중 어디에 위치해야 하는가?",
+    "tags": [
+      "ddd",
+      "value-object",
+      "entity",
+      "immutability",
+      "domain-model"
+    ]
+  },
+  {
+    "id": "arch-044",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Repository 패턴에서 '도메인 Repository 인터페이스'와 '실제 ORM Repository 구현체'를 분리하는 가장 중요한 이유는?",
+    "options": [
+      "코드 줄 수를 늘리기 위해",
+      "도메인 레이어가 특정 ORM(TypeORM, Prisma)에 의존하지 않게 하여 테스트 용이성을 높이고, ORM을 교체해도 도메인 로직을 수정하지 않도록 한다",
+      "Repository 패턴은 SQL 최적화를 위한 것이다",
+      "ORM 인터페이스만 사용하면 트랜잭션이 동작하지 않는다"
+    ],
+    "answer": 1,
+    "explanation": "domain/repositories/IOrderRepository.ts에 인터페이스를 정의하고, infrastructure/repositories/TypeOrmOrderRepository.ts에서 구현한다. 도메인 UseCase는 IOrderRepository만 알고, 실제로 TypeORM인지 Prisma인지 모른다. 테스트에서는 InMemoryOrderRepository를 주입하면 DB 없이 비즈니스 로직만 빠르게 테스트할 수 있다.",
+    "seniorTip": "Repository 인터페이스 설계 원칙: 1) 도메인 언어로 메서드를 정의 — findById(id: OrderId): Order가 아닌 findByOrderId(). 2) DB 특화 메서드 노출 금지 — createQueryBuilder()를 인터페이스에 노출하면 ORM 의존성이 새어나옴. 3) 필요한 조회 메서드만 정의 — findAll()보다 findByCustomerId(), findByStatus()처럼 도메인 의도가 명확한 메서드. 4) 반환 타입은 도메인 객체 — Entity 클래스(도메인 모델)를 반환하고, ORM 엔티티(TypeORM 데코레이터가 붙은)를 직접 반환하지 않는다.",
+    "deepDive": "Repository에서 Specification 패턴을 조합하면 어떤 이점이 있는가? → TypeORM의 EntityManager를 직접 사용하는 것과 Repository 인터페이스 + 구현체로 분리하는 것의 실제 테스트 코드 작성 난이도 차이는? → Prisma와 TypeORM을 동시에 지원하는 Repository 구현체를 만들어야 한다면 어떤 설계가 필요한가?",
+    "tags": [
+      "repository-pattern",
+      "ddd",
+      "dependency-inversion",
+      "testability",
+      "clean-architecture"
+    ]
+  },
+  {
+    "id": "arch-045",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "SOLID 원칙 중 단일 책임 원칙(SRP)을 위반하는 가장 흔한 패턴과, NestJS 서비스에서 SRP를 지키는 방법을 설명하라.",
+    "answer": "Service 클래스가 비즈니스 로직, DB 조회, 외부 API 호출, 이메일 발송, 로깅을 모두 담당하는 God Object 패턴이 가장 흔한 SRP 위반이다. 책임을 Domain Service, Application Service, Repository, External Service Adapter로 분리한다.",
+    "explanation": "SRP: '클래스를 변경해야 하는 이유는 하나뿐이어야 한다.' 예: OrderService.createOrder()가 주문 생성 + 결제 처리 + 쿠폰 차감 + SMS 발송 + 로깅을 하면, PG사 변경/SMS 발송사 변경/로깅 정책 변경이 모두 OrderService를 수정하는 이유가 된다.",
+    "seniorTip": "NestJS에서 SRP 적용 예: 1) OrderDomainService — 주문 생성 비즈니스 규칙(재고 확인, 가격 계산). 2) CreateOrderUseCase — 오케스트레이션(OrderService, PaymentService, NotificationService 호출). 3) TypeOrmOrderRepository — DB 영속화. 4) TossPaymentAdapter — PG사 연동. 5) SlackNotificationAdapter — 알림 발송. 변경 이유가 하나씩 분리되면 각 클래스는 작고 테스트하기 쉬워진다. '이 클래스를 변경해야 하는 이유가 몇 가지인가?'라는 질문이 SRP 위반을 쉽게 발견하는 방법이다.",
+    "deepDive": "SRP를 너무 극단적으로 적용하면 클래스가 과도하게 분리되어 오히려 복잡해지는 문제(분석 마비, 클래스 폭발)를 어떻게 균형을 맞추는가? → SRP와 DRY(Don't Repeat Yourself) 원칙이 충돌하는 상황(두 책임에 공통 로직이 필요)을 어떻게 해결하는가? → 팀에 SRP를 가르칠 때 '단일 책임'의 경계를 어떻게 설명하는가?",
+    "tags": [
+      "solid",
+      "srp",
+      "god-object",
+      "service-design",
+      "clean-code"
+    ]
+  },
+  {
+    "id": "arch-046",
+    "category": "architecture",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "YAGNI(You Aren't Gonna Need It) 원칙은 미래 요구사항을 전혀 고려하지 말고 현재 필요한 것만 구현하라는 의미이다.",
+    "answer": "X",
+    "explanation": "YAGNI는 '현재 필요하지 않은 기능을 미리 구현하지 말라'는 원칙이지, 미래를 완전히 무시하라는 의미가 아니다. 확장 가능한 설계(인터페이스, 추상화)는 YAGNI에 반하지 않는다. '지금 필요 없는 구체적인 기능 구현'을 하지 말라는 것이다. 과도한 유연성 구현이 오히려 코드를 복잡하게 만든다.",
+    "seniorTip": "YAGNI 올바른 적용: 1) '나중에 다국어 지원이 필요할 것 같아서' → i18n 라이브러리를 지금 도입하지 말 것. 2) '파트너가 10개로 늘어날 수 있으니' → 동적 파트너 설정 시스템을 미리 만들지 말 것. 파트너가 3개가 되면 그때 리팩토링. 3) YAGNI를 지키면서도 좋은 설계: 인터페이스를 통한 느슨한 결합(나중에 구현체를 교체하기 쉽게)은 YAGNI와 충돌하지 않는다. YAGNI 위반의 비용: 미리 구현한 기능의 유지보수 부담, 팀 인지 부하, 요구사항이 실제 다를 때 삭제 비용.",
+    "deepDive": "YAGNI와 Open-Closed Principle(OCP)이 충돌하는 것처럼 보이는 상황을 어떻게 조율하는가? → Trunk-Based Development에서 YAGNI를 지키면서 Feature Flag를 활용하면 어떤 이점이 있는가? → 스타트업 환경에서 YAGNI를 스케일업 단계에서 어떻게 재조정하는가?",
+    "tags": [
+      "yagni",
+      "design-principles",
+      "over-engineering",
+      "agile",
+      "simplicity"
+    ]
+  },
+  {
+    "id": "arch-047",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Conway's Law가 소프트웨어 아키텍처 설계에 미치는 영향으로 올바른 설명은?",
+    "options": [
+      "Conway's Law는 네트워크 라우팅 알고리즘에 관한 법칙이다",
+      "조직의 커뮤니케이션 구조가 시스템 아키텍처를 반영하므로, 원하는 아키텍처를 위해 팀 구조를 먼저 설계해야 한다",
+      "Conway's Law는 현대 클라우드 환경에서는 적용되지 않는다",
+      "소규모 스타트업에서만 적용된다"
+    ],
+    "answer": 1,
+    "explanation": "Conway's Law: '시스템을 설계하는 조직은 그 조직의 커뮤니케이션 구조를 복사한 구조를 만들어낸다.' 3개 팀이 컴파일러를 만들면 3단계 컴파일러가 나온다. 역 Conway's Law: 원하는 아키텍처에 맞게 팀 구조를 의도적으로 설계하는 것.",
+    "seniorTip": "실무 적용: 1) 마이크로서비스로 가려면 팀도 서비스 경계에 맞게 분리해야 한다. '주문 팀', '결제 팀', '쿠폰 팀'처럼. 2) 하나의 팀이 모든 서비스를 관리하면 모놀리스처럼 결합된 구조가 자연스럽게 만들어진다. 3) Team Topologies 프레임워크: Stream-aligned Team(제품 기능), Platform Team(인프라), Enabling Team(아키텍처 지원). 니콘내콘: 팀 규모에 따라 서비스 경계를 억지로 나누기보다, 현재 팀 구조에 맞는 '모듈러 모놀리스 + 선택적 MSA'가 현실적이다.",
+    "deepDive": "팀이 3명에서 30명으로 성장할 때 Conway's Law 관점에서 아키텍처가 어떻게 자연스럽게 변화해야 하는가? → 역 Conway's Law를 의도적으로 적용할 때 팀 재편성에 따른 지식 이전 비용과 모티베이션 문제를 어떻게 관리하는가? → 외부 파트너 팀과 협업할 때 API 설계가 각 팀의 조직 경계를 어떻게 반영하는가?",
+    "tags": [
+      "conways-law",
+      "team-topologies",
+      "organizational-design",
+      "msa",
+      "engineering-culture"
+    ]
+  },
+  {
+    "id": "arch-048",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Trunk-Based Development(TBD)의 핵심 원칙과, 장기 feature 브랜치 없이 미완성 기능을 main에 머지하면서도 서비스를 안정적으로 운영하는 방법을 설명하라.",
+    "answer": "모든 개발자가 하루에 한 번 이상 main 브랜치에 커밋한다. 미완성 기능은 Feature Flag로 감추고 main에 머지하여 지속적 통합을 유지한다. 장기 브랜치로 인한 머지 충돌과 통합 지옥을 제거한다.",
+    "explanation": "TBD의 핵심: 1) 브랜치 수명은 최대 1-2일. 2) Feature Flag(기능 플래그)로 코드 배포와 기능 활성화를 분리. 3) 모든 커밋은 항상 배포 가능한 상태여야 함. 4) Pair Programming이나 짧은 PR 리뷰 사이클로 긴 브랜치 없이 코드 품질 유지.",
+    "seniorTip": "TBD vs Feature Branch 방식 선택: 1) TBD가 적합한 경우 — DORA Elite 팀 목표, 하루 여러 번 배포, CI가 강력함. 2) Feature Branch가 현실적인 경우 — 외부 감사/QA가 필요, 배포 주기가 주 1회 이하. 니콘내콘 실무: 모든 PR을 main에 빠르게 머지하되, 대규모 변경(PG사 교체)은 Feature Flag로 점진적 전환. 큰 Feature를 작은 단위로 분리하는 능력이 TBD의 가장 어려운 스킬이다 — API를 먼저 만들고, UI를 나중에, 비즈니스 로직을 중간에 붙이는 수직 슬라이싱이 핵심이다.",
+    "deepDive": "Feature Flag 없이 Trunk-Based Development를 적용하면 어떤 문제가 발생하는가? → Branch by Abstraction 기법이 Feature Flag 없이 TBD를 가능하게 하는 원리는? → 팀에 TBD를 도입할 때 가장 큰 문화적 저항과 이를 극복하는 방법은?",
+    "tags": [
+      "trunk-based-development",
+      "feature-flag",
+      "ci-cd",
+      "deployment",
+      "engineering-practice"
+    ]
+  },
+  {
+    "id": "arch-049",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "모듈러 모놀리스(Modular Monolith)와 마이크로서비스의 경계가 되는 핵심 판단 기준은?",
+    "options": [
+      "서비스 코드가 10,000줄을 넘으면 MSA로 전환해야 한다",
+      "독립 배포 필요성, 팀 소유권 분리, 스케일 요구사항이 서로 다른 컴포넌트가 있을 때 MSA가 정당화된다. 그 이전까지는 모듈러 모놀리스가 더 효율적이다",
+      "MSA는 항상 모놀리스보다 성능이 좋다",
+      "DB가 하나이면 MSA라고 할 수 없다"
+    ],
+    "answer": 1,
+    "explanation": "모듈러 모놀리스: 단일 배포 단위지만 내부 모듈 경계가 명확하다. MSA의 복잡성(분산 트랜잭션, 서비스 디스커버리, 네트워크 실패) 없이 도메인 격리의 이점을 누린다. MSA로 전환하는 시점: 1) 특정 모듈만 독립적으로 배포해야 할 때. 2) 팀이 나뉘어 각 서비스를 독립적으로 소유해야 할 때. 3) 특정 컴포넌트의 스케일 요구사항이 나머지와 크게 다를 때.",
+    "seniorTip": "모듈러 모놀리스 설계 패턴: 1) 모듈 간 직접 함수 호출 대신 이벤트(EventEmitter2) 또는 명시적 인터페이스로 통신. 2) 각 모듈이 자신의 DB 테이블(또는 스키마)을 소유. 3) 공유 모델 금지 — UserModule의 User 엔티티를 OrderModule이 직접 import하지 않음. 4) 나중에 모듈을 쉽게 분리할 수 있는 구조 — 분리 시 이벤트를 SQS 메시지로 교체만 하면 됨. 이 구조가 MSA로의 Strangler Fig 전환을 쉽게 만든다.",
+    "deepDive": "모듈러 모놀리스를 MSA로 전환할 때 가장 먼저 분리해야 할 모듈을 어떻게 선정하는가? → 모듈 간 동기 함수 호출을 이벤트 기반으로 변경하지 않고 MSA로 분리하면 어떤 문제가 발생하는가? → 모놀리스에서 DB를 공유할 때 모듈 간 데이터 격리를 MySQL 스키마 수준에서 강제하는 방법은?",
+    "tags": [
+      "modular-monolith",
+      "msa",
+      "architecture-decision",
+      "strangler-fig",
+      "team-topology"
+    ]
+  },
+  {
+    "id": "arch-050",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Composition over Inheritance(상속보다 합성) 원칙이 실무에서 중요한 이유와, NestJS 서비스 설계에서 구체적인 적용 예시를 설명하라.",
+    "answer": "상속은 부모-자식 간 강한 결합을 만들어 부모 변경이 자식에 예상치 못한 영향을 준다. 합성은 기능을 별도 클래스로 분리하고 필요한 곳에 주입하여 결합도를 낮추고 재사용성을 높인다.",
+    "explanation": "상속의 문제: BaseService를 상속한 10개 서비스에서 BaseService가 변경되면 모든 서비스가 영향을 받는다. 상속은 IS-A 관계(CouponPublisher IS A BasePublisher)에만 적합하다. 합성: HAS-A 관계. CouponPublisher는 HttpClient, RetryPolicy, Logger를 '가진다'. 각각을 독립적으로 교체하거나 테스트할 수 있다.",
+    "seniorTip": "NestJS 적용 예: 외부 PG사 API를 호출하는 10개 서비스가 있을 때, 공통 재시도/타임아웃 로직을 BaseHttpService에 넣어 상속하면? → 재시도 횟수가 PG사마다 다르면 매우 복잡해진다. 합성 방식: HttpRequestAdapter(실제 호출) + RetryPolicy(재시도 전략) + TimeoutPolicy(타임아웃) + CircuitBreaker를 주입받는 방식. 각 PG사 서비스에 다른 RetryPolicy 인스턴스를 주입하면 된다. 데코레이터 패턴이 합성의 대표적 예: 기본 HTTP 클라이언트에 로깅, 재시도, 타임아웃 기능을 계층적으로 래핑한다.",
+    "deepDive": "NestJS의 미들웨어/인터셉터/파이프가 합성의 원리로 동작하는 이유를 설명하면? → Mixin 패턴이 TypeScript에서 다중 상속의 대안으로 사용되는 방식과 그 단점은? → Strategy 패턴이 합성 원칙의 구체적 구현인 이유와, if/else 분기와 비교했을 때의 장단점은?",
+    "tags": [
+      "composition",
+      "inheritance",
+      "design-principles",
+      "solid",
+      "decorator-pattern"
+    ]
+  },
+  {
+    "id": "arch-051",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "DDD의 Domain Service란 무엇이고, Application Service, Entity의 메서드와 어떻게 구분하는가?",
+    "answer": "Domain Service는 여러 Aggregate/Entity에 걸친 비즈니스 로직으로, 특정 Entity에 자연스럽게 속하지 않는 연산을 담당한다. 도메인 개념을 표현하지만 상태가 없다. Application Service는 Use Case 오케스트레이션(트랜잭션, 권한 검사)을 담당한다.",
+    "explanation": "구분 기준: 1) Entity 메서드 — 해당 Entity의 상태를 변경하거나 Entity 내부 규칙 검증. Order.cancel()이 Order 자체의 취소 규칙. 2) Domain Service — 여러 도메인 개념 간의 규칙. 쿠폰 적용 금액을 계산하는 CouponDiscountCalculator는 Order와 Coupon 모두 알아야 하므로 Domain Service. 3) Application Service — 트랜잭션 시작, Repository 호출, 이벤트 발행 등 인프라 관련 오케스트레이션.",
+    "seniorTip": "Domain Service 식별 방법: '이 로직을 어떤 Entity에 넣어야 할지 어색하다'는 느낌이 들 때 Domain Service 후보. 니콘내콘 예시: 1) LimitedCouponIssuanceService — 선착순 쿠폰 발급 가능 여부(CouponStock + UserCouponHistory 모두 확인). 2) ExchangeRateService — 외화 쿠폰의 원화 환산(Order + ExchangeRate). Domain Service는 Infrastructure 의존성이 없어야 한다. DB 호출이 필요하면 Repository 인터페이스를 주입받고, 실제 DB 호출은 Repository가 담당한다.",
+    "deepDive": "Domain Service와 Application Service의 테스트 전략 차이는? Domain Service는 DB 없이 테스트 가능한가? → Domain Service가 너무 많아지면(God Domain Service) 무엇이 잘못된 것인가? → 상태 없는 Domain Service가 DI 컨테이너에서 싱글톤으로 관리될 때 Thread Safety 이슈가 없는 이유는?",
+    "tags": [
+      "ddd",
+      "domain-service",
+      "application-service",
+      "entity",
+      "clean-architecture"
+    ]
+  },
+  {
+    "id": "arch-052",
+    "category": "architecture",
+    "difficulty": "mid",
+    "type": "concept",
+    "question": "Specification 패턴이란 무엇이고, 복잡한 비즈니스 규칙 조합이 필요한 조회 쿼리에서 어떻게 활용하는가?",
+    "answer": "Specification 패턴은 비즈니스 규칙을 객체로 캡슐화하여 조합(AND, OR, NOT)할 수 있게 한다. isSatisfiedBy(entity) 메서드로 규칙을 검증하거나, toQuery()로 DB 쿼리 조건으로 변환한다.",
+    "explanation": "예시: IsActiveCoupon, IsNotExpired, IsEligibleForUser를 각각 Specification으로 구현하고 and()로 조합. couponSpec = isActive.and(notExpired).and(eligibleForUser). Repository에서 spec.toTypeOrmQuery()로 WHERE 조건을 생성한다. 복잡한 필터 조건이 재사용 가능한 단위로 분리된다.",
+    "seniorTip": "Specification 패턴 활용 시나리오: 1) 복잡한 검색 필터(쿠폰 목록 조회: 상태 + 만료일 + 카테고리 + 가격 범위 필터). 2) 비즈니스 규칙 재사용(쿠폰 적용 가능 여부 검증 — 주문 생성과 결제 시 동일 로직 재사용). 3) 규칙 문서화 — 클래스 이름 자체가 비즈니스 규칙을 설명. 주의: 단순한 CRUD에 Specification을 적용하면 오버엔지니어링. 10개 이상의 필터 조합이 필요하거나, 같은 규칙이 여러 곳에서 재사용될 때 도입을 고려한다.",
+    "deepDive": "Specification 패턴을 TypeORM QueryBuilder와 통합할 때 toQuery() 메서드가 반환하는 타입을 어떻게 설계하는가? → Specification의 isSatisfiedBy()를 도메인 레이어에서 사용하는 것과 toQuery()를 인프라 레이어에서 사용하는 것의 책임 분리는? → 동적 정렬과 동적 필터를 모두 지원하는 SearchSpec을 어떻게 설계하는가?",
+    "tags": [
+      "specification-pattern",
+      "ddd",
+      "query-builder",
+      "business-rules",
+      "filter"
+    ]
+  },
+  {
+    "id": "arch-053",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "의존성 역전 원칙(DIP)을 적용할 때, 고수준 모듈이 저수준 모듈에 의존하지 않도록 하는 올바른 구현 방법은?",
+    "options": [
+      "고수준 모듈을 저수준 모듈보다 나중에 작성한다",
+      "고수준 모듈(비즈니스 로직)이 저수준 모듈(DB, HTTP)의 인터페이스(추상화)에만 의존하고, 저수준 모듈이 그 인터페이스를 구현한다",
+      "모든 클래스를 abstract로 선언한다",
+      "DI 컨테이너를 사용하면 자동으로 DIP가 적용된다"
+    ],
+    "answer": 1,
+    "explanation": "DIP: 1) 고수준 모듈은 저수준 모듈에 의존하지 않아야 한다. 둘 다 추상화에 의존해야 한다. 2) 추상화는 세부사항에 의존하지 않아야 한다. OrderUseCase(고수준)가 TypeOrmOrderRepository(저수준)를 직접 new로 생성하거나 import하면 DIP 위반. 대신 IOrderRepository(추상화)에 의존하고, DI 컨테이너가 TypeOrmOrderRepository를 주입한다.",
+    "seniorTip": "DIP와 DI(의존성 주입)의 차이: DIP는 '원칙'이고, DI는 DIP를 구현하는 '기법'이다. NestJS의 DI 컨테이너는 DIP를 구현하기 쉽게 해주지만, 여전히 인터페이스 없이 구체 클래스를 직접 주입하면 DIP 위반이다. 실무 적용: PaymentGateway 인터페이스를 정의하고 TossPaymentGateway, KakaoPayGateway를 구현한다. PG사 변경 시 비즈니스 로직(UseCase)은 수정 없이 DI 바인딩만 변경. NestJS에서는 { provide: IPaymentGateway, useClass: TossPaymentGateway }로 등록.",
+    "deepDive": "NestJS에서 TypeScript 인터페이스는 런타임에 존재하지 않으므로 추상 클래스나 Symbol 토큰을 사용해야 한다 — 각각의 장단점은? → DIP를 적용하면 테스트 작성이 어떻게 쉬워지는가? 구체적인 코드 비교로 설명하면? → DIP와 Dependency Injection Container를 사용하지 않고 Factory 패턴으로 의존성을 주입하는 방식의 트레이드오프는?",
+    "tags": [
+      "solid",
+      "dip",
+      "dependency-inversion",
+      "interface",
+      "di"
+    ]
+  },
+  {
+    "id": "arch-054",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "분산 시스템에서 Idempotency Key를 설계할 때 고려해야 할 요소와, 결제 API에서의 구체적인 구현 방법을 설명하라.",
+    "answer": "Idempotency Key는 클라이언트가 고유하게 생성한 UUID를 요청 헤더에 포함한다. 서버는 키와 처리 결과를 저장하고, 같은 키로 재요청 시 저장된 결과를 반환한다. Key의 TTL, 저장 위치(DB vs Redis), 결과 저장 시점(처리 전 vs 처리 후)이 핵심 설계 결정이다.",
+    "explanation": "구현 단계: 1) 클라이언트 — X-Idempotency-Key: UUID v4 헤더 포함. 2) 서버(Interceptor) — idempotency_keys 테이블에 key INSERT. 중복이면 저장된 응답 반환. 3) 비즈니스 로직 실행. 4) 결과를 idempotency_keys에 저장(response_status, response_body). 5) TTL: 24시간 이후 삭제.",
+    "seniorTip": "설계 함정: 1) 처리 중 상태 — 두 번째 요청이 첫 번째 처리 중에 들어오면? PROCESSING 상태를 저장하고 409 Conflict 반환 또는 처리 완료 대기. 2) DB 쓰기 실패 후 응답 성공 — 비즈니스 로직은 성공했지만 idempotency 저장이 실패하면 클라이언트가 재요청 시 중복 처리됨. 트랜잭션으로 묶어야 함. 3) Key 생성 책임 — 클라이언트가 생성하면 중복이 없다. 서버가 생성하면 최초 응답이 유실될 때 클라이언트가 새 key로 재시도한다. 4) 클라이언트 다양성 — 파트너 API에서 idempotency key를 강제하지 않으면 중복 결제가 발생한다. API 문서에 필수 헤더로 명시.",
+    "deepDive": "Idempotency Key 저장소로 DB와 Redis의 트레이드오프는? 결제처럼 영구 보장이 필요한 경우와 단순 조회처럼 TTL로 충분한 경우를 어떻게 구분하는가? → 처리 중 상태에서 두 번째 요청이 들어왔을 때 '대기 후 응답'과 '즉시 409 반환' 중 어느 것이 더 나은 UX를 제공하는가? → 멱등성 키 없이 운영하다가 도입할 때 기존 클라이언트와의 하위 호환성을 어떻게 유지하는가?",
+    "tags": [
+      "idempotency",
+      "distributed-systems",
+      "payment",
+      "api-design",
+      "resilience"
+    ]
+  },
+  {
+    "id": "arch-055",
+    "category": "architecture",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "대규모 서비스에서 Post-mortem(사후 분석) 문화를 정착시키는 방법과, Blameless Post-mortem의 핵심 원칙을 설명하라.",
+    "answer": "Blameless Post-mortem은 개인의 실수를 비난하지 않고 시스템과 프로세스의 문제를 찾는다. '왜 이 사람이 실수했는가'가 아닌 '왜 이 시스템이 실수를 쉽게 만들었는가'를 분석한다. 5-Why 기법으로 근본 원인을 찾고, Action Item으로 재발 방지책을 도출한다.",
+    "explanation": "Google SRE에서 정의한 Blameless Post-mortem: 1) 타임라인 작성 — 언제 무슨 일이 일어났는가. 2) 근본 원인 분석 — 5-Why로 표면 원인 너머를 탐구. 3) 영향 범위 정량화 — 몇 명 영향, 매출 손실. 4) Action Items — 각 항목에 담당자와 마감일. 5) 지식 공유 — 전체 팀에 공개하여 유사 장애 예방.",
+    "seniorTip": "Post-mortem 문화 정착 방법: 1) 리더가 먼저 자신의 실수 사례를 Post-mortem으로 공유하면 심리적 안전감 형성. 2) SLA 위반 시 자동으로 Post-mortem 템플릿 JIRA 티켓을 생성. 3) 장애 후 24-48시간 내에 Draft를 작성하고, 72시간 내에 팀 리뷰. 4) Action Item 완료율을 분기별로 측정 — 완료율이 낮으면 Action Item이 너무 크거나 우선순위가 낮은 것. 5) Severity Level(P0-P3)에 따라 Post-mortem 의무 여부 결정 — P0(결제 중단)은 필수, P3(마이너 UI 버그)는 선택. 장애를 두려워하면 실험과 혁신이 멈춘다. 장애를 학습 기회로 보는 문화가 Elite DevOps 팀의 특징이다.",
+    "deepDive": "5-Why 기법을 Post-mortem에서 사용할 때 빠지는 함정(특정 개인을 향한 '왜 이 사람은?'으로 귀결)을 어떻게 방지하는가? → Post-mortem Action Item 중 즉각 대응(24시간 내)과 중장기 개선(스프린트에 포함)을 어떻게 분류하고 관리하는가? → 반복되는 유사 장애에서 시스템적 문제를 발견하기 위해 여러 Post-mortem을 메타 분석하는 방법은?",
+    "tags": [
+      "post-mortem",
+      "blameless",
+      "sre",
+      "incident-management",
+      "engineering-culture"
+    ]
   }
 ]

@@ -1236,5 +1236,324 @@
       "route53",
       "dns-challenge"
     ]
+  },
+  {
+    "id": "k8s-061",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "PodSecurityPolicy(deprecated)에서 Pod Security Admission(PSA)으로 마이그레이션할 때의 핵심 차이점과 마이그레이션 전략을 설명하라.",
+    "answer": "PSP는 어드미션 컨트롤러 기반으로 세밀한 정책을 ClusterRole과 연동하여 관리했다. PSA는 namespace 레이블로 privileged/baseline/restricted 세 가지 표준 프로필을 적용한다. PSP보다 단순하지만 커스터마이징이 제한적이므로 복잡한 정책은 OPA/Gatekeeper로 보완한다.",
+    "explanation": "PSA 프로필: 1) privileged: 제한 없음. 시스템 네임스페이스. 2) baseline: 최소한의 제한(hostNetwork, hostPID 불가, 위험한 capabilities 불가). 3) restricted: 강한 제한(non-root 실행, seccompProfile 필수, allowPrivilegeEscalation 불가). 네임스페이스 레이블로 적용: pod-security.kubernetes.io/enforce=restricted. warn과 audit 모드로 enforce 전에 영향 파악 가능.",
+    "deepDive": "PSA의 restricted 프로필로 전환 시 기존 Pod가 거부될 수 있는데 사전 확인은 어떻게 하나? → 1) warn 레이블을 먼저 설정(pod-security.kubernetes.io/warn=restricted). 위반 시 API 응답에 경고만 표시, 생성은 허용. 2) audit 레이블(pod-security.kubernetes.io/audit=restricted): API 서버 감사 로그에 기록. 3) kubectl label --dry-run으로 시뮬레이션. 4) 기존 PSP에서 마이그레이션 시 PSP가 어떤 권한을 허용했는지 목록을 먼저 파악하고, PSA의 프로필로 커버가 되는지 확인. 커버가 안 되는 세밀한 정책은 OPA Gatekeeper의 ConstraintTemplate으로 구현. 예를 들어 특정 이미지 레지스트리만 허용하는 정책은 PSA에 없으므로 Gatekeeper가 필요하다.",
+    "seniorTip": "EKS 1.25부터 PSP가 제거되었다. 업그레이드 전에 PSA 마이그레이션이 필수다. 마이그레이션 체크리스트: 1) kube-system, kube-public은 privileged 프로필 유지. 2) 모니터링(Datadog/Prometheus) namespace는 DaemonSet이 hostPID/hostNetwork를 사용하므로 baseline 이상. 3) 애플리케이션 namespace는 restricted 목표. 4) OPA Gatekeeper를 함께 배포하여 이미지 레지스트리, 필수 레이블 등 커스텀 정책 적용.",
+    "tags": [
+      "pod-security-admission",
+      "psp",
+      "security",
+      "opa",
+      "gatekeeper",
+      "eks"
+    ]
+  },
+  {
+    "id": "k8s-062",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "KEDA(Kubernetes Event-Driven Autoscaler)가 기본 HPA와 다른 핵심 차이는?",
+    "options": [
+      "KEDA는 CPU/메모리 기반 스케일링만 지원한다",
+      "KEDA는 외부 이벤트 소스(SQS 큐 깊이, Kafka lag, Redis list 길이 등)를 기반으로 스케일링하며, 0에서 N, N에서 0으로의 스케일링을 지원한다",
+      "KEDA는 Deployment에만 적용 가능하다",
+      "KEDA는 HPA를 완전히 대체하여 기존 HPA는 비활성화된다"
+    ],
+    "answer": 1,
+    "explanation": "KEDA는 ScaledObject CRD로 외부 스케일러(SQS, Kafka, RabbitMQ, Redis, Datadog 메트릭 등 50+ 스케일러)를 기반으로 HPA를 동적으로 관리한다. 특히 트래픽이 없을 때 0으로 스케일다운(scale-to-zero)하고, 이벤트 발생 시 즉시 스케일업하는 기능이 핵심이다. KEDA는 내부적으로 HPA를 생성하고 외부 메트릭을 HPA에 공급하는 External Metrics Provider 역할을 한다.",
+    "deepDive": "SQS 메시지를 소비하는 Consumer가 있을 때 KEDA ScaledObject 설정을 설명하면? → triggers에 sqs 스케일러를 설정하고 queueLength(큐당 Worker 수 기준)를 지정. SQS 메시지가 0이면 minReplicaCount=0으로 스케일다운. 메시지가 들어오면 awsSQS 스케일러가 큐 깊이를 폴링하고 HPA에 메트릭을 제공. 폴링 주기는 pollingInterval 설정. 그러면 scale-to-zero에서 다시 첫 메시지가 들어왔을 때 Pod 기동 딜레이는? → 기동 시간이 있으므로 메시지가 소비되기까지 딜레이가 발생한다. NestJS 앱이 기동되는 데 10-30초가 걸리면 그 동안 메시지가 SQS에 쌓인다. 이는 acceptable한가? → 배치 처리는 수분의 딜레이가 허용되므로 scale-to-zero가 유리. 실시간 처리는 minReplicaCount=1로 최소 1개는 유지.",
+    "seniorTip": "니콘내콘에서 SQS 기반 비동기 처리에 KEDA를 적용하면: 주간 트래픽이 많을 때는 Consumer Pod가 10개 이상 동작하고, 야간에는 0으로 줄어 비용을 절감할 수 있다. Terraform으로 KEDA helm chart를 설치하고 ScaledObject는 K8s 매니페스트로 관리. IRSA로 KEDA에 SQS 큐 조회 권한(sqs:GetQueueAttributes)만 부여하는 것이 보안 best practice다.",
+    "tags": [
+      "keda",
+      "autoscaling",
+      "event-driven",
+      "sqs",
+      "scale-to-zero",
+      "hpa"
+    ]
+  },
+  {
+    "id": "k8s-063",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Kubernetes Gateway API가 기존 Ingress 리소스를 대체하는 이유와 핵심 구성 요소를 설명하라.",
+    "answer": "Gateway API는 GatewayClass, Gateway, HTTPRoute로 책임을 분리하여 Ingress보다 표현력이 풍부하다. 트래픽 가중치 기반 분산, 헤더 기반 라우팅, TCP/gRPC 지원, 멀티 팀 셀프 서비스 등 Ingress annotation 해킹 없이 표준 방식으로 처리한다.",
+    "explanation": "구성 요소: 1) GatewayClass: 로드밸런서 구현(AWS ALB, Nginx, Istio 등). 인프라 팀이 관리. 2) Gateway: 실제 로드밸런서 인스턴스. 리스너(포트, 프로토콜, TLS) 정의. 인프라/플랫폼 팀 관리. 3) HTTPRoute: 경로별 라우팅 규칙. 개발팀이 각자 네임스페이스에서 관리. ParentReference로 Gateway에 연결. 4) 트래픽 분할: backendRefs의 weight로 canary/blue-green 배포. 5) HTTPRoute는 크로스 네임스페이스 참조도 지원.",
+    "deepDive": "실제로 Ingress에서 Gateway API로 마이그레이션하면 어떤 어노테이션이 없어지나? → AWS Load Balancer Controller의 alb.ingress.kubernetes.io/* 어노테이션들이 Gateway API에서는 GatewayClass/Gateway의 표준 필드로 이동. 예: alb.ingress.kubernetes.io/scheme: internet-facing은 Gateway의 spec.infrastructure.annotations로. 헤더 기반 라우팅은? → Ingress에서는 nginx.ingress.kubernetes.io/canary-by-header 어노테이션이 필요했지만, HTTPRoute에서는 spec.rules[].matches[].headers로 표준 지원. 그러면 현재 EKS에서 Gateway API를 사용하려면? → AWS Gateway API Controller가 필요. EKS에서는 VPC Lattice와 통합된 AWS 구현이 있다. 대안으로 Nginx나 Istio의 Gateway API 구현 사용.",
+    "seniorTip": "2024년 기준 Gateway API v1.0이 GA됐다. HTTPRoute와 GatewayClass/Gateway는 표준 API. TCPRoute, GRPCRoute 등은 아직 실험적. Ingress는 deprecated 예정이 없지만 새 프로젝트라면 Gateway API 사용을 권장. 단, 모든 Ingress Controller가 Gateway API를 지원하는 것은 아니므로 사용 중인 컨트롤러의 지원 여부를 먼저 확인.",
+    "tags": [
+      "gateway-api",
+      "ingress",
+      "httproute",
+      "gatewayclass",
+      "traffic-management",
+      "eks"
+    ]
+  },
+  {
+    "id": "k8s-064",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "RuntimeClass를 사용하여 gVisor(runsc) 또는 Kata Containers를 특정 Pod에만 적용하는 이유는?",
+    "options": [
+      "gVisor는 컨테이너 이미지 크기를 줄여준다",
+      "강한 격리가 필요한 신뢰할 수 없는 워크로드(외부 코드 실행, 멀티 테넌트 환경)에서 커널 취약점 공격 표면을 줄이기 위해",
+      "RuntimeClass를 사용하면 Pod 기동 시간이 빨라진다",
+      "Kubernetes 1.25부터 모든 Pod에 RuntimeClass 지정이 필수다"
+    ],
+    "answer": 1,
+    "explanation": "기본 containerd/runc는 호스트 커널을 공유하므로 컨테이너 탈출(escape) 취약점이 있으면 노드 전체가 위험해진다. gVisor: 사용자 공간에서 시스템 콜을 인터셉트하는 샌드박스 커널. 호스트 커널 접근을 최소화. 성능 오버헤드 있음(~10-30%). Kata Containers: 경량 VM에서 컨테이너를 실행. 완전한 VM 격리. 더 높은 오버헤드. RuntimeClass를 통해 일부 Pod에만 적용하고 성능이 중요한 Pod는 기본 runc를 사용.",
+    "deepDive": "EKS에서 gVisor를 사용하려면 어떻게 설정하는가? → 1) gVisor가 설치된 노드 그룹 생성(AMI 커스터마이징 또는 AWS Bottlerocket). 2) containerd의 runtime handler에 runsc 등록. 3) RuntimeClass 리소스 생성(handler: runsc). 4) Pod spec에 runtimeClassName: gvisor 지정. 그러면 gVisor를 사용하는 Pod에서 성능이 얼마나 저하되나? → 시스템 콜이 많은 워크로드(CPU 집약적 연산)는 ~20-30% 저하. 네트워크 집약적은 상대적으로 덜 영향. I/O 집약적은 크게 영향. 그래서 AI 추론, 과학 계산 같은 고성능 워크로드에는 부적합. 신뢰할 수 없는 사용자 코드(FaaS, 코드 실행 서비스)에 적합하다.",
+    "seniorTip": "멀티 테넌트 K8s 환경에서 특정 테넌트의 워크로드에만 RuntimeClass를 강제하려면 OPA Gatekeeper의 ConstraintTemplate을 사용하여 특정 레이블이 있는 Pod는 반드시 runtimeClassName을 지정하도록 정책을 적용한다. Bottlerocket(AWS가 만든 컨테이너 최적화 OS)은 gVisor를 기본 지원하여 EKS에서 설정이 간편하다.",
+    "tags": [
+      "runtimeclass",
+      "gvisor",
+      "kata-containers",
+      "security",
+      "multi-tenancy",
+      "sandboxing"
+    ]
+  },
+  {
+    "id": "k8s-065",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "kubectl debug 명령어로 Ephemeral Container를 사용한 프로덕션 Pod 디버깅 방법을 설명하라.",
+    "answer": "kubectl debug -it <pod> --image=busybox --target=<container>로 실행 중인 Pod에 임시 컨테이너를 추가하여 디버깅한다. distroless 이미지처럼 셸이 없는 컨테이너를 디버깅하거나, 원본 컨테이너의 프로세스 네임스페이스에 접근할 때 사용한다.",
+    "explanation": "Ephemeral Container(K8s 1.23 GA): 1) 실행 중인 Pod에 임시 컨테이너를 추가. 2) 컨테이너 삭제/재시작 불가(임시적). 3) --target 옵션으로 특정 컨테이너의 프로세스 네임스페이스를 공유. 4) distroless 이미지(curl, sh가 없음)로 배포된 NestJS 앱을 디버깅할 때 유용. 5) Pod가 재시작되면 ephemeral container도 사라짐. 유사 기능: kubectl debug node/<node> --image=ubuntu로 노드 자체 디버깅.",
+    "deepDive": "Ephemeral Container로 프로세스 네임스페이스를 공유하면 어떤 것을 볼 수 있는가? → 동일 Pod 내 컨테이너의 프로세스 목록(ps aux). /proc/<pid>/fd로 파일 디스크립터 확인. 메모리 덤프. 네트워크 연결(netstat, ss). 단, 파일시스템은 다른 컨테이너의 /이 아닌 Ephemeral Container 자체의 이미지를 사용. 다른 컨테이너의 파일시스템에 접근하려면? → kubectl debug에서 --copy-to 옵션으로 Pod를 복사하고 복사된 Pod에서 shareProcessNamespace: true 설정. 원본 Pod의 컨테이너 이미지에서 직접 디버깅하려면? → kubectl debug --copy-to=debug-pod --container=app --image=ubuntu:22.04로 앱 컨테이너의 이미지를 ubuntu로 교체한 복사본 생성.",
+    "seniorTip": "distroless 이미지를 프로덕션에서 사용하면 보안이 강화되지만 디버깅이 어렵다. Ephemeral Container 덕분에 이 트레이드오프가 해결됐다. 프로덕션에서 kubectl exec 대신 kubectl debug를 선호하는 이유: Ephemeral Container는 기존 컨테이너를 수정하지 않고 격리된 디버깅 환경을 제공하기 때문이다.",
+    "tags": [
+      "ephemeral-container",
+      "kubectl-debug",
+      "troubleshooting",
+      "distroless",
+      "process-namespace"
+    ]
+  },
+  {
+    "id": "k8s-066",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "StatefulSet의 updateStrategy에서 RollingUpdate와 OnDelete의 차이는?",
+    "options": [
+      "RollingUpdate는 모든 Pod를 동시에 교체하고, OnDelete는 순차적으로 교체한다",
+      "RollingUpdate는 Pod를 역순(N, N-1, ...)으로 자동 교체하고, OnDelete는 수동으로 Pod를 삭제해야만 새 버전으로 교체된다",
+      "OnDelete는 StatefulSet에서만 사용 가능하고 더 빠르다",
+      "RollingUpdate는 Headless Service와 함께만 사용 가능하다"
+    ],
+    "answer": 1,
+    "explanation": "StatefulSet RollingUpdate: Pod를 가장 높은 ordinal(N)부터 역순으로 하나씩 삭제 후 재생성. partition 필드로 특정 ordinal 이상의 Pod만 업데이트하는 카나리 배포 가능. OnDelete: 자동 업데이트 없음. 사용자가 직접 kubectl delete pod <name>해야만 새 버전이 적용됨. 세밀한 제어가 필요한 스테이트풀 앱(Redis Sentinel Primary 교체 등)에 유용.",
+    "deepDive": "StatefulSet RollingUpdate에서 partition을 활용한 카나리 배포는 어떻게 하나? → spec.updateStrategy.rollingUpdate.partition=2로 설정하면 ordinal >= 2인 Pod만 업데이트(replica가 3개면 pod-2만 업데이트). pod-0, pod-1은 이전 버전 유지. pod-2에서 새 버전이 정상 동작하면 partition=1, 그 다음 partition=0으로 순차적으로 범위를 줄여 전체 업데이트. Redis Cluster에서 이 전략을 쓰면? → Primary(pod-0)는 마지막에 업데이트. Replica부터 업데이트하여 Primary 장애 없이 클러스터 업그레이드 가능. maxUnavailable(K8s 1.24+)로 동시 업데이트 Pod 수를 제어하면 더 빠른 업데이트도 가능하다.",
+    "seniorTip": "Redis Cluster를 StatefulSet으로 운영할 때 updateStrategy 선택: OnDelete를 추천. 업데이트 전 수동으로 CLUSTER FAILOVER를 실행하여 해당 노드가 Replica가 되도록 한 후 삭제. 이 과정을 자동화하는 Pre-Stop hook + 스크립트를 작성하면 더 안전하다. Redis Operator를 사용하면 이 복잡성을 자동으로 처리해준다.",
+    "tags": [
+      "statefulset",
+      "update-strategy",
+      "rolling-update",
+      "on-delete",
+      "partition",
+      "canary"
+    ]
+  },
+  {
+    "id": "k8s-067",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Init Container를 사용하여 메인 컨테이너 기동 전에 공유 볼륨에 설정 파일을 생성하는 패턴과 실제 활용 사례를 설명하라.",
+    "answer": "Init Container는 메인 컨테이너 시작 전에 순차적으로 실행되고 완료된다. emptyDir 볼륨을 Init Container와 메인 컨테이너가 공유하여, Init Container가 설정 생성/DB 마이그레이션/의존성 체크 등을 수행한 후 메인 컨테이너가 그 결과를 사용한다.",
+    "explanation": "패턴: 1) Init Container에서 Vault나 AWS Secrets Manager에서 시크릿을 받아 emptyDir에 파일로 저장. 메인 컨테이너는 파일로 시크릿 사용(환경변수 노출 위험 최소화). 2) DB 마이그레이션: Init Container에서 migrate.sh 실행. 성공해야 메인 앱 기동. 3) 의존성 체크: DB나 다른 서비스가 응답할 때까지 대기(wait-for 패턴). 4) 설정 템플릿 렌더링: envsubst로 템플릿을 실제 설정 파일로 변환.",
+    "deepDive": "Init Container의 wait-for 패턴을 구체적으로 어떻게 구현하는가? → initContainers에 busybox 이미지로 until nc -z mysql-service 3306; do sleep 2; done; 스크립트 실행. TCP 연결만 확인하는 수준. 더 정확한 확인은 mysqladmin ping. 그런데 이 패턴의 문제점은? → Init Container 자체가 무한 루프에 빠질 수 있고, 의존 서비스 IP가 변경되면 DNS 캐시 문제로 오래된 IP로 접속 시도. 타임아웃 설정이 없으면 Pod가 영원히 Pending 유사 상태. activeDeadlineSeconds로 Init Container에 타임아웃을 설정하는 것이 안전하다. Helm에서 이 패턴을 사용할 때 init container 이미지 버전 관리는 어떻게 하는가?",
+    "seniorTip": "NestJS TypeORM 마이그레이션을 Init Container로 처리하는 패턴: Init Container에서 node dist/migration/run.js 실행. 성공(exit 0)이면 메인 컨테이너 기동. 실패(exit non-0)이면 Pod가 CrashLoopBackOff로 경고를 보냄. 이 패턴의 장점: 배포와 마이그레이션이 자동으로 연동되어 마이그레이션 없이 앱이 기동되는 사고를 방지.",
+    "tags": [
+      "init-container",
+      "shared-volume",
+      "migration",
+      "wait-for",
+      "emptydir",
+      "secrets"
+    ]
+  },
+  {
+    "id": "k8s-068",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "K8s 1.27+에서 CronJob은 spec.timeZone 필드를 통해 UTC 외의 타임존으로 스케줄을 설정할 수 있다.",
+    "answer": "O",
+    "explanation": "K8s 1.27에서 CronJob timezone 지원이 GA됐다. spec.timeZone: 'Asia/Seoul'로 KST 기준 스케줄 설정 가능. 이전에는 UTC를 기준으로 계산하여 KST 오전 9시 실행이 spec.schedule: '0 0 * * *'(UTC)로 작성해야 했다. 타임존 지원으로 가독성과 유지보수가 크게 향상됐다.",
+    "deepDive": "CronJob에서 타임존 지원 이전에는 어떻게 대응했는가? → 1) UTC 기준으로 역산하여 cron 표현식 작성. KST는 UTC+9이므로 KST 0시는 UTC 전날 15시(0-9=-9, -9+24=15). 2) 크론 표현식에 주석으로 KST 시간을 명시. 3) CronJob 대신 외부 스케줄러(Airflow, AWS EventBridge)로 트리거. timeZone 도입 후 주의사항은? → CAPI(Cluster API) 버전에 따라 타임존 데이터베이스가 없는 구버전 K8s는 지원 안 됨. kube-controller-manager가 타임존 데이터베이스(tzdata)를 포함해야 한다. EKS에서는 1.27 업그레이드 후 즉시 사용 가능하다.",
+    "seniorTip": "정산, 배치 처리, 리포트 생성 CronJob에서 타임존 설정 실수는 심각한 비즈니스 문제로 이어진다. 니콘내콘에서 일 1회 정산 CronJob이 KST 자정에 실행되어야 한다면, timeZone: 'Asia/Seoul'과 schedule: '0 0 * * *'으로 명확하게 설정. 레거시 환경은 schedule: '0 15 * * *'(UTC)로 유지하되 반드시 주석으로 KST 시간을 명시하자.",
+    "tags": [
+      "cronjob",
+      "timezone",
+      "scheduling",
+      "asia-seoul",
+      "batch"
+    ]
+  },
+  {
+    "id": "k8s-069",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Service의 externalTrafficPolicy를 Local로 설정할 때 발생하는 트레이드오프는?",
+    "options": [
+      "externalTrafficPolicy: Local은 클러스터 내부 트래픽에만 적용된다",
+      "externalTrafficPolicy: Local은 클라이언트 소스 IP를 보존하지만, 해당 노드에 Pod가 없으면 트래픽이 드롭된다. Cluster는 모든 노드로 분산하지만 SNAT로 소스 IP가 유실된다",
+      "externalTrafficPolicy: Local은 성능이 항상 Cluster보다 낮다",
+      "externalTrafficPolicy: Local은 NodePort 타입에서만 동작한다"
+    ],
+    "answer": 1,
+    "explanation": "externalTrafficPolicy: Cluster(기본): kube-proxy가 모든 노드에서 트래픽을 받아 SNAT 후 전체 Pod로 분산. 소스 IP 유실. externalTrafficPolicy: Local: 트래픽이 들어온 노드의 Pod에만 전달. SNAT 없으므로 소스 IP 보존. 해당 노드에 Pod 없으면 Health Check 실패로 로드밸런서가 해당 노드를 제외. AWS NLB와 함께 사용 시 노드 수준에서 헬스체크가 실패하면 해당 노드로 트래픽 미전송.",
+    "deepDive": "소스 IP 보존이 중요한 실제 사례는? → IP 기반 Rate Limiting, IP 기반 지역 차단(GeoBlocking), 감사 로그에 실제 클라이언트 IP 기록. AWS ALB를 사용하면 X-Forwarded-For 헤더로 소스 IP를 전달하므로 externalTrafficPolicy와 무관하게 소스 IP를 알 수 있다. 그러면 언제 Local이 문제가 되나? → 트래픽이 특정 노드에 집중되어 Pod 분산이 불균형해질 수 있다. 예를 들어 노드 A에 Pod가 3개, 노드 B에 Pod가 1개이면 노드 B의 Pod가 상대적으로 적은 트래픽을 받음. AWS NLB + externalTrafficPolicy: Local + HPA 조합에서 이 불균형이 자동 스케일링을 방해하는가? → 그렇다. 특정 노드의 Pod가 과부하지만 HPA는 클러스터 전체 평균으로 판단하므로 스케일링이 늦을 수 있다.",
+    "seniorTip": "니콘내콘 EKS 환경: ALB Ingress를 사용하면 소스 IP는 X-Forwarded-For로 보존되므로 externalTrafficPolicy: Cluster가 적합. NLB를 직접 노출하는 게임 서버나 WebSocket 서비스는 Local을 고려. 노드 간 Pod 분산이 균일하도록 topologySpreadConstraints를 함께 설정하면 Local의 불균형 문제를 완화할 수 있다.",
+    "tags": [
+      "external-traffic-policy",
+      "service",
+      "source-ip",
+      "nlb",
+      "snat",
+      "load-balancing"
+    ]
+  },
+  {
+    "id": "k8s-070",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "client-go informer 패턴의 동작 원리와 K8s 오퍼레이터 개발에서 중요한 이유를 설명하라.",
+    "answer": "Informer는 K8s API 서버의 List+Watch를 추상화하여 로컬 캐시를 유지하고 변경 이벤트를 핸들러로 전달한다. API 서버에 매번 요청하지 않고 캐시에서 조회하므로 부하를 줄이고, 이벤트 누락 없이 리소스 변경을 처리한다.",
+    "explanation": "동작 원리: 1) ListWatch: 시작 시 전체 리소스를 List, 이후 Watch로 변경 스트리밍. 2) Store/Indexer: 메모리 캐시에 리소스 상태 저장. lister로 캐시에서 조회(API 서버 부하 없음). 3) ResourceEventHandler: Added/Updated/Deleted 이벤트를 큐에 넣음. 4) WorkQueue: 이벤트를 처리할 reconcile 루프에 rate limiting과 deduplication 적용. 5) Re-sync: 주기적으로 전체 상태를 재동기화하여 누락 이벤트를 보완.",
+    "deepDive": "Informer 없이 매번 API 서버에서 리소스를 조회하면 어떤 문제가 생기나? → 리소스가 수천 개이면 reconcile마다 List 호출로 API 서버에 상당한 부하. 클러스터가 커질수록 etcd와 API 서버가 병목. 이를 List of Death라고 한다. SharedInformerFactory를 사용하면? → 같은 타입의 리소스를 여러 컨트롤러가 감시할 때 Watch 스트림을 공유하여 API 서버 연결을 최소화. controller-runtime(kubebuilder 기반)은 이를 자동으로 처리한다. 그러면 대규모 클러스터(노드 1000개)에서 컨트롤러 개발 시 주의사항은? → informer 캐시 메모리 사용량(모든 Pod, Node 등을 메모리에 유지). 필요한 필드만 캐시하는 MetadataInformer 또는 PartialObjectMetadata 활용.",
+    "seniorTip": "EKS에서 사내 오퍼레이터를 개발할 때 kubebuilder를 사용하면 Informer, WorkQueue, Leader Election을 자동으로 구성해준다. 직접 client-go를 쓰는 것보다 훨씬 생산적이다. 단, kubebuilder가 생성하는 RBAC 매니페스트(ClusterRole)를 반드시 최소 권한으로 조정해야 한다.",
+    "tags": [
+      "client-go",
+      "informer",
+      "operator",
+      "controller",
+      "watch",
+      "reconcile"
+    ]
+  },
+  {
+    "id": "k8s-071",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Volume Snapshot을 사용한 PVC 백업과 복구 워크플로우에서 VolumeSnapshotClass가 하는 역할은?",
+    "options": [
+      "VolumeSnapshotClass는 스냅샷의 TTL을 설정한다",
+      "VolumeSnapshotClass는 CSI 드라이버(예: ebs.csi.aws.com)와 스냅샷 파라미터(deletionPolicy 등)를 정의하여, VolumeSnapshot이 어떤 드라이버로 스냅샷을 생성할지 결정한다",
+      "VolumeSnapshotClass는 스냅샷 데이터를 S3에 저장하도록 설정한다",
+      "VolumeSnapshotClass는 자동 스냅샷 스케줄을 포함한다"
+    ],
+    "answer": 1,
+    "explanation": "VolumeSnapshot 워크플로우: 1) VolumeSnapshotClass: CSI 드라이버와 deletionPolicy(Delete/Retain) 정의. 2) VolumeSnapshot: 특정 PVC의 스냅샷 요청. VolumeSnapshotClass를 참조. 3) VolumeSnapshotContent: 실제 스냅샷 데이터(EBS 스냅샷 ID 등). 복구: VolumeSnapshot을 dataSource로 참조하는 PVC를 생성하면 스냅샷에서 복구된 볼륨이 생성됨.",
+    "deepDive": "EKS에서 EBS CSI 드라이버로 VolumeSnapshot을 설정하는 절차는? → 1) aws-ebs-csi-driver 설치 및 snapshot CRD 설치. 2) VolumeSnapshotClass 생성(driver: ebs.csi.aws.com). 3) VolumeSnapshot 생성(PVC 지정). 4) EBS 콘솔에서 스냅샷 생성 확인. 스냅샷 자동화는? → K8s 기본 제공 없음. Velero로 PVC 스냅샷 스케줄 자동화 가능. 또는 CronJob에서 kubectl 명령으로 VolumeSnapshot 생성. VolumeSnapshot 복구 시 동일 AZ 제약은? → EBS 볼륨은 AZ 종속적. 스냅샷에서 복구된 PVC는 스냅샷을 생성한 EBS와 동일 리전이어야 하지만 다른 AZ는 가능. 크로스 리전 복구는 EBS 스냅샷 복사 후 가능.",
+    "seniorTip": "Velero는 K8s 리소스(manifest)와 PVC 데이터를 함께 백업하는 통합 솔루션이다. EKS에서 재해 복구 전략으로 Velero + S3 백업을 구성하면 다른 리전에 클러스터를 복구할 수 있다. 단, 애플리케이션 데이터(RDS, ElastiCache)는 별도로 백업해야 한다.",
+    "tags": [
+      "volume-snapshot",
+      "pvc",
+      "csi",
+      "ebs",
+      "backup",
+      "velero"
+    ]
+  },
+  {
+    "id": "k8s-072",
+    "category": "kubernetes",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "K8s ServiceAccount에 automountServiceAccountToken: false를 설정하면 Pod에 기본 ServiceAccount 토큰이 자동으로 마운트되지 않아 보안이 강화된다.",
+    "answer": "O",
+    "explanation": "기본적으로 K8s는 모든 Pod에 기본 ServiceAccount 토큰을 /var/run/secrets/kubernetes.io/serviceaccount/token에 마운트한다. 이 토큰으로 K8s API에 접근 가능하다. automountServiceAccountToken: false를 ServiceAccount 또는 Pod spec에 설정하면 이 자동 마운트를 방지한다. K8s API에 접근할 필요가 없는 애플리케이션(대부분의 웹 서버)에서는 이 설정이 공격 표면을 줄인다.",
+    "deepDive": "ServiceAccount Projected Token(Bound Service Account Token)이 기존 토큰과 다른 점은? → 기존: 만료 없는 JWT(영구 토큰). Secret에 저장. Projected Token: 만료 시간 있음(기본 1시간). 특정 대상(audience)에만 유효. 자동 갱신. K8s 1.21+에서 기본으로 사용. IRSA에서 사용하는 EKS ServiceAccount 토큰이 바로 Projected Token이다. Pod가 재시작 없이 토큰이 만료되면? → kubelet이 자동으로 새 토큰을 발급하고 마운트된 파일을 갱신한다. 하지만 앱이 토큰을 시작 시 한 번만 읽어서 메모리에 캐시하면 만료 후 API 호출 실패. 앱은 매 API 호출마다 최신 토큰을 파일에서 읽거나, AWS SDK처럼 자동 갱신하는 라이브러리를 사용해야 한다.",
+    "seniorTip": "보안 강화 체크리스트: 1) 불필요한 ServiceAccount automount 비활성화. 2) 기본 ServiceAccount 대신 전용 ServiceAccount 사용(최소 권한 RBAC). 3) Pod Security Admission restricted 프로필 적용. 4) 네트워크 정책으로 kube-apiserver 접근을 허용된 Pod만 허용. 5) ServiceAccount 토큰이 노출되면 그 Pod가 가진 RBAC 권한으로 K8s API를 조작할 수 있음을 인지.",
+    "tags": [
+      "serviceaccount",
+      "projected-token",
+      "automount",
+      "security",
+      "irsa",
+      "rbac"
+    ]
+  },
+  {
+    "id": "k8s-073",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "kubectl kustomize(kustomization.yaml)의 핵심 기능과 Helm과의 차이를 설명하고, 실무에서 선택 기준을 제시하라.",
+    "answer": "Kustomize는 base 매니페스트를 수정 없이 overlay로 환경별 차이를 패치하는 방식이다. 템플릿 언어 없이 YAML 패치와 전략적 병합으로 동작한다. Helm은 Go 템플릿 기반 패키징 도구로 chart 배포, 버전 관리, 롤백이 강점이다.",
+    "explanation": "Kustomize 기능: 1) namePrefix/nameSuffix: 모든 리소스 이름에 접두사/접미사 추가. 2) commonLabels/commonAnnotations: 모든 리소스에 공통 레이블. 3) images: 이미지 태그 오버라이드(CI/CD에서 자주 사용). 4) configMapGenerator/secretGenerator: ConfigMap/Secret 생성. 5) patches: JSON Patch 또는 Strategic Merge Patch로 특정 필드 변경. Helm: values.yaml로 파라미터화. chart 단위 배포/업그레이드/롤백. Chart Museum에서 버전 관리.",
+    "deepDive": "Kustomize overlay 패턴의 디렉토리 구조는? → base/(공통 리소스) + overlays/dev/(개발환경 패치) + overlays/prod/(프로덕션 패치). CD 파이프라인에서 kustomize build overlays/prod | kubectl apply -f - 로 배포. 이미지 태그는 kustomize edit set image app:latest=app:${GIT_COMMIT}으로 동적 업데이트. Helm과 Kustomize를 함께 쓸 수 있나? → helm template으로 렌더링된 YAML을 Kustomize로 후처리. ArgoCD가 이 패턴을 지원. 또는 Helm chart의 values만 Kustomize로 오버라이드하는 helmChart 제네레이터 사용. 선택 기준은? → 외부 오픈소스 chart(Prometheus, cert-manager 등) 설치: Helm. 직접 작성한 앱 매니페스트: Kustomize.",
+    "seniorTip": "ArgoCD는 Helm과 Kustomize를 모두 지원하며 혼용 가능하다. 니콘내콘 EKS에서: 1) 인프라 도구(cert-manager, Datadog agent, KEDA): Helm. 2) 자체 서비스 배포: Kustomize. 3) ArgoCD의 ApplicationSet으로 여러 환경을 자동화. Kustomize는 kubectl에 내장(kubectl apply -k .)되어 추가 도구 설치가 불필요하다는 장점이 있다.",
+    "tags": [
+      "kustomize",
+      "helm",
+      "gitops",
+      "argocd",
+      "overlay",
+      "ci-cd"
+    ]
+  },
+  {
+    "id": "k8s-074",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "OPA(Open Policy Agent) Gatekeeper를 K8s에서 사용할 때 ConstraintTemplate과 Constraint의 관계는?",
+    "options": [
+      "ConstraintTemplate은 정책을 실제로 적용하고, Constraint는 정책의 스키마만 정의한다",
+      "ConstraintTemplate은 Rego 언어로 정책 로직을 정의하는 CRD 템플릿을 생성하고, Constraint는 해당 정책의 구체적인 인스턴스(적용 범위, 파라미터)를 선언한다",
+      "Constraint가 먼저 배포되고 ConstraintTemplate이 나중에 배포되어야 한다",
+      "OPA Gatekeeper는 기존 RBAC을 완전히 대체한다"
+    ],
+    "answer": 1,
+    "explanation": "ConstraintTemplate: Rego로 정책 로직 작성. 새로운 CRD(예: RequiredLabels)를 K8s에 등록. Constraint: ConstraintTemplate으로 생성된 CRD의 인스턴스. 정책 적용 범위(kinds, namespaces)와 파라미터(필수 레이블 목록 등)를 설정. Validating Admission Webhook으로 동작하여 리소스 생성/수정 시 정책 검사. Mutation을 위한 AssignMetadata, Assign 등의 MutatingAdmissionWebhook도 제공.",
+    "deepDive": "모든 Deployment에 team 레이블이 있어야 한다는 정책을 구현하면? → ConstraintTemplate에서 Rego로 input.review.object.metadata.labels.team을 확인. 없으면 거부. Constraint에서 kinds: [{apiGroups: [apps], kinds: [Deployment]}]로 Deployment에만 적용. 이 정책을 특정 네임스페이스에서 예외 처리하려면? → Constraint의 excludedNamespaces에 해당 네임스페이스 추가. 또는 Rego에서 input.review.namespace 조건으로 세밀하게 제어. Gatekeeper의 성능 영향은? → 모든 리소스 생성/수정 요청에 Admission Webhook 호출이 추가됨. 정책이 복잡하거나 수가 많으면 API 서버 응답이 느려질 수 있다. failurePolicy: Ignore로 Gatekeeper 장애 시 클러스터 영향을 최소화하는 설정도 고려.",
+    "seniorTip": "Gatekeeper Policy Library(github.com/open-policy-agent/gatekeeper-library)에 자주 쓰이는 정책 템플릿이 있다: 필수 레이블, 이미지 레지스트리 제한, resource limits 필수화, privileged 컨테이너 차단 등. 직접 Rego를 작성하기 전에 라이브러리를 먼저 확인하자.",
+    "tags": [
+      "opa",
+      "gatekeeper",
+      "constraint-template",
+      "rego",
+      "admission-webhook",
+      "policy"
+    ]
+  },
+  {
+    "id": "k8s-075",
+    "category": "kubernetes",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "K8s 클러스터에서 노드가 NotReady가 됐을 때 Pod 재스케줄링 메커니즘과 node:unreachable taint의 동작을 설명하라.",
+    "answer": "노드가 NotReady가 되면 node-controller가 node.kubernetes.io/not-ready 또는 node.kubernetes.io/unreachable taint를 자동으로 추가한다. tolerationSeconds(기본 300초) 후 해당 노드의 Pod가 Evict되어 다른 노드로 재스케줄링된다.",
+    "explanation": "동작 순서: 1) kubelet이 API 서버와 연결 끊김(기본 node-monitor-grace-period: 40초). 2) node-controller가 노드를 Unknown 상태로 표시. 3) node.kubernetes.io/unreachable:NoExecute taint 자동 추가. 4) Pod의 tolerations에 이 taint에 대한 기본 toleration(tolerationSeconds: 300)이 있음. 5) 300초 후 Pod Eviction. 6) Deployment/ReplicaSet이 새 Pod를 다른 노드에 생성.",
+    "deepDive": "tolerationSeconds를 줄이면 빠른 복구가 되는데 왜 기본값이 300초인가? → 네트워크 순간 단절이나 kubelet 재시작 같은 일시적 이슈에서 불필요한 Pod Eviction을 방지하기 위해. 5분 안에 노드가 복구되면 Pod를 굳이 재스케줄링할 필요가 없다. 그러나 장기 다운이 예상되면? → kubectl drain으로 수동 eviction. 또는 tolerationSeconds를 PodSpec에서 줄임. StatefulSet의 경우 Eviction 후에도 Pod가 새 노드에서 기동되는가? → StatefulSet의 Pod는 Eviction 후 재생성되지만, PVC가 AZ 종속적 EBS라면 동일 AZ의 노드에만 스케줄링된다. 해당 AZ에 사용 가능한 노드가 없으면 Pending 상태가 된다. 이것이 StatefulSet의 중요한 AZ 장애 시나리오다.",
+    "seniorTip": "EKS에서 노드 장애 복구 자동화: 1) Cluster Autoscaler 또는 Karpenter가 NotReady 노드를 감지하고 새 노드를 프로비저닝. 2) AWS Node Termination Handler로 Spot 인터럽션 시 graceful drain. 3) Pod Disruption Budget으로 동시 eviction 수를 제한하여 서비스 중단 방지. 4) 멀티 AZ 배포로 단일 AZ 장애 시 다른 AZ에서 Pod 재시작 보장.",
+    "tags": [
+      "node-failure",
+      "taint",
+      "eviction",
+      "not-ready",
+      "unreachable",
+      "recovery"
+    ]
   }
 ]
