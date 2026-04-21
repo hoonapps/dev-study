@@ -280,3 +280,33 @@ export function clearAllProgress() {
   localStorage.removeItem(STREAK_KEY);
   // bookmarks는 유지
 }
+
+// ========== Notification Settings ==========
+const NOTIF_KEY = "devsenior_notification";
+const NOTIF_LAST_SHOWN = "devsenior_notif_last";
+
+export interface NotificationSettings {
+  enabled: boolean;
+  hour: number; // 0-23
+  minute: number; // 0-59
+}
+
+export function getNotificationSettings(): NotificationSettings {
+  if (typeof window === "undefined") return { enabled: false, hour: 21, minute: 0 };
+  const raw = localStorage.getItem(NOTIF_KEY);
+  if (!raw) return { enabled: false, hour: 21, minute: 0 };
+  return JSON.parse(raw);
+}
+
+export function setNotificationSettings(s: NotificationSettings) {
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(s));
+}
+
+export function getLastNotifDate(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(NOTIF_LAST_SHOWN) || "";
+}
+
+export function setLastNotifDate(date: string) {
+  localStorage.setItem(NOTIF_LAST_SHOWN, date);
+}

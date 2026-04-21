@@ -1,7 +1,7 @@
-const CACHE = "devsenior-v1";
+const CACHE = "devsenior-v2";
 const BASE = "/dev-study";
 
-self.addEventListener("install", (e) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -18,7 +18,6 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // Network-first for HTML to get latest version
   if (e.request.mode === "navigate") {
     e.respondWith(
       fetch(e.request)
@@ -32,7 +31,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Cache-first for assets
   e.respondWith(
     caches.match(e.request).then(
       (cached) =>
@@ -45,5 +43,22 @@ self.addEventListener("fetch", (e) => {
           return resp;
         })
     )
+  );
+});
+
+// Notification click → Today page로 이동
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || BASE + "/today/";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(BASE) && "focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
   );
 });

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
+import NotificationManager from "@/components/NotificationManager";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -43,16 +44,21 @@ export default function RootLayout({
             }
           `}
         </Script>
+        <NotificationManager />
         <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
           {children}
         </main>
 
         {/* Bottom Tab Bar */}
         <nav className="fixed bottom-0 left-0 right-0 bg-[var(--bg)] border-t border-[var(--card-border)] z-50">
-          <div className="max-w-lg mx-auto grid grid-cols-6 py-2">
+          <div className="max-w-lg mx-auto grid grid-cols-7 py-2">
             <Link href="/" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
               <span className="text-[9px]">Home</span>
+            </Link>
+            <Link href="/today" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="5"/></svg>
+              <span className="text-[9px]">Today</span>
             </Link>
             <Link href="/roadmap" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>

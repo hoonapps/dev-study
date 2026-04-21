@@ -1,14 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { clearAllProgress, exportData, importData, getStreak } from "@/lib/storage";
+import {
+  clearAllProgress,
+  exportData,
+  importData,
+  getStreak,
+  getNotificationSettings,
+  setNotificationSettings,
+  StreakData,
+  NotificationSettings,
+} from "@/lib/storage";
 
 export default function SettingsPage() {
-  const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: "" });
+  const [streak, setStreak] = useState<StreakData>({ current: 0, longest: 0, lastStudyDate: "" });
   const [importMessage, setImportMessage] = useState("");
+  const [notif, setNotif] = useState<NotificationSettings>({ enabled: false, hour: 21, minute: 0 });
+  const [permission, setPermission] = useState<string>("default");
 
   useEffect(() => {
     setStreak(getStreak());
+    setNotif(getNotificationSettings());
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setPermission(Notification.permission);
+    }
   }, []);
 
   const handleClear = () => {
@@ -49,6 +64,42 @@ export default function SettingsPage() {
     reader.readAsText(file);
   };
 
+  const handleToggleNotif = async (enabled: boolean) => {
+    if (enabled) {
+      if (!("Notification" in window)) {
+        alert("이 브라우저는 알림을 지원하지 않아요.");
+        return;
+      }
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      if (result !== "granted") {
+        alert("알림 권한이 필요해요. 브라우저 설정에서 허용해주세요.");
+        return;
+      }
+
+      // 테스트 알림
+      new Notification("DevSenior", {
+        body: "알림이 설정됐어요! 매일 21시에 알려드릴게요.",
+        icon: "/dev-study/icon-192.png",
+      });
+    }
+    const next = { ...notif, enabled };
+    setNotif(next);
+    setNotificationSettings(next);
+  };
+
+  const handleTimeChange = (hour: number, minute: number) => {
+    const next = { ...notif, hour, minute };
+    setNotif(next);
+    setNotificationSettings(next);
+  };
+
+  const permissionLabel = {
+    granted: "✓ 허용됨",
+    denied: "✗ 차단됨 (브라우저 설정 필요)",
+    default: "요청 전",
+  }[permission] || "";
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Settings</h1>
@@ -70,6 +121,55 @@ export default function SettingsPage() {
           <p className="text-[10px] text-center text-[var(--muted)] mt-2">
             마지막 학습: {streak.lastStudyDate}
           </p>
+        )}
+      </div>
+
+      {/* Notifications */}
+      <div className="card space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold mb-1">일일 학습 알림</h3>
+          <p className="text-[11px] text-[var(--muted)]">
+            매일 설정한 시간에 아직 학습 안 했으면 알려드려요.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between py-1">
+          <span className="text-xs">알림 켜기</span>
+          <label className="relative inline-block w-10 h-5">
+            <input
+              type="checkbox"
+              checked={notif.enabled}
+              onChange={(e) => handleToggleNotif(e.target.checked)}
+              className="peer sr-only"
+            />
+            <span className="absolute inset-0 rounded-full bg-[var(--card-border)] peer-checked:bg-[var(--accent)] transition" />
+            <span className="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+          </label>
+        </div>
+
+        {notif.enabled && (
+          <>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs">알림 시간</span>
+              <input
+                type="time"
+                value={`${String(notif.hour).padStart(2, "0")}:${String(notif.minute).padStart(2, "0")}`}
+                onChange={(e) => {
+                  const [h, m] = e.target.value.split(":").map(Number);
+                  handleTimeChange(h, m);
+                }}
+                className="bg-[var(--bg)] border border-[var(--card-border)] rounded px-2 py-1 text-xs"
+              />
+            </div>
+
+            <p className="text-[10px] text-[var(--muted)]">
+              권한: {permissionLabel}
+            </p>
+            <p className="text-[10px] text-[var(--warning)]">
+              ⚠️ 브라우저 특성상 앱이 열려있거나 홈화면에 설치된 상태에서만 알림이 울려요.
+              홈화면에 추가하면 가장 안정적이에요.
+            </p>
+          </>
         )}
       </div>
 
