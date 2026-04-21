@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import Script from "next/script";
 import NotificationManager from "@/components/NotificationManager";
+import TopBar from "@/components/TopBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -45,44 +46,29 @@ export default function RootLayout({
           `}
         </Script>
         <NotificationManager />
-        <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
+        <TopBar />
+        <main className="max-w-lg mx-auto px-4 pt-16 pb-20 min-h-screen">
           {children}
         </main>
 
-        {/* Bottom Tab Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-[var(--bg)] border-t border-[var(--card-border)] z-50">
-          <div className="max-w-lg mx-auto grid grid-cols-8 py-2">
-            <Link href="/" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-              <span className="text-[9px]">Home</span>
-            </Link>
+        {/* Bottom Tab Bar - 4 essential tabs */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-[var(--bg)] border-t border-[var(--card-border)] z-40">
+          <div className="max-w-lg mx-auto grid grid-cols-4 py-2">
             <Link href="/today" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/><circle cx="12" cy="12" r="5"/></svg>
-              <span className="text-[9px]">Today</span>
-            </Link>
-            <Link href="/roadmap" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-              <span className="text-[9px]">Road</span>
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span className="text-[10px]">Today</span>
             </Link>
             <Link href="/flashcards" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-              <span className="text-[9px]">Cards</span>
-            </Link>
-            <Link href="/quiz" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
-              <span className="text-[9px]">Quiz</span>
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <span className="text-[10px]">Cards</span>
             </Link>
             <Link href="/coding" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              <span className="text-[9px]">Code</span>
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span className="text-[10px]">Coding</span>
             </Link>
-            <Link href="/browse" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <span className="text-[9px]">Browse</span>
-            </Link>
-            <Link href="/bookmarks" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <span className="text-[9px]">Saved</span>
+            <Link href="/quiz" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+              <span className="text-[10px]">Quiz</span>
             </Link>
           </div>
         </nav>

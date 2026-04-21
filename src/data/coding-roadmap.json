@@ -1,0 +1,518 @@
+[
+  {
+    "week": 1,
+    "title": "Java 기초 - 시작",
+    "subtitle": "완전 처음. main, 타입, 연산자, 출력",
+    "tier": "beginner",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Java 시작하기",
+        "summary": "main 메서드, public class, System.out.println. 첫 코드 실행.",
+        "questionIds": ["jb-001", "jb-002", "jb-003"],
+        "problemIds": []
+      },
+      {
+        "day": 2,
+        "topic": "변수와 데이터 타입",
+        "summary": "int / long / double / boolean / char / String. 타입 선택 기준.",
+        "questionIds": ["jb-006", "jb-007", "jb-008"],
+        "problemIds": []
+      },
+      {
+        "day": 3,
+        "topic": "형변환과 문자/숫자 변환",
+        "summary": "String.valueOf / Integer.parseInt / casting / char ↔ int.",
+        "questionIds": ["jb-009", "jb-010", "jb-011"],
+        "problemIds": []
+      },
+      {
+        "day": 4,
+        "topic": "연산자 기초",
+        "summary": "산술, 비교(== vs .equals), 논리, 삼항, ++/--.",
+        "questionIds": ["jb-013", "jb-014", "jb-015"],
+        "problemIds": []
+      },
+      {
+        "day": 5,
+        "topic": "문자열 비교의 함정",
+        "summary": "== vs equals, equalsIgnoreCase, null 안전 비교.",
+        "questionIds": ["jb-016", "jb-017", "jb-018"],
+        "problemIds": []
+      }
+    ]
+  },
+  {
+    "week": 2,
+    "title": "Java 기초 - 흐름 제어",
+    "subtitle": "조건문, 반복문, 배열. 코드의 흐름 잡기.",
+    "tier": "beginner",
+    "days": [
+      {
+        "day": 1,
+        "topic": "조건문 if/else",
+        "summary": "if / else if / else, 중첩 조건, 단락 평가.",
+        "questionIds": ["jb-019", "jb-020", "jb-021"],
+        "problemIds": []
+      },
+      {
+        "day": 2,
+        "topic": "switch-case",
+        "summary": "전통 switch, break 함정, switch expression (Java 14+).",
+        "questionIds": ["jb-022", "jb-023", "jb-024"],
+        "problemIds": []
+      },
+      {
+        "day": 3,
+        "topic": "반복문 for/while",
+        "summary": "for, while, do-while, for-each. break / continue.",
+        "questionIds": ["jb-025", "jb-026", "jb-027"],
+        "problemIds": []
+      },
+      {
+        "day": 4,
+        "topic": "중첩 반복문",
+        "summary": "2중 for로 그리드 순회. 시간 복잡도 감 잡기.",
+        "questionIds": ["jb-028", "jb-029", "jb-030"],
+        "problemIds": []
+      },
+      {
+        "day": 5,
+        "topic": "1차원 배열",
+        "summary": "선언, 초기화, length, 순회. 배열은 객체다.",
+        "questionIds": ["jb-033", "jb-034", "jb-035"],
+        "problemIds": []
+      }
+    ]
+  },
+  {
+    "week": 3,
+    "title": "Java 기초 - 배열/문자열/OOP",
+    "subtitle": "2차원 배열, String 마스터, 클래스/메서드",
+    "tier": "beginner",
+    "days": [
+      {
+        "day": 1,
+        "topic": "2차원 배열",
+        "summary": "2D 배열 선언, 순회. 그리드 문제의 기초.",
+        "questionIds": ["jb-036", "jb-037", "jb-038"],
+        "problemIds": []
+      },
+      {
+        "day": 2,
+        "topic": "Arrays 유틸",
+        "summary": "Arrays.sort, Arrays.toString, Arrays.copyOf.",
+        "questionIds": ["jb-039", "jb-040"],
+        "problemIds": []
+      },
+      {
+        "day": 3,
+        "topic": "String 필수 API",
+        "summary": "charAt, length, substring, split, replace, toCharArray.",
+        "questionIds": ["jb-041", "jb-042", "jb-043"],
+        "problemIds": []
+      },
+      {
+        "day": 4,
+        "topic": "StringBuilder",
+        "summary": "String 불변성, + 연산 성능, StringBuilder.append/reverse.",
+        "questionIds": ["jb-044", "jb-045", "jb-046"],
+        "problemIds": []
+      },
+      {
+        "day": 5,
+        "topic": "클래스와 메서드 기본",
+        "summary": "class, 생성자, 메서드 파라미터/반환값, static vs instance.",
+        "questionIds": ["jb-049", "jb-050", "jb-051", "jb-055"],
+        "problemIds": []
+      }
+    ]
+  },
+  {
+    "week": 4,
+    "title": "코테용 Java - 자료구조",
+    "subtitle": "Collections 마스터. List/Map/Set/Queue",
+    "tier": "intermediate",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Collections 개요",
+        "summary": "List / Set / Map 차이. 언제 뭘 쓸지.",
+        "questionIds": ["jct-001", "jct-002", "jct-003"],
+        "problemIds": []
+      },
+      {
+        "day": 2,
+        "topic": "ArrayList 완전정복",
+        "summary": "add/get/remove/contains, 순회 3가지, Collections.sort.",
+        "questionIds": ["jct-006", "jct-007", "jct-008"],
+        "problemIds": ["cd-001"]
+      },
+      {
+        "day": 3,
+        "topic": "HashMap 완전정복",
+        "summary": "put/get/containsKey, getOrDefault, merge. 빈도 카운팅.",
+        "questionIds": ["jct-013", "jct-014", "jct-015"],
+        "problemIds": ["cd-001", "cd-041"]
+      },
+      {
+        "day": 4,
+        "topic": "HashSet / TreeSet",
+        "summary": "중복 제거, 정렬된 집합, first/last/floor/ceiling.",
+        "questionIds": ["jct-019", "jct-020", "jct-021"],
+        "problemIds": []
+      },
+      {
+        "day": 5,
+        "topic": "Stack / Queue / Deque",
+        "summary": "Stack은 Deque로. Queue: offer/poll/peek. ArrayDeque.",
+        "questionIds": ["jct-025", "jct-026", "jct-027"],
+        "problemIds": ["cd-057"]
+      }
+    ]
+  },
+  {
+    "week": 5,
+    "title": "코테용 Java - 입출력/문자열",
+    "subtitle": "빠른 입출력 + 문자열 코테 API",
+    "tier": "intermediate",
+    "days": [
+      {
+        "day": 1,
+        "topic": "PriorityQueue (Heap)",
+        "summary": "min-heap 기본. 최대힙 Comparator.reverseOrder().",
+        "questionIds": ["jct-029", "jct-030"],
+        "problemIds": ["cd-041", "cd-043"]
+      },
+      {
+        "day": 2,
+        "topic": "문자열 코테 필수",
+        "summary": "StringBuilder, split 정규식, char-int 변환.",
+        "questionIds": ["jct-031", "jct-032", "jct-033"],
+        "problemIds": ["cd-005"]
+      },
+      {
+        "day": 3,
+        "topic": "Character 유틸",
+        "summary": "isDigit, isLetter, isAlphabetic.",
+        "questionIds": ["jct-034", "jct-035"],
+        "problemIds": []
+      },
+      {
+        "day": 4,
+        "topic": "BufferedReader 빠른 입력",
+        "summary": "Scanner는 느리다. BufferedReader + StringTokenizer.",
+        "questionIds": ["jct-036", "jct-037"],
+        "problemIds": []
+      },
+      {
+        "day": 5,
+        "topic": "BufferedWriter + StringBuilder",
+        "summary": "System.out.println 여러 번 → StringBuilder로 모아서 출력.",
+        "questionIds": ["jct-038", "jct-039", "jct-040"],
+        "problemIds": []
+      }
+    ]
+  },
+  {
+    "week": 6,
+    "title": "패턴 1 - 투포인터 / 슬라이딩 윈도우",
+    "subtitle": "배열 문제의 80%. 반드시 체화.",
+    "tier": "patterns",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Two Sum / Two Pointers 입문",
+        "summary": "HashMap vs 정렬+투포인터. 공간 vs 시간.",
+        "questionIds": ["algo-001"],
+        "problemIds": ["cd-001", "cd-002"]
+      },
+      {
+        "day": 2,
+        "topic": "Three Sum / Container",
+        "summary": "sort + 투포인터 수축. 중복 제거.",
+        "questionIds": [],
+        "problemIds": ["cd-003", "cd-004"]
+      },
+      {
+        "day": 3,
+        "topic": "Sliding Window 기본",
+        "summary": "윈도우 확장/축소. Longest Substring Without Repeating.",
+        "questionIds": ["algo-022"],
+        "problemIds": ["cd-006", "cd-007"]
+      },
+      {
+        "day": 4,
+        "topic": "Sliding Window 고급",
+        "summary": "Min Window Substring. 빈도 체크 + 카운트.",
+        "questionIds": [],
+        "problemIds": ["cd-008", "cd-009"]
+      },
+      {
+        "day": 5,
+        "topic": "패턴 복습 + 실전",
+        "summary": "토스 슬라이딩 윈도우 로그 분석.",
+        "questionIds": [],
+        "problemIds": ["cd-010", "cdr-013"]
+      }
+    ]
+  },
+  {
+    "week": 7,
+    "title": "패턴 2 - 이진탐색 / DFS / BFS",
+    "subtitle": "탐색 문제의 핵심",
+    "tier": "patterns",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Binary Search 기본",
+        "summary": "lower_bound/upper_bound. Arrays.binarySearch.",
+        "questionIds": ["algo-014"],
+        "problemIds": ["cd-011", "cd-012"]
+      },
+      {
+        "day": 2,
+        "topic": "Parametric Search",
+        "summary": "결정 문제로 변환. Koko Eating Bananas.",
+        "questionIds": [],
+        "problemIds": ["cd-013", "cd-015"]
+      },
+      {
+        "day": 3,
+        "topic": "BFS 기본",
+        "summary": "Queue로 레벨 순회. 최단 거리.",
+        "questionIds": ["algo-034"],
+        "problemIds": ["cd-016", "cd-017"]
+      },
+      {
+        "day": 4,
+        "topic": "DFS 기본 + 백트래킹",
+        "summary": "재귀 vs 스택. visited 관리.",
+        "questionIds": ["algo-033"],
+        "problemIds": ["cd-018", "cd-019"]
+      },
+      {
+        "day": 5,
+        "topic": "Tree DFS",
+        "summary": "전위/중위/후위. LCA 찾기.",
+        "questionIds": [],
+        "problemIds": ["cd-021", "cd-022", "cd-023"]
+      }
+    ]
+  },
+  {
+    "week": 8,
+    "title": "패턴 3 - DP / 백트래킹",
+    "subtitle": "최적화 문제. 점화식 세우기.",
+    "tier": "patterns",
+    "days": [
+      {
+        "day": 1,
+        "topic": "DP 입문",
+        "summary": "Climbing Stairs. 메모이제이션 vs 타뷸레이션.",
+        "questionIds": ["algo-031"],
+        "problemIds": ["cd-026", "cd-027"]
+      },
+      {
+        "day": 2,
+        "topic": "1차원 DP",
+        "summary": "House Robber, LIS.",
+        "questionIds": [],
+        "problemIds": ["cd-028"]
+      },
+      {
+        "day": 3,
+        "topic": "2차원 DP",
+        "summary": "Coin Change, Edit Distance.",
+        "questionIds": [],
+        "problemIds": ["cd-029", "cd-030"]
+      },
+      {
+        "day": 4,
+        "topic": "백트래킹 입문",
+        "summary": "Subsets, Permutations. 가지치기.",
+        "questionIds": [],
+        "problemIds": ["cd-031", "cd-032"]
+      },
+      {
+        "day": 5,
+        "topic": "백트래킹 고급",
+        "summary": "N-Queens, Word Search. 제약 조건 체크.",
+        "questionIds": [],
+        "problemIds": ["cd-033", "cd-034", "cd-035"]
+      }
+    ]
+  },
+  {
+    "week": 9,
+    "title": "패턴 4 - 그래프 / Union-Find / Trie",
+    "subtitle": "관계 문제의 핵심",
+    "tier": "patterns",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Graph 표현",
+        "summary": "인접 리스트 vs 행렬. Clone Graph.",
+        "questionIds": ["algo-012"],
+        "problemIds": ["cd-019"]
+      },
+      {
+        "day": 2,
+        "topic": "위상 정렬",
+        "summary": "Course Schedule. 진입 차수 + Queue.",
+        "questionIds": ["algo-035"],
+        "problemIds": ["cd-020", "cdr-010"]
+      },
+      {
+        "day": 3,
+        "topic": "Union-Find",
+        "summary": "parent 배열. union/find. 경로 압축.",
+        "questionIds": ["algo-036"],
+        "problemIds": ["cd-045", "cd-046"]
+      },
+      {
+        "day": 4,
+        "topic": "Trie",
+        "summary": "문자열 접두어. 자동완성.",
+        "questionIds": ["algo-030"],
+        "problemIds": ["cd-049", "cd-050"]
+      },
+      {
+        "day": 5,
+        "topic": "Monotonic Stack",
+        "summary": "Next Greater Element. Daily Temperatures.",
+        "questionIds": [],
+        "problemIds": ["cd-057", "cd-058"]
+      }
+    ]
+  },
+  {
+    "week": 10,
+    "title": "카카오 블라인드 시뮬레이션",
+    "subtitle": "1-2번 문제 유형. 구현력 + 꼼꼼함",
+    "tier": "real",
+    "days": [
+      {
+        "day": 1,
+        "topic": "조건 파싱 + 시뮬",
+        "summary": "신고 결과 / 주차 요금.",
+        "questionIds": [],
+        "problemIds": ["cdm-001", "cdm-002"]
+      },
+      {
+        "day": 2,
+        "topic": "좌표 이동 + 거리",
+        "summary": "키패드. 크레인 인형뽑기.",
+        "questionIds": [],
+        "problemIds": ["cdm-003", "cdm-010"]
+      },
+      {
+        "day": 3,
+        "topic": "문자열 파싱",
+        "summary": "튜플. 다트 게임.",
+        "questionIds": [],
+        "problemIds": ["cdm-008", "cdm-012"]
+      },
+      {
+        "day": 4,
+        "topic": "이벤트 로그 재생",
+        "summary": "오픈채팅방. 신고 결과 받기.",
+        "questionIds": [],
+        "problemIds": ["cdm-001", "cdm-009"]
+      },
+      {
+        "day": 5,
+        "topic": "완전탐색 + 시뮬",
+        "summary": "메뉴 리뉴얼. 수식 최대화.",
+        "questionIds": [],
+        "problemIds": ["cdm-005", "cdm-006"]
+      }
+    ]
+  },
+  {
+    "week": 11,
+    "title": "대기업 기출 + SQL",
+    "subtitle": "네이버/카카오/쿠팡/토스 실전",
+    "tier": "real",
+    "days": [
+      {
+        "day": 1,
+        "topic": "네이버 기출",
+        "summary": "LIS, 편집거리, Dijkstra.",
+        "questionIds": [],
+        "problemIds": ["cdr-006", "cdr-007", "cdr-009"]
+      },
+      {
+        "day": 2,
+        "topic": "쿠팡 기출",
+        "summary": "배송 통계. 재고 관리. Monotonic Stack.",
+        "questionIds": [],
+        "problemIds": ["cdr-011", "cdr-012", "cdr-014"]
+      },
+      {
+        "day": 3,
+        "topic": "토스 기출",
+        "summary": "데드락 탐지. 이벤트 정렬. 수수료 정밀도.",
+        "questionIds": [],
+        "problemIds": ["cdr-016", "cdr-017", "cdr-019"]
+      },
+      {
+        "day": 4,
+        "topic": "SQL - Window Function",
+        "summary": "LAG/LEAD, SUM OVER, ROW_NUMBER.",
+        "questionIds": [],
+        "problemIds": ["cds-001", "cds-002", "cds-004"]
+      },
+      {
+        "day": 5,
+        "topic": "SQL - 실전",
+        "summary": "이탈 고객, 재구매율, 함께 구매.",
+        "questionIds": [],
+        "problemIds": ["cds-005", "cds-008", "cds-010"]
+      }
+    ]
+  },
+  {
+    "week": 12,
+    "title": "라이브 코테 + 마무리",
+    "subtitle": "LRU/Rate Limiter 구현 + 면접 대비",
+    "tier": "real",
+    "days": [
+      {
+        "day": 1,
+        "topic": "Cache 구현",
+        "summary": "LRU + LFU. DoublyLinkedList + HashMap.",
+        "questionIds": [],
+        "problemIds": ["cdl-001", "cdl-002"]
+      },
+      {
+        "day": 2,
+        "topic": "동시성 구현",
+        "summary": "Rate Limiter. Thread-safe Counter.",
+        "questionIds": [],
+        "problemIds": ["cdl-003", "cdl-004"]
+      },
+      {
+        "day": 3,
+        "topic": "큐 / 이벤트 버스",
+        "summary": "BlockingQueue, Event Bus.",
+        "questionIds": [],
+        "problemIds": ["cdl-005", "cdl-006"]
+      },
+      {
+        "day": 4,
+        "topic": "버그 찾기 / 리팩토링",
+        "summary": "race condition, NPE, 리팩토링.",
+        "questionIds": [],
+        "problemIds": ["cdl-010", "cdl-011", "cdl-015"]
+      },
+      {
+        "day": 5,
+        "topic": "총 복습",
+        "summary": "모든 패턴 한번씩. 시간 재고 풀기.",
+        "questionIds": [],
+        "problemIds": ["cd-026", "cd-016", "cdm-001", "cdr-016"]
+      }
+    ]
+  }
+]

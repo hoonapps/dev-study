@@ -280,10 +280,15 @@ export default function TodayPage() {
       {/* Today's Coding Problem */}
       {todayCoding && (
         <section>
-          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
-            오늘의 코테
-          </h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+              오늘의 코테
+            </h2>
+            <Link href="/coding/roadmap" className="text-[11px] text-[var(--accent)]">
+              로드맵 →
+            </Link>
+          </div>
           <Link href={`/coding/${todayCoding.id}`} className="card block">
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               <span
