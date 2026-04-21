@@ -23,6 +23,8 @@ import designPatternQuestions from "@/data/design-pattern.json";
 import javaQuestions from "@/data/java.json";
 import springQuestions from "@/data/spring.json";
 import kotlinQuestions from "@/data/kotlin.json";
+import seniorInterviewQuestions from "@/data/senior-interview.json";
+import systemDesignQuestions from "@/data/system-design.json";
 
 const allQuestions: Question[] = [
   ...(mysqlQuestions as Question[]),
@@ -48,6 +50,8 @@ const allQuestions: Question[] = [
   ...(javaQuestions as Question[]),
   ...(springQuestions as Question[]),
   ...(kotlinQuestions as Question[]),
+  ...(seniorInterviewQuestions as Question[]),
+  ...(systemDesignQuestions as Question[]),
 ];
 
 export function getAllQuestions(): Question[] {

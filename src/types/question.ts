@@ -22,7 +22,9 @@ export type Category =
   | "design-pattern"
   | "java"
   | "spring"
-  | "kotlin";
+  | "kotlin"
+  | "senior-interview"
+  | "system-design";
 
 export interface Question {
   id: string;
@@ -74,6 +76,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   java: "Java",
   spring: "Spring",
   kotlin: "Kotlin",
+  "senior-interview": "Senior Interview",
+  "system-design": "System Design",
 };
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -99,6 +103,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   java: "#ed8b00",
   spring: "#6db33f",
   kotlin: "#7f52ff",
+  "senior-interview": "#fbbf24",
+  "system-design": "#10b981",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
