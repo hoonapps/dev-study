@@ -3,6 +3,7 @@ import Link from "next/link";
 import Script from "next/script";
 import NotificationManager from "@/components/NotificationManager";
 import TopBar from "@/components/TopBar";
+import UpdatePrompt from "@/components/UpdatePrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +47,7 @@ export default function RootLayout({
           `}
         </Script>
         <NotificationManager />
+        <UpdatePrompt />
         <TopBar />
         <main className="max-w-lg mx-auto px-4 pt-16 pb-20 min-h-screen">
           {children}

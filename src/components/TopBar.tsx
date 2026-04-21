@@ -13,11 +13,41 @@ export default function TopBar() {
   const [open, setOpen] = useState(false);
   const [notif, setNotif] = useState<NotificationSettings>({ enabled: false, hour: 21, minute: 0 });
   const [streak, setStreak] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState("");
 
   useEffect(() => {
     setNotif(getNotificationSettings());
     setStreak(getStreak().current);
   }, [open]);
+
+  const handleHardReload = () => {
+    // 모든 캐시 삭제 후 재로드
+    if ("caches" in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+    window.location.reload();
+  };
+
+  const handleCheckUpdate = async () => {
+    setChecking(true);
+    setCheckResult("");
+    try {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+          setCheckResult(reg.waiting ? "새 버전 있음! 배너를 눌러 적용" : "최신 버전입니다");
+        } else {
+          setCheckResult("서비스 워커 없음");
+        }
+      }
+    } catch {
+      setCheckResult("업데이트 확인 실패");
+    }
+    setChecking(false);
+    setTimeout(() => setCheckResult(""), 3000);
+  };
 
   const toggleNotif = async () => {
     const next = !notif.enabled;
@@ -150,6 +180,32 @@ export default function TopBar() {
                 </Link>
               ))}
             </nav>
+
+            {/* App controls */}
+            <div className="p-4 border-t border-[var(--card-border)] space-y-2">
+              <button
+                onClick={handleCheckUpdate}
+                disabled={checking}
+                className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--card-border)] transition text-sm disabled:opacity-50"
+              >
+                <span className="text-base">🔄</span>
+                <span>{checking ? "확인 중..." : "업데이트 확인"}</span>
+              </button>
+              {checkResult && (
+                <p className="text-[10px] text-[var(--accent)] px-3">{checkResult}</p>
+              )}
+              <button
+                onClick={handleHardReload}
+                className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--card-border)] transition text-sm"
+              >
+                <span className="text-base">⚡</span>
+                <span>강제 새로고침</span>
+              </button>
+              <p className="text-[10px] text-[var(--muted)] px-3 leading-relaxed">
+                데이터(학습 기록, 북마크 등)는 새로고침/업데이트에도 유지됩니다.
+                만일을 대비해 설정에서 Export 백업을 권장해요.
+              </p>
+            </div>
           </aside>
         </>
       )}
