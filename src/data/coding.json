@@ -4,359 +4,2498 @@
     "title": "Two Sum II - Sorted Array",
     "titleKo": "정렬 배열에서 두 수의 합",
     "difficulty": "easy",
-    "patterns": ["two-pointers"],
-    "companies": ["네이버", "카카오"],
+    "patterns": [
+      "two-pointers"
+    ],
+    "companies": [
+      "네이버",
+      "카카오"
+    ],
     "description": "오름차순 정렬된 1-indexed 배열에서 두 수의 합이 target이 되는 인덱스를 반환하라.",
-    "examples": [{"input": "numbers=[2,7,11,15], target=9", "output": "[1,2]", "explanation": "2+7=9, 인덱스 1과 2"}],
-    "constraints": ["2 <= n <= 3*10^4", "배열은 오름차순 정렬", "정확히 하나의 해 존재"],
-    "hints": ["왼쪽과 오른쪽 포인터를 사용하라", "합이 target보다 크면 오른쪽 포인터를 줄여라"],
+    "examples": [
+      {
+        "input": "numbers=[2,7,11,15], target=9",
+        "output": "[1,2]",
+        "explanation": "2+7=9, 인덱스 1과 2"
+      }
+    ],
+    "constraints": [
+      "2 <= n <= 3*10^4",
+      "배열은 오름차순 정렬",
+      "정확히 하나의 해 존재"
+    ],
+    "hints": [
+      "왼쪽과 오른쪽 포인터를 사용하라",
+      "합이 target보다 크면 오른쪽 포인터를 줄여라"
+    ],
     "approach": "left=0, right=n-1 투 포인터로 합을 비교하며 좁혀간다",
     "code": "public int[] twoSum(int[] numbers, int target) {\n    int left = 0, right = numbers.length - 1;\n    while (left < right) {\n        int sum = numbers[left] + numbers[right];\n        if (sum == target) return new int[]{left+1, right+1};\n        else if (sum < target) left++;\n        else right--;\n    }\n    return new int[]{-1, -1};\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "두 포인터가 양끝에서 시작해 합에 따라 이동한다. 정렬 특성 덕에 포인터 방향이 보장된다.",
     "secret": "정렬된 배열 + 두 수의 합 나오면 반드시 투 포인터 떠올려라. 함정: HashMap 쓰면 공간 낭비, 정렬 활용 못한 것.",
-    "similar": ["cd-002", "cd-003"]
+    "similar": [
+      "cd-002",
+      "cd-003"
+    ]
   },
   {
     "id": "cd-002",
     "title": "Three Sum",
     "titleKo": "세 수의 합",
     "difficulty": "medium",
-    "patterns": ["two-pointers", "sorting"],
-    "companies": ["카카오", "쿠팡", "메타"],
+    "patterns": [
+      "two-pointers",
+      "sorting"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡",
+      "메타"
+    ],
     "description": "배열에서 합이 0이 되는 세 수의 모든 유니크한 조합을 반환하라.",
-    "examples": [{"input": "nums=[-1,0,1,2,-1,-4]", "output": "[[-1,-1,2],[-1,0,1]]", "explanation": "중복 없는 세 쌍"}],
-    "constraints": ["3 <= n <= 3000", "-10^5 <= nums[i] <= 10^5"],
-    "hints": ["정렬 후 고정값 하나 + 나머지 투 포인터", "중복 스킵 로직 필수"],
+    "examples": [
+      {
+        "input": "nums=[-1,0,1,2,-1,-4]",
+        "output": "[[-1,-1,2],[-1,0,1]]",
+        "explanation": "중복 없는 세 쌍"
+      }
+    ],
+    "constraints": [
+      "3 <= n <= 3000",
+      "-10^5 <= nums[i] <= 10^5"
+    ],
+    "hints": [
+      "정렬 후 고정값 하나 + 나머지 투 포인터",
+      "중복 스킵 로직 필수"
+    ],
     "approach": "정렬 후 각 원소를 고정하고 나머지 두 원소에 투 포인터 적용",
     "code": "public List<List<Integer>> threeSum(int[] nums) {\n    Arrays.sort(nums);\n    List<List<Integer>> res = new ArrayList<>();\n    for (int i = 0; i < nums.length - 2; i++) {\n        if (i > 0 && nums[i] == nums[i-1]) continue;\n        int l = i+1, r = nums.length-1;\n        while (l < r) {\n            int sum = nums[i]+nums[l]+nums[r];\n            if (sum == 0) {\n                res.add(Arrays.asList(nums[i],nums[l],nums[r]));\n                while (l < r && nums[l]==nums[l+1]) l++;\n                while (l < r && nums[r]==nums[r-1]) r--;\n                l++; r--;\n            } else if (sum < 0) l++;\n            else r--;\n        }\n    }\n    return res;\n}",
-    "complexity": {"time": "O(n^2)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n^2)",
+      "space": "O(1)"
+    },
     "walkthrough": "정렬 후 i를 고정하고 l,r 투 포인터로 -nums[i]를 찾는다. 중복 제거를 위해 같은 값은 건너뛴다.",
     "secret": "Three Sum 나오면 반드시 정렬+고정+투포인터 떠올려라. 함정: 중복 처리 빠뜨리면 WA, Set 쓰면 느려진다.",
-    "similar": ["cd-001", "cd-003"]
+    "similar": [
+      "cd-001",
+      "cd-003"
+    ]
   },
   {
     "id": "cd-003",
     "title": "Container With Most Water",
     "titleKo": "가장 많은 물을 담는 컨테이너",
     "difficulty": "medium",
-    "patterns": ["two-pointers"],
-    "companies": ["네이버", "라인", "구글"],
+    "patterns": [
+      "two-pointers"
+    ],
+    "companies": [
+      "네이버",
+      "라인",
+      "구글"
+    ],
     "description": "높이 배열에서 두 선택한 선으로 만들 수 있는 최대 넓이를 구하라.",
-    "examples": [{"input": "height=[1,8,6,2,5,4,8,3,7]", "output": "49", "explanation": "인덱스 1과 8: min(8,7)*7=49"}],
-    "constraints": ["2 <= n <= 10^5", "0 <= height[i] <= 10^4"],
-    "hints": ["양끝에서 시작해 더 짧은 쪽을 이동", "넓이 = min(h[l],h[r]) * (r-l)"],
+    "examples": [
+      {
+        "input": "height=[1,8,6,2,5,4,8,3,7]",
+        "output": "49",
+        "explanation": "인덱스 1과 8: min(8,7)*7=49"
+      }
+    ],
+    "constraints": [
+      "2 <= n <= 10^5",
+      "0 <= height[i] <= 10^4"
+    ],
+    "hints": [
+      "양끝에서 시작해 더 짧은 쪽을 이동",
+      "넓이 = min(h[l],h[r]) * (r-l)"
+    ],
     "approach": "양끝 투 포인터로 더 낮은 높이 쪽을 이동하며 최대 넓이 갱신",
     "code": "public int maxArea(int[] height) {\n    int l = 0, r = height.length-1, max = 0;\n    while (l < r) {\n        max = Math.max(max, Math.min(height[l],height[r])*(r-l));\n        if (height[l] < height[r]) l++;\n        else r--;\n    }\n    return max;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "더 낮은 쪽을 이동해야 혹시 더 높은 벽을 만날 수 있다. 높은 쪽을 이동하면 넓이는 무조건 줄어든다.",
     "secret": "넓이 최대화 + 두 포인터 나오면 반드시 낮은 쪽 이동 떠올려라. 함정: 높은 쪽 이동하면 최적해 놓친다.",
-    "similar": ["cd-001", "cd-060"]
+    "similar": [
+      "cd-001",
+      "cd-060"
+    ]
   },
   {
     "id": "cd-004",
     "title": "Remove Duplicates from Sorted Array",
     "titleKo": "정렬 배열에서 중복 제거",
     "difficulty": "easy",
-    "patterns": ["two-pointers"],
-    "companies": ["카카오", "배민"],
+    "patterns": [
+      "two-pointers"
+    ],
+    "companies": [
+      "카카오",
+      "배민"
+    ],
     "description": "정렬된 배열에서 중복을 제거하고 고유 원소 수를 반환하라. 앞부분을 고유 원소로 채운다.",
-    "examples": [{"input": "nums=[1,1,2]", "output": "2, nums=[1,2,_]", "explanation": "고유 원소 2개"}],
-    "constraints": ["1 <= n <= 3*10^4", "배열은 오름차순 정렬"],
-    "hints": ["slow 포인터는 다음 쓸 위치, fast는 탐색", "nums[fast] != nums[slow]일 때 복사"],
+    "examples": [
+      {
+        "input": "nums=[1,1,2]",
+        "output": "2, nums=[1,2,_]",
+        "explanation": "고유 원소 2개"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 3*10^4",
+      "배열은 오름차순 정렬"
+    ],
+    "hints": [
+      "slow 포인터는 다음 쓸 위치, fast는 탐색",
+      "nums[fast] != nums[slow]일 때 복사"
+    ],
     "approach": "slow/fast 포인터로 고유 원소만 앞쪽에 채운다",
     "code": "public int removeDuplicates(int[] nums) {\n    int slow = 1;\n    for (int fast = 1; fast < nums.length; fast++) {\n        if (nums[fast] != nums[fast-1]) {\n            nums[slow++] = nums[fast];\n        }\n    }\n    return slow;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "fast가 새 값을 발견할 때마다 slow 위치에 쓰고 slow를 증가시킨다. 정렬 덕에 인접 비교만으로 충분하다.",
     "secret": "In-place 중복 제거 나오면 반드시 slow/fast 투 포인터 떠올려라. 함정: slow=0으로 시작하면 첫 원소 덮어씀.",
-    "similar": ["cd-001", "cd-005"]
+    "similar": [
+      "cd-001",
+      "cd-005"
+    ]
   },
   {
     "id": "cd-005",
     "title": "Valid Palindrome",
     "titleKo": "유효한 팰린드롬",
     "difficulty": "easy",
-    "patterns": ["two-pointers"],
-    "companies": ["네이버", "토스"],
+    "patterns": [
+      "two-pointers"
+    ],
+    "companies": [
+      "네이버",
+      "토스"
+    ],
     "description": "영숫자만 고려했을 때 주어진 문자열이 팰린드롬인지 확인하라.",
-    "examples": [{"input": "s=\"A man, a plan, a canal: Panama\"", "output": "true", "explanation": "amanaplanacanalpanama는 팰린드롬"}],
-    "constraints": ["1 <= s.length <= 2*10^5"],
-    "hints": ["양끝 포인터로 영숫자만 비교", "Character.isLetterOrDigit() 활용"],
+    "examples": [
+      {
+        "input": "s=\"A man, a plan, a canal: Panama\"",
+        "output": "true",
+        "explanation": "amanaplanacanalpanama는 팰린드롬"
+      }
+    ],
+    "constraints": [
+      "1 <= s.length <= 2*10^5"
+    ],
+    "hints": [
+      "양끝 포인터로 영숫자만 비교",
+      "Character.isLetterOrDigit() 활용"
+    ],
     "approach": "양끝 투 포인터로 비영숫자 스킵하며 대소문자 무시 비교",
     "code": "public boolean isPalindrome(String s) {\n    int l = 0, r = s.length()-1;\n    while (l < r) {\n        while (l < r && !Character.isLetterOrDigit(s.charAt(l))) l++;\n        while (l < r && !Character.isLetterOrDigit(s.charAt(r))) r--;\n        if (Character.toLowerCase(s.charAt(l)) != Character.toLowerCase(s.charAt(r))) return false;\n        l++; r--;\n    }\n    return true;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "양쪽에서 비영숫자를 건너뛰고 소문자 변환 후 비교한다. 불일치 즉시 false 반환.",
     "secret": "팰린드롬 검증 나오면 반드시 양끝 투 포인터 떠올려라. 함정: 전처리 후 reverse 비교는 O(n) 공간 낭비.",
-    "similar": ["cd-001", "cd-004"]
+    "similar": [
+      "cd-001",
+      "cd-004"
+    ]
   },
   {
     "id": "cd-006",
     "title": "Longest Substring Without Repeating Characters",
     "titleKo": "반복 없는 가장 긴 부분 문자열",
     "difficulty": "medium",
-    "patterns": ["sliding-window", "hash-map"],
-    "companies": ["카카오", "쿠팡", "라인"],
+    "patterns": [
+      "sliding-window",
+      "hash-map"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡",
+      "라인"
+    ],
     "description": "반복 문자 없는 가장 긴 부분 문자열의 길이를 반환하라.",
-    "examples": [{"input": "s=\"abcabcbb\"", "output": "3", "explanation": "\"abc\"가 길이 3"}],
-    "constraints": ["0 <= s.length <= 5*10^4"],
-    "hints": ["슬라이딩 윈도우 + 문자 마지막 위치 HashMap", "중복 발견 시 left를 중복 위치+1로 점프"],
+    "examples": [
+      {
+        "input": "s=\"abcabcbb\"",
+        "output": "3",
+        "explanation": "\"abc\"가 길이 3"
+      }
+    ],
+    "constraints": [
+      "0 <= s.length <= 5*10^4"
+    ],
+    "hints": [
+      "슬라이딩 윈도우 + 문자 마지막 위치 HashMap",
+      "중복 발견 시 left를 중복 위치+1로 점프"
+    ],
     "approach": "left 포인터와 HashMap으로 윈도우 내 중복 제거하며 최대 길이 추적",
     "code": "public int lengthOfLongestSubstring(String s) {\n    Map<Character,Integer> map = new HashMap<>();\n    int max = 0, left = 0;\n    for (int right = 0; right < s.length(); right++) {\n        char c = s.charAt(right);\n        if (map.containsKey(c) && map.get(c) >= left) {\n            left = map.get(c) + 1;\n        }\n        map.put(c, right);\n        max = Math.max(max, right - left + 1);\n    }\n    return max;\n}",
-    "complexity": {"time": "O(n)", "space": "O(min(n,m))"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(min(n,m))"
+    },
     "walkthrough": "right가 중복 문자를 만나면 left를 이전 등장 위치 다음으로 점프한다. map.get(c) >= left 조건이 핵심.",
     "secret": "중복 없는 최장 부분열 나오면 반드시 슬라이딩 윈도우+마지막인덱스맵 떠올려라. 함정: left 조건 없이 점프하면 윈도우 축소 오류.",
-    "similar": ["cd-007", "cd-008"]
+    "similar": [
+      "cd-007",
+      "cd-008"
+    ]
   },
   {
     "id": "cd-007",
     "title": "Minimum Window Substring",
     "titleKo": "최소 윈도우 부분 문자열",
     "difficulty": "hard",
-    "patterns": ["sliding-window", "hash-map"],
-    "companies": ["구글", "메타", "카카오"],
+    "patterns": [
+      "sliding-window",
+      "hash-map"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
     "description": "문자열 s에서 t의 모든 문자를 포함하는 최소 부분 문자열을 반환하라.",
-    "examples": [{"input": "s=\"ADOBECODEBANC\", t=\"ABC\"", "output": "\"BANC\"", "explanation": "A,B,C를 모두 포함하는 최소 윈도우"}],
-    "constraints": ["1 <= s,t 길이 <= 10^5"],
-    "hints": ["need 카운터로 t 충족 여부 추적", "윈도우가 유효해지면 left 수축 시도"],
+    "examples": [
+      {
+        "input": "s=\"ADOBECODEBANC\", t=\"ABC\"",
+        "output": "\"BANC\"",
+        "explanation": "A,B,C를 모두 포함하는 최소 윈도우"
+      }
+    ],
+    "constraints": [
+      "1 <= s,t 길이 <= 10^5"
+    ],
+    "hints": [
+      "need 카운터로 t 충족 여부 추적",
+      "윈도우가 유효해지면 left 수축 시도"
+    ],
     "approach": "right 확장 후 조건 충족 시 left 수축하며 최소 윈도우 갱신",
     "code": "public String minWindow(String s, String t) {\n    Map<Character,Integer> need = new HashMap<>();\n    for (char c : t.toCharArray()) need.merge(c, 1, Integer::sum);\n    int left=0, matched=0, minLen=Integer.MAX_VALUE, start=0;\n    Map<Character,Integer> window = new HashMap<>();\n    for (int right=0; right<s.length(); right++) {\n        char c = s.charAt(right);\n        window.merge(c, 1, Integer::sum);\n        if (need.containsKey(c) && window.get(c).equals(need.get(c))) matched++;\n        while (matched == need.size()) {\n            if (right-left+1 < minLen) { minLen=right-left+1; start=left; }\n            char l = s.charAt(left);\n            window.merge(l, -1, Integer::sum);\n            if (need.containsKey(l) && window.get(l) < need.get(l)) matched--;\n            left++;\n        }\n    }\n    return minLen==Integer.MAX_VALUE ? \"\" : s.substring(start, start+minLen);\n}",
-    "complexity": {"time": "O(s+t)", "space": "O(s+t)"},
+    "complexity": {
+      "time": "O(s+t)",
+      "space": "O(s+t)"
+    },
     "walkthrough": "matched가 need.size()에 도달하면 유효 윈도우. left를 수축하며 최솟값 갱신 후 조건 깨질 때까지 반복.",
     "secret": "모든 문자 포함 최소 윈도우 나오면 반드시 확장+수축 슬라이딩+matched카운터 떠올려라. 함정: count 비교 시 equals() 사용(Integer 객체 비교).",
-    "similar": ["cd-006", "cd-010"]
+    "similar": [
+      "cd-006",
+      "cd-010"
+    ]
   },
   {
     "id": "cd-008",
     "title": "Longest Repeating Character Replacement",
     "titleKo": "문자 교체 후 가장 긴 반복 문자열",
     "difficulty": "medium",
-    "patterns": ["sliding-window"],
-    "companies": ["네이버", "배민"],
+    "patterns": [
+      "sliding-window"
+    ],
+    "companies": [
+      "네이버",
+      "배민"
+    ],
     "description": "최대 k번 문자를 바꿀 수 있을 때, 같은 문자로만 이루어진 가장 긴 부분 문자열 길이를 구하라.",
-    "examples": [{"input": "s=\"AABABBA\", k=1", "output": "4", "explanation": "AABA에서 B를 A로 바꾸면 AAAA"}],
-    "constraints": ["1 <= s.length <= 10^5", "0 <= k <= s.length"],
-    "hints": ["윈도우 크기 - 최빈 문자 수 <= k이면 유효", "maxFreq는 줄이지 않아도 됨(단조 증가 트릭)"],
+    "examples": [
+      {
+        "input": "s=\"AABABBA\", k=1",
+        "output": "4",
+        "explanation": "AABA에서 B를 A로 바꾸면 AAAA"
+      }
+    ],
+    "constraints": [
+      "1 <= s.length <= 10^5",
+      "0 <= k <= s.length"
+    ],
+    "hints": [
+      "윈도우 크기 - 최빈 문자 수 <= k이면 유효",
+      "maxFreq는 줄이지 않아도 됨(단조 증가 트릭)"
+    ],
     "approach": "슬라이딩 윈도우 유지, (윈도우크기 - maxFreq) <= k 조건으로 left 이동",
     "code": "public int characterReplacement(String s, int k) {\n    int[] count = new int[26];\n    int left=0, maxFreq=0, max=0;\n    for (int right=0; right<s.length(); right++) {\n        count[s.charAt(right)-'A']++;\n        maxFreq = Math.max(maxFreq, count[s.charAt(right)-'A']);\n        if (right-left+1 - maxFreq > k) {\n            count[s.charAt(left)-'A']--;\n            left++;\n        }\n        max = Math.max(max, right-left+1);\n    }\n    return max;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "윈도우 내 최빈 문자 외 나머지를 교체해야 하므로 (size-maxFreq)<=k 조건을 유지한다. maxFreq는 감소 없이 유지해도 정확.",
     "secret": "k번 교체 최장 동일 문자열 나오면 반드시 (윈도우-maxFreq)<=k 슬라이딩 떠올려라. 함정: maxFreq를 매번 재계산하면 O(26n) 되지만 단조증가 트릭으로 생략 가능.",
-    "similar": ["cd-006", "cd-009"]
+    "similar": [
+      "cd-006",
+      "cd-009"
+    ]
   },
   {
     "id": "cd-009",
     "title": "Maximum Subarray Sum of Size K",
     "titleKo": "크기 K인 최대 부분 배열 합",
     "difficulty": "easy",
-    "patterns": ["sliding-window"],
-    "companies": ["토스", "당근"],
+    "patterns": [
+      "sliding-window"
+    ],
+    "companies": [
+      "토스",
+      "당근"
+    ],
     "description": "크기 k인 연속 부분 배열의 최대 합을 구하라.",
-    "examples": [{"input": "nums=[2,1,5,1,3,2], k=3", "output": "9", "explanation": "[5,1,3] 합이 9"}],
-    "constraints": ["1 <= k <= n <= 10^5"],
-    "hints": ["고정 크기 윈도우 슬라이딩", "오른쪽 추가, 왼쪽 제거"],
+    "examples": [
+      {
+        "input": "nums=[2,1,5,1,3,2], k=3",
+        "output": "9",
+        "explanation": "[5,1,3] 합이 9"
+      }
+    ],
+    "constraints": [
+      "1 <= k <= n <= 10^5"
+    ],
+    "hints": [
+      "고정 크기 윈도우 슬라이딩",
+      "오른쪽 추가, 왼쪽 제거"
+    ],
     "approach": "크기 k 고정 윈도우를 슬라이딩하며 합 유지 및 최댓값 갱신",
     "code": "public int maxSumSubarray(int[] nums, int k) {\n    int sum = 0, max = Integer.MIN_VALUE;\n    for (int i = 0; i < nums.length; i++) {\n        sum += nums[i];\n        if (i >= k) sum -= nums[i-k];\n        if (i >= k-1) max = Math.max(max, sum);\n    }\n    return max;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "윈도우가 k 크기에 달하면 최솟값 비교 시작. 오른쪽 추가 후 k개 이전 원소를 빼서 크기를 유지한다.",
     "secret": "고정 크기 윈도우 합 나오면 반드시 슬라이딩 윈도우 떠올려라. 함정: i>=k-1 조건 빠뜨리면 윈도우 완성 전에 비교.",
-    "similar": ["cd-006", "cd-008"]
+    "similar": [
+      "cd-006",
+      "cd-008"
+    ]
   },
   {
     "id": "cd-010",
     "title": "Permutation in String",
     "titleKo": "문자열 속 순열",
     "difficulty": "medium",
-    "patterns": ["sliding-window", "hash-map"],
-    "companies": ["카카오", "라인"],
+    "patterns": [
+      "sliding-window",
+      "hash-map"
+    ],
+    "companies": [
+      "카카오",
+      "라인"
+    ],
     "description": "s2에 s1의 순열이 포함되어 있으면 true를 반환하라.",
-    "examples": [{"input": "s1=\"ab\", s2=\"eidbaooo\"", "output": "true", "explanation": "\"ba\"가 s1의 순열"}],
-    "constraints": ["1 <= s1,s2 길이 <= 10^4"],
-    "hints": ["s1 길이 고정 윈도우 슬라이딩", "문자 빈도수 배열 비교"],
+    "examples": [
+      {
+        "input": "s1=\"ab\", s2=\"eidbaooo\"",
+        "output": "true",
+        "explanation": "\"ba\"가 s1의 순열"
+      }
+    ],
+    "constraints": [
+      "1 <= s1,s2 길이 <= 10^4"
+    ],
+    "hints": [
+      "s1 길이 고정 윈도우 슬라이딩",
+      "문자 빈도수 배열 비교"
+    ],
     "approach": "s1 길이 고정 윈도우로 s2 탐색, 문자 빈도 배열 일치 확인",
     "code": "public boolean checkInclusion(String s1, String s2) {\n    if (s1.length() > s2.length()) return false;\n    int[] need = new int[26], window = new int[26];\n    for (char c : s1.toCharArray()) need[c-'a']++;\n    for (int i = 0; i < s2.length(); i++) {\n        window[s2.charAt(i)-'a']++;\n        if (i >= s1.length()) window[s2.charAt(i-s1.length())-'a']--;\n        if (Arrays.equals(need, window)) return true;\n    }\n    return false;\n}",
-    "complexity": {"time": "O(n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
     "walkthrough": "s1 길이 고정 윈도우가 s2를 슬라이딩하며 26자 빈도 배열을 비교한다. Arrays.equals로 O(26)=O(1) 비교.",
     "secret": "순열 포함 여부 나오면 반드시 고정 윈도우+빈도배열 비교 떠올려라. 함정: 정렬 비교는 O(nlogn), 빈도 배열이 훨씬 효율적.",
-    "similar": ["cd-007", "cd-009"]
+    "similar": [
+      "cd-007",
+      "cd-009"
+    ]
   },
   {
     "id": "cd-011",
     "title": "Classic Binary Search",
     "titleKo": "기본 이진 탐색",
     "difficulty": "easy",
-    "patterns": ["binary-search"],
-    "companies": ["네이버", "배민", "토스"],
+    "patterns": [
+      "binary-search"
+    ],
+    "companies": [
+      "네이버",
+      "배민",
+      "토스"
+    ],
     "description": "정렬된 배열에서 target의 인덱스를 반환하라. 없으면 -1을 반환하라.",
-    "examples": [{"input": "nums=[-1,0,3,5,9,12], target=9", "output": "4", "explanation": "인덱스 4에 9 존재"}],
-    "constraints": ["1 <= n <= 10^4", "배열은 오름차순 정렬", "중복 없음"],
-    "hints": ["mid = left + (right-left)/2 로 오버플로우 방지", "left <= right 조건"],
+    "examples": [
+      {
+        "input": "nums=[-1,0,3,5,9,12], target=9",
+        "output": "4",
+        "explanation": "인덱스 4에 9 존재"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10^4",
+      "배열은 오름차순 정렬",
+      "중복 없음"
+    ],
+    "hints": [
+      "mid = left + (right-left)/2 로 오버플로우 방지",
+      "left <= right 조건"
+    ],
     "approach": "mid 계산 후 target과 비교하여 탐색 범위를 절반으로 좁힌다",
     "code": "public int search(int[] nums, int target) {\n    int left = 0, right = nums.length-1;\n    while (left <= right) {\n        int mid = left + (right-left)/2;\n        if (nums[mid] == target) return mid;\n        else if (nums[mid] < target) left = mid+1;\n        else right = mid-1;\n    }\n    return -1;\n}",
-    "complexity": {"time": "O(log n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(log n)",
+      "space": "O(1)"
+    },
     "walkthrough": "매 반복마다 탐색 범위를 절반으로 줄인다. left > right가 되면 target 없음.",
     "secret": "정렬 배열 탐색 나오면 반드시 이진 탐색 떠올려라. 함정: mid = (left+right)/2는 int 오버플로우 가능.",
-    "similar": ["cd-012", "cd-013"]
+    "similar": [
+      "cd-012",
+      "cd-013"
+    ]
   },
   {
     "id": "cd-012",
     "title": "Search in Rotated Sorted Array",
     "titleKo": "회전된 정렬 배열에서 탐색",
     "difficulty": "medium",
-    "patterns": ["binary-search"],
-    "companies": ["카카오", "구글", "쿠팡"],
+    "patterns": [
+      "binary-search"
+    ],
+    "companies": [
+      "카카오",
+      "구글",
+      "쿠팡"
+    ],
     "description": "한 번 회전된 정렬 배열에서 target을 찾아 인덱스를 반환하라.",
-    "examples": [{"input": "nums=[4,5,6,7,0,1,2], target=0", "output": "4", "explanation": "0은 인덱스 4"}],
-    "constraints": ["1 <= n <= 5000", "중복 없음"],
-    "hints": ["mid로 왼쪽/오른쪽 정렬 구간 판별 후 target 위치 결정", "항상 한 쪽은 정렬되어 있음"],
+    "examples": [
+      {
+        "input": "nums=[4,5,6,7,0,1,2], target=0",
+        "output": "4",
+        "explanation": "0은 인덱스 4"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 5000",
+      "중복 없음"
+    ],
+    "hints": [
+      "mid로 왼쪽/오른쪽 정렬 구간 판별 후 target 위치 결정",
+      "항상 한 쪽은 정렬되어 있음"
+    ],
     "approach": "mid로 정렬된 절반 판별 후 target이 그 절반에 있는지 확인하여 범위 결정",
     "code": "public int search(int[] nums, int target) {\n    int left=0, right=nums.length-1;\n    while (left <= right) {\n        int mid = left+(right-left)/2;\n        if (nums[mid]==target) return mid;\n        if (nums[left] <= nums[mid]) {\n            if (nums[left]<=target && target<nums[mid]) right=mid-1;\n            else left=mid+1;\n        } else {\n            if (nums[mid]<target && target<=nums[right]) left=mid+1;\n            else right=mid-1;\n        }\n    }\n    return -1;\n}",
-    "complexity": {"time": "O(log n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(log n)",
+      "space": "O(1)"
+    },
     "walkthrough": "nums[left]<=nums[mid]면 왼쪽이 정렬됨. target이 그 범위 안에 있으면 오른쪽 버리고 왼쪽으로, 없으면 오른쪽으로.",
     "secret": "회전 배열 탐색 나오면 반드시 '어느 절반이 정렬됐나' 먼저 판별 떠올려라. 함정: 등호 처리(<=) 빠뜨리면 경계값 버그.",
-    "similar": ["cd-011", "cd-013"]
+    "similar": [
+      "cd-011",
+      "cd-013"
+    ]
   },
   {
     "id": "cd-013",
     "title": "Find Peak Element",
     "titleKo": "피크 원소 찾기",
-    "difficulty": "medium",
-    "patterns": ["binary-search"],
-    "companies": ["네이버", "메타"],
+    "difficulty": "easy",
+    "patterns": [
+      "binary-search"
+    ],
+    "companies": [
+      "네이버",
+      "메타"
+    ],
     "description": "인접 원소보다 큰 피크 원소의 인덱스를 O(log n)으로 반환하라.",
-    "examples": [{"input": "nums=[1,2,3,1]", "output": "2", "explanation": "nums[2]=3이 피크"}],
-    "constraints": ["1 <= n <= 1000", "nums[-1]=nums[n]=-inf로 가정"],
-    "hints": ["nums[mid] < nums[mid+1]이면 오른쪽에 피크 존재", "단조 증가 방향으로 이동"],
+    "examples": [
+      {
+        "input": "nums=[1,2,3,1]",
+        "output": "2",
+        "explanation": "nums[2]=3이 피크"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 1000",
+      "nums[-1]=nums[n]=-inf로 가정"
+    ],
+    "hints": [
+      "nums[mid] < nums[mid+1]이면 오른쪽에 피크 존재",
+      "단조 증가 방향으로 이동"
+    ],
     "approach": "mid와 mid+1 비교로 상승 방향 판별, 해당 방향으로 범위 좁힘",
     "code": "public int findPeakElement(int[] nums) {\n    int left=0, right=nums.length-1;\n    while (left < right) {\n        int mid = left+(right-left)/2;\n        if (nums[mid] < nums[mid+1]) left=mid+1;\n        else right=mid;\n    }\n    return left;\n}",
-    "complexity": {"time": "O(log n)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(log n)",
+      "space": "O(1)"
+    },
     "walkthrough": "오른쪽이 더 크면 오른쪽에 반드시 피크 존재, 아니면 mid 포함 왼쪽에 피크. 범위가 1개로 줄면 그게 피크.",
     "secret": "피크 찾기 O(log n) 나오면 반드시 이진 탐색+상승 방향 이동 떠올려라. 함정: left<right(등호 없음), right=mid로 수축.",
-    "similar": ["cd-011", "cd-015"]
+    "similar": [
+      "cd-011",
+      "cd-015"
+    ]
   },
   {
     "id": "cd-014",
     "title": "Median of Two Sorted Arrays",
     "titleKo": "두 정렬 배열의 중앙값",
     "difficulty": "hard",
-    "patterns": ["binary-search"],
-    "companies": ["구글", "메타", "카카오"],
+    "patterns": [
+      "binary-search"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
     "description": "두 정렬 배열의 병합 중앙값을 O(log(m+n))으로 구하라.",
-    "examples": [{"input": "nums1=[1,3], nums2=[2]", "output": "2.0", "explanation": "병합 [1,2,3]의 중앙값"}],
-    "constraints": ["0 <= m,n <= 1000", "전체 원소 수 >= 1"],
-    "hints": ["작은 배열에 이진 탐색", "파티션 위치로 두 배열을 나눠 중앙값 조건 확인"],
+    "examples": [
+      {
+        "input": "nums1=[1,3], nums2=[2]",
+        "output": "2.0",
+        "explanation": "병합 [1,2,3]의 중앙값"
+      }
+    ],
+    "constraints": [
+      "0 <= m,n <= 1000",
+      "전체 원소 수 >= 1"
+    ],
+    "hints": [
+      "작은 배열에 이진 탐색",
+      "파티션 위치로 두 배열을 나눠 중앙값 조건 확인"
+    ],
     "approach": "작은 배열의 파티션 위치를 이진 탐색, 왼쪽 최대/오른쪽 최소 조건 만족 시 중앙값 계산",
     "code": "public double findMedianSortedArrays(int[] A, int[] B) {\n    if (A.length > B.length) return findMedianSortedArrays(B, A);\n    int m=A.length, n=B.length, half=(m+n+1)/2;\n    int lo=0, hi=m;\n    while (lo <= hi) {\n        int i=lo+(hi-lo)/2, j=half-i;\n        if (i<m && B[j-1]>A[i]) lo=i+1;\n        else if (i>0 && A[i-1]>B[j]) hi=i-1;\n        else {\n            int maxL = (i==0)?B[j-1]:((j==0)?A[i-1]:Math.max(A[i-1],B[j-1]));\n            if ((m+n)%2==1) return maxL;\n            int minR = (i==m)?B[j]:((j==n)?A[i]:Math.min(A[i],B[j]));\n            return (maxL+minR)/2.0;\n        }\n    }\n    return 0;\n}",
-    "complexity": {"time": "O(log(min(m,n)))", "space": "O(1)"},
+    "complexity": {
+      "time": "O(log(min(m,n)))",
+      "space": "O(1)"
+    },
     "walkthrough": "작은 배열 파티션 i를 이진 탐색. 왼쪽 절반에 i+j개가 오도록 j 결정. A[i-1]<=B[j], B[j-1]<=A[i] 조건 충족 시 중앙값 계산.",
     "secret": "두 배열 중앙값 O(log) 나오면 반드시 작은 배열 파티션 이진탐색 떠올려라. 함정: 경계(i=0, i=m) 처리 빠뜨리면 IndexOutOfBounds.",
-    "similar": ["cd-011", "cd-013"]
+    "similar": [
+      "cd-011",
+      "cd-013"
+    ]
   },
   {
     "id": "cd-015",
     "title": "Koko Eating Bananas",
     "titleKo": "코코의 바나나 먹기",
-    "difficulty": "medium",
-    "patterns": ["binary-search"],
-    "companies": ["배민", "당근", "라인"],
+    "difficulty": "easy",
+    "patterns": [
+      "binary-search"
+    ],
+    "companies": [
+      "배민",
+      "당근",
+      "라인"
+    ],
     "description": "h시간 내에 모든 바나나를 먹을 수 있는 최소 속도 k를 구하라.",
-    "examples": [{"input": "piles=[3,6,7,11], h=8", "output": "4", "explanation": "속도 4로 8시간 안에 전부 소화"}],
-    "constraints": ["1 <= piles.length <= 10^4", "piles.length <= h <= 10^9"],
-    "hints": ["속도에 이진 탐색, 1~max(piles)", "각 속도로 총 시간 계산 후 h와 비교"],
+    "examples": [
+      {
+        "input": "piles=[3,6,7,11], h=8",
+        "output": "4",
+        "explanation": "속도 4로 8시간 안에 전부 소화"
+      }
+    ],
+    "constraints": [
+      "1 <= piles.length <= 10^4",
+      "piles.length <= h <= 10^9"
+    ],
+    "hints": [
+      "속도에 이진 탐색, 1~max(piles)",
+      "각 속도로 총 시간 계산 후 h와 비교"
+    ],
     "approach": "속도 범위에 이진 탐색, 총 소요 시간이 h 이하인 최소 속도 찾기",
     "code": "public int minEatingSpeed(int[] piles, int h) {\n    int lo=1, hi=Arrays.stream(piles).max().getAsInt();\n    while (lo < hi) {\n        int mid=lo+(hi-lo)/2;\n        long time=0;\n        for (int p : piles) time += (p+mid-1)/mid;\n        if (time <= h) hi=mid;\n        else lo=mid+1;\n    }\n    return lo;\n}",
-    "complexity": {"time": "O(n log m)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(n log m)",
+      "space": "O(1)"
+    },
     "walkthrough": "속도 mid로 총 시간 계산. h 이하면 더 느릴 수 있으므로 hi=mid, 초과면 lo=mid+1. lo==hi가 최소 속도.",
     "secret": "최솟값 찾기+단조 조건 나오면 반드시 파라메트릭 이진 탐색 떠올려라. 함정: (p+mid-1)/mid로 올림 나눗셈, p/mid는 틀림.",
-    "similar": ["cd-011", "cd-013"]
+    "similar": [
+      "cd-011",
+      "cd-013"
+    ]
   },
   {
     "id": "cd-016",
     "title": "Number of Islands",
     "titleKo": "섬의 개수",
     "difficulty": "medium",
-    "patterns": ["bfs", "dfs"],
-    "companies": ["카카오", "네이버", "쿠팡"],
+    "patterns": [
+      "bfs",
+      "dfs"
+    ],
+    "companies": [
+      "카카오",
+      "네이버",
+      "쿠팡"
+    ],
     "description": "2D 격자에서 '1'(땅)으로 이루어진 섬의 개수를 반환하라.",
-    "examples": [{"input": "grid=[[1,1,0],[0,1,0],[0,0,1]]", "output": "2", "explanation": "연결된 1 그룹 2개"}],
-    "constraints": ["1 <= rows,cols <= 300", "grid[i][j]는 '0' 또는 '1'"],
-    "hints": ["'1' 발견 시 DFS/BFS로 연결된 땅 전부 '0'으로 마킹", "카운트 증가"],
+    "examples": [
+      {
+        "input": "grid=[[1,1,0],[0,1,0],[0,0,1]]",
+        "output": "2",
+        "explanation": "연결된 1 그룹 2개"
+      }
+    ],
+    "constraints": [
+      "1 <= rows,cols <= 300",
+      "grid[i][j]는 '0' 또는 '1'"
+    ],
+    "hints": [
+      "'1' 발견 시 DFS/BFS로 연결된 땅 전부 '0'으로 마킹",
+      "카운트 증가"
+    ],
     "approach": "미방문 '1' 발견 시 DFS로 연결 성분 전체 방문 처리, 횟수 카운트",
     "code": "public int numIslands(char[][] grid) {\n    int count=0;\n    for (int i=0; i<grid.length; i++)\n        for (int j=0; j<grid[0].length; j++)\n            if (grid[i][j]=='1') { dfs(grid,i,j); count++; }\n    return count;\n}\nvoid dfs(char[][] g, int i, int j) {\n    if (i<0||i>=g.length||j<0||j>=g[0].length||g[i][j]!='1') return;\n    g[i][j]='0';\n    dfs(g,i+1,j); dfs(g,i-1,j); dfs(g,i,j+1); dfs(g,i,j-1);\n}",
-    "complexity": {"time": "O(m*n)", "space": "O(m*n)"},
+    "complexity": {
+      "time": "O(m*n)",
+      "space": "O(m*n)"
+    },
     "walkthrough": "각 '1'에서 DFS 시작해 4방향 연결된 땅을 '0'으로 방문 처리한다. DFS 호출 횟수가 섬의 개수.",
     "secret": "격자 연결 성분 개수 나오면 반드시 DFS/BFS+방문 처리 떠올려라. 함정: visited 배열 따로 안 써도 원본 수정으로 방문 표시 가능.",
-    "similar": ["cd-017", "cd-045"]
+    "similar": [
+      "cd-017",
+      "cd-045"
+    ]
   },
   {
     "id": "cd-017",
     "title": "Rotten Oranges",
     "titleKo": "썩은 오렌지",
     "difficulty": "medium",
-    "patterns": ["bfs"],
-    "companies": ["토스", "배민", "라인"],
+    "patterns": [
+      "bfs"
+    ],
+    "companies": [
+      "토스",
+      "배민",
+      "라인"
+    ],
     "description": "썩은 오렌지가 매 분 인접 신선한 오렌지를 썩힐 때, 모든 오렌지가 썩는 최소 분을 반환하라.",
-    "examples": [{"input": "grid=[[2,1,1],[1,1,0],[0,1,1]]", "output": "4", "explanation": "4분 후 모두 썩음"}],
-    "constraints": ["1 <= rows,cols <= 10", "grid[i][j]는 0,1,2"],
-    "hints": ["모든 썩은 오렌지를 큐에 동시 시작(멀티소스 BFS)", "분 단위로 레벨 BFS"],
+    "examples": [
+      {
+        "input": "grid=[[2,1,1],[1,1,0],[0,1,1]]",
+        "output": "4",
+        "explanation": "4분 후 모두 썩음"
+      }
+    ],
+    "constraints": [
+      "1 <= rows,cols <= 10",
+      "grid[i][j]는 0,1,2"
+    ],
+    "hints": [
+      "모든 썩은 오렌지를 큐에 동시 시작(멀티소스 BFS)",
+      "분 단위로 레벨 BFS"
+    ],
     "approach": "썩은 오렌지 전부 큐에 넣고 BFS 레벨별로 퍼뜨리며 최소 시간 계산",
     "code": "public int orangesRotting(int[][] grid) {\n    Queue<int[]> q = new LinkedList<>();\n    int fresh=0, rows=grid.length, cols=grid[0].length;\n    for (int i=0;i<rows;i++) for (int j=0;j<cols;j++) {\n        if (grid[i][j]==2) q.offer(new int[]{i,j});\n        if (grid[i][j]==1) fresh++;\n    }\n    int min=0;\n    int[][] dirs={{1,0},{-1,0},{0,1},{0,-1}};\n    while (!q.isEmpty() && fresh>0) {\n        min++;\n        for (int s=q.size();s>0;s--) {\n            int[] cur=q.poll();\n            for (int[] d:dirs) {\n                int r=cur[0]+d[0],c=cur[1]+d[1];\n                if (r>=0&&r<rows&&c>=0&&c<cols&&grid[r][c]==1) {\n                    grid[r][c]=2; fresh--; q.offer(new int[]{r,c});\n                }\n            }\n        }\n    }\n    return fresh==0?min:-1;\n}",
-    "complexity": {"time": "O(m*n)", "space": "O(m*n)"},
+    "complexity": {
+      "time": "O(m*n)",
+      "space": "O(m*n)"
+    },
     "walkthrough": "모든 썩은 오렌지에서 동시 BFS 시작. 레벨마다 시간 1 증가. 끝났을 때 fresh>0이면 -1.",
     "secret": "동시 다발 확산 최소 시간 나오면 반드시 멀티소스 BFS 떠올려라. 함정: 단일 소스 BFS는 출발점 하나만 처리해 오답.",
-    "similar": ["cd-016", "cd-018"]
+    "similar": [
+      "cd-016",
+      "cd-018"
+    ]
   },
   {
     "id": "cd-018",
     "title": "Word Ladder",
     "titleKo": "단어 사다리",
     "difficulty": "hard",
-    "patterns": ["bfs"],
-    "companies": ["구글", "메타", "카카오"],
+    "patterns": [
+      "bfs"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
     "description": "beginWord에서 endWord까지 한 번에 한 글자씩 바꿔 wordList의 단어를 거쳐 도달하는 최단 변환 횟수를 반환하라.",
-    "examples": [{"input": "begin=\"hit\", end=\"cog\", list=[\"hot\",\"dot\",\"dog\",\"lot\",\"log\",\"cog\"]", "output": "5", "explanation": "hit->hot->dot->dog->cog"}],
-    "constraints": ["1 <= beginWord,endWord 길이 <= 10", "1 <= wordList 크기 <= 5000"],
-    "hints": ["BFS 레벨별 탐색, 각 레벨이 변환 1회", "각 단어의 26자 모든 변환 시도"],
+    "examples": [
+      {
+        "input": "begin=\"hit\", end=\"cog\", list=[\"hot\",\"dot\",\"dog\",\"lot\",\"log\",\"cog\"]",
+        "output": "5",
+        "explanation": "hit->hot->dot->dog->cog"
+      }
+    ],
+    "constraints": [
+      "1 <= beginWord,endWord 길이 <= 10",
+      "1 <= wordList 크기 <= 5000"
+    ],
+    "hints": [
+      "BFS 레벨별 탐색, 각 레벨이 변환 1회",
+      "각 단어의 26자 모든 변환 시도"
+    ],
     "approach": "BFS로 레벨별 단어 변환 탐색, wordList Set에서 방문 단어 제거",
     "code": "public int ladderLength(String beginWord, String endWord, List<String> wordList) {\n    Set<String> wordSet = new HashSet<>(wordList);\n    if (!wordSet.contains(endWord)) return 0;\n    Queue<String> q = new LinkedList<>();\n    q.offer(beginWord);\n    int level=1;\n    while (!q.isEmpty()) {\n        for (int s=q.size();s>0;s--) {\n            String word=q.poll();\n            char[] chars=word.toCharArray();\n            for (int i=0;i<chars.length;i++) {\n                char orig=chars[i];\n                for (char c='a';c<='z';c++) {\n                    chars[i]=c;\n                    String next=new String(chars);\n                    if (next.equals(endWord)) return level+1;\n                    if (wordSet.contains(next)) { q.offer(next); wordSet.remove(next); }\n                }\n                chars[i]=orig;\n            }\n        }\n        level++;\n    }\n    return 0;\n}",
-    "complexity": {"time": "O(n*L*26)", "space": "O(n)"},
+    "complexity": {
+      "time": "O(n*L*26)",
+      "space": "O(n)"
+    },
     "walkthrough": "각 단어의 모든 위치에 a-z 대입 후 wordSet에 있으면 큐에 추가. 레벨이 변환 횟수. endWord 도달 시 level+1 반환.",
     "secret": "최단 변환 경로 나오면 반드시 BFS+wordSet 떠올려라. 함정: DFS는 최단 보장 안됨, visited Set 대신 wordSet에서 remove가 효율적.",
-    "similar": ["cd-016", "cd-017"]
+    "similar": [
+      "cd-016",
+      "cd-017"
+    ]
   },
   {
     "id": "cd-019",
     "title": "Clone Graph",
     "titleKo": "그래프 복제",
     "difficulty": "medium",
-    "patterns": ["dfs", "hash-map"],
-    "companies": ["네이버", "쿠팡"],
+    "patterns": [
+      "dfs",
+      "hash-map"
+    ],
+    "companies": [
+      "네이버",
+      "쿠팡"
+    ],
     "description": "연결 무방향 그래프를 깊은 복사하라.",
-    "examples": [{"input": "adjList=[[2,4],[1,3],[2,4],[1,3]]", "output": "깊은 복사된 그래프", "explanation": "각 노드와 이웃이 새로 생성됨"}],
-    "constraints": ["0 <= nodes <= 100", "노드값 1~100 유니크"],
-    "hints": ["HashMap<원본, 복사본>으로 이미 만든 노드 추적", "DFS로 이웃 재귀 복제"],
+    "examples": [
+      {
+        "input": "adjList=[[2,4],[1,3],[2,4],[1,3]]",
+        "output": "깊은 복사된 그래프",
+        "explanation": "각 노드와 이웃이 새로 생성됨"
+      }
+    ],
+    "constraints": [
+      "0 <= nodes <= 100",
+      "노드값 1~100 유니크"
+    ],
+    "hints": [
+      "HashMap<원본, 복사본>으로 이미 만든 노드 추적",
+      "DFS로 이웃 재귀 복제"
+    ],
     "approach": "HashMap으로 방문 추적하며 DFS로 노드와 엣지 재귀 복제",
     "code": "Map<Node,Node> visited = new HashMap<>();\npublic Node cloneGraph(Node node) {\n    if (node==null) return null;\n    if (visited.containsKey(node)) return visited.get(node);\n    Node clone = new Node(node.val);\n    visited.put(node, clone);\n    for (Node nb : node.neighbors)\n        clone.neighbors.add(cloneGraph(nb));\n    return clone;\n}",
-    "complexity": {"time": "O(V+E)", "space": "O(V)"},
+    "complexity": {
+      "time": "O(V+E)",
+      "space": "O(V)"
+    },
     "walkthrough": "노드 방문 시 즉시 복사본 생성 후 map에 등록. 이웃 재귀 전에 등록해야 사이클 처리 가능.",
     "secret": "그래프 복제/순환 DFS 나오면 반드시 '방문 전 map 등록' 패턴 떠올려라. 함정: 이웃 탐색 후 등록하면 무한 루프.",
-    "similar": ["cd-016", "cd-020"]
+    "similar": [
+      "cd-016",
+      "cd-020"
+    ]
   },
   {
     "id": "cd-020",
     "title": "Course Schedule",
     "titleKo": "강의 스케줄",
-    "difficulty": "medium",
-    "patterns": ["dfs", "topological-sort"],
-    "companies": ["카카오", "토스", "라인"],
+    "difficulty": "hard",
+    "patterns": [
+      "dfs",
+      "topological-sort"
+    ],
+    "companies": [
+      "카카오",
+      "토스",
+      "라인"
+    ],
     "description": "선수 과목 관계가 있을 때 모든 강의를 들을 수 있는지 확인하라(사이클 감지).",
-    "examples": [{"input": "numCourses=2, prerequisites=[[1,0]]", "output": "true", "explanation": "0 먼저 수강 후 1 수강 가능"}],
-    "constraints": ["1 <= numCourses <= 2000", "0 <= prerequisites 크기 <= 5000"],
-    "hints": ["DFS로 사이클 감지: 0=미방문, 1=방문중, 2=완료", "방문중인 노드 재방문 시 사이클"],
+    "examples": [
+      {
+        "input": "numCourses=2, prerequisites=[[1,0]]",
+        "output": "true",
+        "explanation": "0 먼저 수강 후 1 수강 가능"
+      }
+    ],
+    "constraints": [
+      "1 <= numCourses <= 2000",
+      "0 <= prerequisites 크기 <= 5000"
+    ],
+    "hints": [
+      "DFS로 사이클 감지: 0=미방문, 1=방문중, 2=완료",
+      "방문중인 노드 재방문 시 사이클"
+    ],
     "approach": "상태 배열로 DFS 사이클 감지, 사이클 없으면 true",
     "code": "public boolean canFinish(int n, int[][] prereqs) {\n    List<List<Integer>> adj = new ArrayList<>();\n    for (int i=0;i<n;i++) adj.add(new ArrayList<>());\n    for (int[] p:prereqs) adj.get(p[1]).add(p[0]);\n    int[] state = new int[n];\n    for (int i=0;i<n;i++) if (hasCycle(adj,state,i)) return false;\n    return true;\n}\nboolean hasCycle(List<List<Integer>> adj, int[] state, int v) {\n    if (state[v]==1) return true;\n    if (state[v]==2) return false;\n    state[v]=1;\n    for (int nb:adj.get(v)) if (hasCycle(adj,state,nb)) return true;\n    state[v]=2;\n    return false;\n}",
-    "complexity": {"time": "O(V+E)", "space": "O(V+E)"},
+    "complexity": {
+      "time": "O(V+E)",
+      "space": "O(V+E)"
+    },
     "walkthrough": "state 0=미방문, 1=현재 경로에 있음, 2=완전 방문. 1인 노드 재방문 시 사이클 존재.",
     "secret": "선수과목/의존성 사이클 감지 나오면 반드시 DFS 3색 상태(white/gray/black) 떠올려라. 함정: visited boolean만 쓰면 사이클 vs 일반 재방문 구분 불가.",
-    "similar": ["cd-019", "cd-016"]
+    "similar": [
+      "cd-019",
+      "cd-016"
+    ]
+  },
+  {
+    "id": "cd-021",
+    "title": "Maximum Depth of Binary Tree",
+    "titleKo": "이진 트리 최대 깊이",
+    "difficulty": "easy",
+    "patterns": [
+      "dfs-tree"
+    ],
+    "companies": [
+      "네이버",
+      "배민"
+    ],
+    "description": "이진 트리의 최대 깊이를 반환하라.",
+    "examples": [
+      {
+        "input": "root=[3,9,20,null,null,15,7]",
+        "output": "3",
+        "explanation": "루트에서 가장 깊은 리프까지 3"
+      }
+    ],
+    "constraints": [
+      "0 <= nodes <= 10^4",
+      "-100 <= val <= 100"
+    ],
+    "hints": [
+      "재귀: 1 + max(왼쪽깊이, 오른쪽깊이)",
+      "null이면 0 반환"
+    ],
+    "approach": "재귀로 왼쪽/오른쪽 최대 깊이+1 반환",
+    "code": "public int maxDepth(TreeNode root) {\n    if (root == null) return 0;\n    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(h)"
+    },
+    "walkthrough": "각 노드에서 왼/오른쪽 서브트리 깊이의 최댓값에 1을 더해 반환. 리프에서 1, null에서 0.",
+    "secret": "트리 깊이/높이 나오면 반드시 재귀 max(left,right)+1 떠올려라. 함정: null 체크 없으면 NPE.",
+    "similar": [
+      "cd-022",
+      "cd-024"
+    ]
+  },
+  {
+    "id": "cd-022",
+    "title": "Path Sum",
+    "titleKo": "경로 합",
+    "difficulty": "easy",
+    "patterns": [
+      "dfs-tree"
+    ],
+    "companies": [
+      "토스",
+      "당근"
+    ],
+    "description": "루트에서 리프까지 경로의 합이 targetSum인 경로가 존재하면 true를 반환하라.",
+    "examples": [
+      {
+        "input": "root=[5,4,8,11,null,13,4,7,2], targetSum=22",
+        "output": "true",
+        "explanation": "5->4->11->2=22"
+      }
+    ],
+    "constraints": [
+      "0 <= nodes <= 5000",
+      "-1000 <= val,targetSum <= 1000"
+    ],
+    "hints": [
+      "재귀로 남은 합 전달",
+      "리프에서 val==남은합 확인"
+    ],
+    "approach": "DFS로 남은 합을 줄여가며 리프에서 0 여부 확인",
+    "code": "public boolean hasPathSum(TreeNode root, int target) {\n    if (root==null) return false;\n    if (root.left==null && root.right==null) return root.val==target;\n    return hasPathSum(root.left, target-root.val) ||\n           hasPathSum(root.right, target-root.val);\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(h)"
+    },
+    "walkthrough": "각 노드에서 target에서 현재 값을 빼고 재귀. 리프에서 나머지가 0이면 경로 발견.",
+    "secret": "루트→리프 경로 합 조건 나오면 반드시 DFS+남은합 감소 떠올려라. 함정: null 노드에서 target==0 체크하면 리프 아닌 노드도 통과.",
+    "similar": [
+      "cd-021",
+      "cd-023"
+    ]
+  },
+  {
+    "id": "cd-023",
+    "title": "Lowest Common Ancestor of Binary Tree",
+    "titleKo": "이진 트리 최소 공통 조상",
+    "difficulty": "hard",
+    "patterns": [
+      "dfs-tree"
+    ],
+    "companies": [
+      "카카오",
+      "구글",
+      "라인"
+    ],
+    "description": "이진 트리에서 두 노드 p, q의 최소 공통 조상(LCA)을 구하라.",
+    "examples": [
+      {
+        "input": "root=[3,5,1,6,2,0,8], p=5, q=1",
+        "output": "3",
+        "explanation": "5와 1의 LCA는 루트 3"
+      }
+    ],
+    "constraints": [
+      "2 <= nodes <= 10^5",
+      "모든 노드값 유니크"
+    ],
+    "hints": [
+      "현재 노드가 p 또는 q이면 자신이 LCA 후보",
+      "왼/오른쪽 모두에서 발견되면 현재 노드가 LCA"
+    ],
+    "approach": "후위 DFS: 왼/오른쪽에서 p,q 탐색 후 둘 다 발견 시 현재 노드 반환",
+    "code": "public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {\n    if (root==null || root==p || root==q) return root;\n    TreeNode left = lowestCommonAncestor(root.left, p, q);\n    TreeNode right = lowestCommonAncestor(root.right, p, q);\n    if (left!=null && right!=null) return root;\n    return left!=null ? left : right;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(h)"
+    },
+    "walkthrough": "왼쪽과 오른쪽에서 모두 null이 아닌 값 반환 시 현재 노드가 LCA. 한쪽만 발견되면 그쪽 반환.",
+    "secret": "LCA 나오면 반드시 후위 DFS+양쪽 반환값 체크 떠올려라. 함정: BST LCA와 혼동 주의, 일반 트리는 값 비교 불가.",
+    "similar": [
+      "cd-021",
+      "cd-025"
+    ]
+  },
+  {
+    "id": "cd-024",
+    "title": "Diameter of Binary Tree",
+    "titleKo": "이진 트리의 지름",
+    "difficulty": "easy",
+    "patterns": [
+      "dfs-tree"
+    ],
+    "companies": [
+      "네이버",
+      "쿠팡"
+    ],
+    "description": "이진 트리에서 임의의 두 노드 사이 가장 긴 경로의 길이(엣지 수)를 반환하라.",
+    "examples": [
+      {
+        "input": "root=[1,2,3,4,5]",
+        "output": "3",
+        "explanation": "4->2->1->3 경로, 엣지 3개"
+      }
+    ],
+    "constraints": [
+      "1 <= nodes <= 10^4",
+      "-100 <= val <= 100"
+    ],
+    "hints": [
+      "각 노드에서 지름 = 왼쪽깊이 + 오른쪽깊이",
+      "전역 변수로 최대 지름 추적"
+    ],
+    "approach": "DFS로 각 노드의 (왼쪽깊이+오른쪽깊이)를 계산해 전역 최대 갱신",
+    "code": "int max = 0;\npublic int diameterOfBinaryTree(TreeNode root) {\n    depth(root);\n    return max;\n}\nint depth(TreeNode node) {\n    if (node==null) return 0;\n    int l=depth(node.left), r=depth(node.right);\n    max = Math.max(max, l+r);\n    return 1+Math.max(l,r);\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(h)"
+    },
+    "walkthrough": "depth 함수는 높이를 반환하며 부수적으로 l+r(현재 노드를 경유하는 경로)을 전역 max에 업데이트한다.",
+    "secret": "트리 지름 나오면 반드시 depth 재귀+전역max(l+r) 떠올려라. 함정: return값(높이)과 업데이트값(지름) 혼동하지 말 것.",
+    "similar": [
+      "cd-021",
+      "cd-022"
+    ]
+  },
+  {
+    "id": "cd-025",
+    "title": "Validate Binary Search Tree",
+    "titleKo": "이진 탐색 트리 검증",
+    "difficulty": "medium",
+    "patterns": [
+      "dfs-tree"
+    ],
+    "companies": [
+      "카카오",
+      "토스",
+      "라인"
+    ],
+    "description": "이진 트리가 유효한 BST인지 확인하라.",
+    "examples": [
+      {
+        "input": "root=[2,1,3]",
+        "output": "true",
+        "explanation": "왼쪽<루트<오른쪽 만족"
+      }
+    ],
+    "constraints": [
+      "1 <= nodes <= 10^4",
+      "-2^31 <= val <= 2^31-1"
+    ],
+    "hints": [
+      "각 노드에 허용 범위 [min, max] 전달",
+      "왼쪽은 max=현재값, 오른쪽은 min=현재값"
+    ],
+    "approach": "재귀로 각 노드에 (min, max) 범위 전달, 범위 벗어나면 false",
+    "code": "public boolean isValidBST(TreeNode root) {\n    return validate(root, Long.MIN_VALUE, Long.MAX_VALUE);\n}\nboolean validate(TreeNode node, long min, long max) {\n    if (node==null) return true;\n    if (node.val<=min || node.val>=max) return false;\n    return validate(node.left, min, node.val) &&\n           validate(node.right, node.val, max);\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(h)"
+    },
+    "walkthrough": "루트는 (-inf, +inf) 범위. 왼쪽 자식은 max를 부모값으로, 오른쪽은 min을 부모값으로 좁혀간다.",
+    "secret": "BST 검증 나오면 반드시 min/max 범위 전달 재귀 떠올려라. 함정: 단순 left.val<root.val 비교는 서브트리 전체 조건 불만족 케이스 놓침.",
+    "similar": [
+      "cd-023",
+      "cd-021"
+    ]
+  },
+  {
+    "id": "cd-026",
+    "title": "Climbing Stairs",
+    "titleKo": "계단 오르기",
+    "difficulty": "easy",
+    "patterns": [
+      "dp"
+    ],
+    "companies": [
+      "배민",
+      "당근",
+      "토스"
+    ],
+    "description": "n개의 계단을 1 또는 2칸씩 오를 수 있을 때 꼭대기까지 오르는 방법의 수를 반환하라.",
+    "examples": [
+      {
+        "input": "n=3",
+        "output": "3",
+        "explanation": "1+1+1, 1+2, 2+1"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 45"
+    ],
+    "hints": [
+      "dp[i] = dp[i-1] + dp[i-2]",
+      "피보나치 수열과 동일"
+    ],
+    "approach": "dp[i] = dp[i-1] + dp[i-2], 공간 최적화로 변수 2개만 사용",
+    "code": "public int climbStairs(int n) {\n    if (n<=2) return n;\n    int a=1, b=2;\n    for (int i=3; i<=n; i++) {\n        int c=a+b; a=b; b=c;\n    }\n    return b;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "i번째 계단은 i-1에서 1칸 또는 i-2에서 2칸으로만 도달. 두 경우의 합이 dp[i].",
+    "secret": "1/2칸 이동 경우의 수 나오면 반드시 피보나치 DP 떠올려라. 함정: 재귀+메모이제이션도 가능하나 변수 2개 공간 최적이 가장 효율적.",
+    "similar": [
+      "cd-027",
+      "cd-030"
+    ]
+  },
+  {
+    "id": "cd-027",
+    "title": "House Robber",
+    "titleKo": "집 털기",
+    "difficulty": "medium",
+    "patterns": [
+      "dp"
+    ],
+    "companies": [
+      "쿠팡",
+      "카카오",
+      "네이버"
+    ],
+    "description": "인접한 집을 연속으로 털 수 없을 때 얻을 수 있는 최대 금액을 반환하라.",
+    "examples": [
+      {
+        "input": "nums=[2,7,9,3,1]",
+        "output": "12",
+        "explanation": "2+9+1=12"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 100",
+      "0 <= nums[i] <= 400"
+    ],
+    "hints": [
+      "dp[i] = max(dp[i-1], dp[i-2]+nums[i])",
+      "현재 집을 털거나 스킵"
+    ],
+    "approach": "각 집에서 털기/스킵 중 최대 선택, 변수 2개로 공간 최적화",
+    "code": "public int rob(int[] nums) {\n    int prev2=0, prev1=0;\n    for (int num : nums) {\n        int cur = Math.max(prev1, prev2+num);\n        prev2=prev1; prev1=cur;\n    }\n    return prev1;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "prev1은 현재까지 최대, prev2는 두 집 전 최대. 현재 집 털면 prev2+num, 안털면 prev1.",
+    "secret": "인접 선택 불가 최대합 나오면 반드시 House Robber DP 떠올려라. 함정: 원형 배열이면 House Robber II로 두 번 실행.",
+    "similar": [
+      "cd-026",
+      "cd-028"
+    ]
+  },
+  {
+    "id": "cd-028",
+    "title": "Longest Increasing Subsequence",
+    "titleKo": "최장 증가 부분 수열",
+    "difficulty": "hard",
+    "patterns": [
+      "dp",
+      "binary-search"
+    ],
+    "companies": [
+      "카카오",
+      "구글",
+      "라인"
+    ],
+    "description": "배열에서 엄격히 증가하는 가장 긴 부분 수열의 길이를 반환하라.",
+    "examples": [
+      {
+        "input": "nums=[10,9,2,5,3,7,101,18]",
+        "output": "4",
+        "explanation": "[2,3,7,101]"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 2500",
+      "-10^4 <= nums[i] <= 10^4"
+    ],
+    "hints": [
+      "O(n^2) DP: dp[i]=max(dp[j]+1) for j<i and nums[j]<nums[i]",
+      "O(n log n): patience sorting + 이진 탐색"
+    ],
+    "approach": "patience sorting: tails 배열에 이진 탐색으로 교체/추가하여 O(n log n) 달성",
+    "code": "public int lengthOfLIS(int[] nums) {\n    List<Integer> tails = new ArrayList<>();\n    for (int num : nums) {\n        int lo=0, hi=tails.size();\n        while (lo<hi) {\n            int mid=lo+(hi-lo)/2;\n            if (tails.get(mid)<num) lo=mid+1;\n            else hi=mid;\n        }\n        if (lo==tails.size()) tails.add(num);\n        else tails.set(lo, num);\n    }\n    return tails.size();\n}",
+    "complexity": {
+      "time": "O(n log n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "tails[i]는 길이 i+1인 증가 수열의 마지막 원소 최솟값. num의 삽입 위치를 이진탐색으로 찾아 교체.",
+    "secret": "LIS 길이 O(n log n) 나오면 반드시 patience sorting+tails 이진탐색 떠올려라. 함정: tails는 실제 수열이 아닌 보조 배열임.",
+    "similar": [
+      "cd-026",
+      "cd-029"
+    ]
+  },
+  {
+    "id": "cd-029",
+    "title": "Coin Change",
+    "titleKo": "동전 교환",
+    "difficulty": "medium",
+    "patterns": [
+      "dp"
+    ],
+    "companies": [
+      "토스",
+      "쿠팡",
+      "배민"
+    ],
+    "description": "주어진 동전으로 amount를 만드는 최소 동전 수를 반환하라. 불가능하면 -1.",
+    "examples": [
+      {
+        "input": "coins=[1,5,11], amount=15",
+        "output": "3",
+        "explanation": "5+5+5=15, 3개"
+      }
+    ],
+    "constraints": [
+      "1 <= coins 크기 <= 12",
+      "1 <= amount <= 10^4"
+    ],
+    "hints": [
+      "dp[i] = min(dp[i-coin]+1) for each coin <= i",
+      "dp[0]=0, 나머지 Integer.MAX_VALUE 초기화"
+    ],
+    "approach": "바텀업 DP: 각 금액에 대해 모든 동전 시도해 최소 동전 수 계산",
+    "code": "public int coinChange(int[] coins, int amount) {\n    int[] dp = new int[amount+1];\n    Arrays.fill(dp, amount+1);\n    dp[0]=0;\n    for (int i=1;i<=amount;i++)\n        for (int c:coins)\n            if (c<=i) dp[i]=Math.min(dp[i], dp[i-c]+1);\n    return dp[amount]>amount ? -1 : dp[amount];\n}",
+    "complexity": {
+      "time": "O(amount*coins)",
+      "space": "O(amount)"
+    },
+    "walkthrough": "dp[0]=0에서 시작해 각 금액에 대해 사용 가능한 동전별 최솟값 계산. 최종 dp[amount]가 답.",
+    "secret": "최소 동전/스텝 수 나오면 반드시 1D DP + amount+1 초기화 떠올려라. 함정: Integer.MAX_VALUE+1은 오버플로우, amount+1로 초기화.",
+    "similar": [
+      "cd-026",
+      "cd-030"
+    ]
+  },
+  {
+    "id": "cd-030",
+    "title": "Edit Distance",
+    "titleKo": "편집 거리",
+    "difficulty": "hard",
+    "patterns": [
+      "dp"
+    ],
+    "companies": [
+      "구글",
+      "카카오",
+      "메타"
+    ],
+    "description": "word1을 word2로 변환하는 최소 편집(삽입/삭제/교체) 횟수를 반환하라.",
+    "examples": [
+      {
+        "input": "word1=\"horse\", word2=\"ros\"",
+        "output": "3",
+        "explanation": "horse->rorse->rose->ros"
+      }
+    ],
+    "constraints": [
+      "0 <= word1,word2 길이 <= 500"
+    ],
+    "hints": [
+      "dp[i][j]: word1[0..i-1]->word2[0..j-1] 최소 편집 수",
+      "문자 일치 시 dp[i-1][j-1], 불일치 시 1+min(세 방향)"
+    ],
+    "approach": "2D DP: 각 셀에서 삽입/삭제/교체 중 최솟값 선택",
+    "code": "public int minDistance(String w1, String w2) {\n    int m=w1.length(), n=w2.length();\n    int[][] dp = new int[m+1][n+1];\n    for (int i=0;i<=m;i++) dp[i][0]=i;\n    for (int j=0;j<=n;j++) dp[0][j]=j;\n    for (int i=1;i<=m;i++)\n        for (int j=1;j<=n;j++) {\n            if (w1.charAt(i-1)==w2.charAt(j-1)) dp[i][j]=dp[i-1][j-1];\n            else dp[i][j]=1+Math.min(dp[i-1][j-1], Math.min(dp[i-1][j], dp[i][j-1]));\n        }\n    return dp[m][n];\n}",
+    "complexity": {
+      "time": "O(m*n)",
+      "space": "O(m*n)"
+    },
+    "walkthrough": "dp[i][j-1]+1은 삽입, dp[i-1][j]+1은 삭제, dp[i-1][j-1]+1은 교체. 문자 일치 시 비용 0.",
+    "secret": "두 문자열 변환 최솟값 나오면 반드시 2D 편집거리 DP 떠올려라. 함정: 경계 초기화(dp[i][0]=i, dp[0][j]=j) 빠뜨리면 오답.",
+    "similar": [
+      "cd-028",
+      "cd-029"
+    ]
+  },
+  {
+    "id": "cd-031",
+    "title": "Permutations",
+    "titleKo": "순열",
+    "difficulty": "medium",
+    "patterns": [
+      "backtracking"
+    ],
+    "companies": [
+      "카카오",
+      "네이버"
+    ],
+    "description": "중복 없는 정수 배열의 모든 순열을 반환하라.",
+    "examples": [
+      {
+        "input": "nums=[1,2,3]",
+        "output": "[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]",
+        "explanation": "6가지 순열"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 6",
+      "모든 원소 유니크"
+    ],
+    "hints": [
+      "used 배열로 사용한 원소 추적",
+      "path가 n 크기에 도달하면 결과에 추가"
+    ],
+    "approach": "백트래킹: 미사용 원소를 차례로 선택하고 path 완성 시 결과 추가",
+    "code": "public List<List<Integer>> permute(int[] nums) {\n    List<List<Integer>> res = new ArrayList<>();\n    backtrack(nums, new boolean[nums.length], new ArrayList<>(), res);\n    return res;\n}\nvoid backtrack(int[] nums, boolean[] used, List<Integer> path, List<List<Integer>> res) {\n    if (path.size()==nums.length) { res.add(new ArrayList<>(path)); return; }\n    for (int i=0;i<nums.length;i++) {\n        if (used[i]) continue;\n        used[i]=true; path.add(nums[i]);\n        backtrack(nums, used, path, res);\n        used[i]=false; path.remove(path.size()-1);\n    }\n}",
+    "complexity": {
+      "time": "O(n!)",
+      "space": "O(n)"
+    },
+    "walkthrough": "각 위치에서 미사용 원소 선택 후 재귀. 복귀 시 선택 취소(백트래킹). path 크기 n이면 결과 저장.",
+    "secret": "모든 순열 나오면 반드시 used배열+백트래킹 떠올려라. 함정: path.add(new ArrayList<>(path)) 대신 참조 복사하면 빈 리스트 저장됨.",
+    "similar": [
+      "cd-032",
+      "cd-033"
+    ]
+  },
+  {
+    "id": "cd-032",
+    "title": "Subsets",
+    "titleKo": "부분 집합",
+    "difficulty": "medium",
+    "patterns": [
+      "backtracking"
+    ],
+    "companies": [
+      "배민",
+      "토스"
+    ],
+    "description": "중복 없는 정수 배열의 모든 부분 집합을 반환하라.",
+    "examples": [
+      {
+        "input": "nums=[1,2,3]",
+        "output": "[[],[1],[2],[3],[1,2],[1,3],[2,3],[1,2,3]]",
+        "explanation": "2^3=8가지"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10",
+      "모든 원소 유니크"
+    ],
+    "hints": [
+      "start 인덱스로 앞선 원소 재사용 방지",
+      "각 재귀 호출 시 현재 path를 결과에 추가"
+    ],
+    "approach": "백트래킹: 각 인덱스부터 원소 선택, 매 단계마다 현재 부분집합 저장",
+    "code": "public List<List<Integer>> subsets(int[] nums) {\n    List<List<Integer>> res = new ArrayList<>();\n    backtrack(nums, 0, new ArrayList<>(), res);\n    return res;\n}\nvoid backtrack(int[] nums, int start, List<Integer> path, List<List<Integer>> res) {\n    res.add(new ArrayList<>(path));\n    for (int i=start;i<nums.length;i++) {\n        path.add(nums[i]);\n        backtrack(nums, i+1, path, res);\n        path.remove(path.size()-1);\n    }\n}",
+    "complexity": {
+      "time": "O(2^n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "진입 즉시 현재 path 저장(빈 집합 포함). start 이후 원소만 탐색해 중복 조합 방지.",
+    "secret": "모든 부분집합 나오면 반드시 start인덱스+매진입 path저장 백트래킹 떠올려라. 함정: start 없이 used 배열 쓰면 중복 조합 생성.",
+    "similar": [
+      "cd-031",
+      "cd-033"
+    ]
+  },
+  {
+    "id": "cd-033",
+    "title": "Combination Sum",
+    "titleKo": "조합 합",
+    "difficulty": "hard",
+    "patterns": [
+      "backtracking"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
+    "description": "원소를 재사용해 합이 target이 되는 모든 조합을 반환하라.",
+    "examples": [
+      {
+        "input": "candidates=[2,3,6,7], target=7",
+        "output": "[[2,2,3],[7]]",
+        "explanation": "재사용 허용"
+      }
+    ],
+    "constraints": [
+      "1 <= candidates 크기 <= 30",
+      "1 <= target <= 40"
+    ],
+    "hints": [
+      "같은 인덱스 재사용 허용(i 대신 i 전달)",
+      "남은 합이 0이면 결과 추가, 음수면 가지치기"
+    ],
+    "approach": "백트래킹: 재사용 가능하므로 같은 i부터 재귀, 남은합 0에서 저장",
+    "code": "public List<List<Integer>> combinationSum(int[] candidates, int target) {\n    List<List<Integer>> res = new ArrayList<>();\n    Arrays.sort(candidates);\n    backtrack(candidates, target, 0, new ArrayList<>(), res);\n    return res;\n}\nvoid backtrack(int[] c, int remain, int start, List<Integer> path, List<List<Integer>> res) {\n    if (remain==0) { res.add(new ArrayList<>(path)); return; }\n    for (int i=start;i<c.length;i++) {\n        if (c[i]>remain) break;\n        path.add(c[i]);\n        backtrack(c, remain-c[i], i, path, res);\n        path.remove(path.size()-1);\n    }\n}",
+    "complexity": {
+      "time": "O(2^target)",
+      "space": "O(target)"
+    },
+    "walkthrough": "remain이 0이면 저장. c[i]>remain이면 정렬 덕에 이후 원소도 크므로 break. 재사용을 위해 i+1이 아닌 i 전달.",
+    "secret": "재사용 가능 조합합 나오면 반드시 같은 i 재귀+remain 감소 백트래킹 떠올려라. 함정: i+1 전달하면 재사용 불가.",
+    "similar": [
+      "cd-031",
+      "cd-032"
+    ]
+  },
+  {
+    "id": "cd-034",
+    "title": "N-Queens",
+    "titleKo": "N-퀸",
+    "difficulty": "hard",
+    "patterns": [
+      "backtracking"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
+    "description": "N×N 체스보드에 N개의 퀸이 서로 공격하지 않도록 배치하는 모든 해를 반환하라.",
+    "examples": [
+      {
+        "input": "n=4",
+        "output": "[[\".Q..\",\"...Q\",\"Q...\",\"..Q.\"],...]",
+        "explanation": "4-퀸의 2가지 해"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 9"
+    ],
+    "hints": [
+      "행마다 퀸 하나 배치, 열/대각선 충돌 체크",
+      "Set으로 열, 대각선(r-c, r+c) 추적"
+    ],
+    "approach": "행별 백트래킹: cols, diag1(r-c), diag2(r+c) Set으로 충돌 확인",
+    "code": "public List<List<String>> solveNQueens(int n) {\n    List<List<String>> res = new ArrayList<>();\n    Set<Integer> cols=new HashSet<>(), d1=new HashSet<>(), d2=new HashSet<>();\n    backtrack(n, 0, new int[n], cols, d1, d2, res);\n    return res;\n}\nvoid backtrack(int n, int row, int[] queens, Set<Integer> cols, Set<Integer> d1, Set<Integer> d2, List<List<String>> res) {\n    if (row==n) { res.add(build(queens,n)); return; }\n    for (int col=0;col<n;col++) {\n        if (cols.contains(col)||d1.contains(row-col)||d2.contains(row+col)) continue;\n        queens[row]=col; cols.add(col); d1.add(row-col); d2.add(row+col);\n        backtrack(n, row+1, queens, cols, d1, d2, res);\n        cols.remove(col); d1.remove(row-col); d2.remove(row+col);\n    }\n}\nList<String> build(int[] queens, int n) {\n    List<String> board=new ArrayList<>();\n    for (int q:queens) {\n        char[] row=new char[n]; Arrays.fill(row,'.'); row[q]='Q';\n        board.add(new String(row));\n    }\n    return board;\n}",
+    "complexity": {
+      "time": "O(n!)",
+      "space": "O(n)"
+    },
+    "walkthrough": "행마다 열 선택. cols로 같은 열, d1(r-c)로 좌상→우하 대각선, d2(r+c)로 우상→좌하 대각선 충돌 방지.",
+    "secret": "N-퀸 나오면 반드시 cols/d1/d2 세 Set+행별 백트래킹 떠올려라. 함정: 대각선 조건 r-c와 r+c 두 가지 모두 필요.",
+    "similar": [
+      "cd-031",
+      "cd-035"
+    ]
+  },
+  {
+    "id": "cd-035",
+    "title": "Word Search",
+    "titleKo": "단어 찾기",
+    "difficulty": "hard",
+    "patterns": [
+      "backtracking",
+      "dfs"
+    ],
+    "companies": [
+      "네이버",
+      "라인",
+      "당근"
+    ],
+    "description": "2D 격자에서 상하좌우 인접 셀을 이용해 단어를 만들 수 있는지 확인하라.",
+    "examples": [
+      {
+        "input": "board=[[A,B,C],[S,F,C],[A,D,E]], word=\"ABCCED\"",
+        "output": "true",
+        "explanation": "경로 존재"
+      }
+    ],
+    "constraints": [
+      "1 <= m,n <= 6",
+      "1 <= word 길이 <= 15"
+    ],
+    "hints": [
+      "각 셀에서 DFS 시작, 방문 중인 셀 임시 마킹",
+      "되돌아갈 때 마킹 해제"
+    ],
+    "approach": "격자 각 셀에서 DFS 시작, 방문 표시로 재사용 방지, 백트래킹으로 원복",
+    "code": "public boolean exist(char[][] board, String word) {\n    for (int i=0;i<board.length;i++)\n        for (int j=0;j<board[0].length;j++)\n            if (dfs(board,word,i,j,0)) return true;\n    return false;\n}\nboolean dfs(char[][] b, String w, int i, int j, int k) {\n    if (k==w.length()) return true;\n    if (i<0||i>=b.length||j<0||j>=b[0].length||b[i][j]!=w.charAt(k)) return false;\n    char tmp=b[i][j]; b[i][j]='#';\n    boolean found=dfs(b,w,i+1,j,k+1)||dfs(b,w,i-1,j,k+1)||dfs(b,w,i,j+1,k+1)||dfs(b,w,i,j-1,k+1);\n    b[i][j]=tmp;\n    return found;\n}",
+    "complexity": {
+      "time": "O(m*n*4^L)",
+      "space": "O(L)"
+    },
+    "walkthrough": "매칭 실패 또는 경계 초과 즉시 반환. '#' 임시 마킹으로 재방문 방지. 되돌아갈 때 원래 문자 복원.",
+    "secret": "격자 단어 경로 탐색 나오면 반드시 DFS+임시마킹+원복 백트래킹 떠올려라. 함정: 별도 visited 배열 대신 원본 마킹이 공간 효율적.",
+    "similar": [
+      "cd-034",
+      "cd-016"
+    ]
+  },
+  {
+    "id": "cd-036",
+    "title": "Jump Game",
+    "titleKo": "점프 게임",
+    "difficulty": "medium",
+    "patterns": [
+      "greedy"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡",
+      "토스"
+    ],
+    "description": "각 위치에서 최대 nums[i]만큼 점프할 수 있을 때 마지막 인덱스에 도달 가능한지 확인하라.",
+    "examples": [
+      {
+        "input": "nums=[2,3,1,1,4]",
+        "output": "true",
+        "explanation": "0->1->4 가능"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 3*10^4",
+      "0 <= nums[i] <= 10^5"
+    ],
+    "hints": [
+      "현재까지 도달 가능한 최대 인덱스 추적",
+      "매 위치에서 maxReach 갱신"
+    ],
+    "approach": "탐욕: 각 위치에서 도달 가능한 최대 범위 갱신, 현재 위치가 maxReach 초과면 false",
+    "code": "public boolean canJump(int[] nums) {\n    int maxReach = 0;\n    for (int i=0; i<nums.length; i++) {\n        if (i > maxReach) return false;\n        maxReach = Math.max(maxReach, i+nums[i]);\n    }\n    return true;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "maxReach는 현재까지 도달 가능한 최대 인덱스. i가 maxReach를 넘으면 고립됨. 매 i에서 i+nums[i]로 갱신.",
+    "secret": "점프 도달 가능 여부 나오면 반드시 maxReach 탐욕 떠올려라. 함정: DP는 O(n^2), 탐욕이 O(n)으로 최적.",
+    "similar": [
+      "cd-037",
+      "cd-038"
+    ]
+  },
+  {
+    "id": "cd-037",
+    "title": "Gas Station",
+    "titleKo": "주유소",
+    "difficulty": "medium",
+    "patterns": [
+      "greedy"
+    ],
+    "companies": [
+      "배민",
+      "쿠팡"
+    ],
+    "description": "원형 주유소에서 출발해 한 바퀴를 완성할 수 있는 시작 인덱스를 반환하라. 없으면 -1.",
+    "examples": [
+      {
+        "input": "gas=[1,2,3,4,5], cost=[3,4,5,1,2]",
+        "output": "3",
+        "explanation": "인덱스 3에서 시작"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10^5",
+      "0 <= gas,cost <= 10^4"
+    ],
+    "hints": [
+      "total gain >= 0이면 반드시 해 존재",
+      "tank < 0이 되면 시작점을 다음 위치로 재설정"
+    ],
+    "approach": "탐욕: 누적 연료가 음수면 시작점 초기화, 전체 합이 음수면 -1",
+    "code": "public int canCompleteCircuit(int[] gas, int[] cost) {\n    int total=0, tank=0, start=0;\n    for (int i=0; i<gas.length; i++) {\n        int diff = gas[i]-cost[i];\n        total+=diff; tank+=diff;\n        if (tank < 0) { start=i+1; tank=0; }\n    }\n    return total>=0 ? start : -1;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "tank가 음수면 i까지의 어떤 지점도 시작점이 될 수 없으므로 start=i+1. 전체 합이 0 이상이면 start가 유효한 답.",
+    "secret": "원형 시작점 탐욕 나오면 반드시 tank음수→start초기화 패턴 떠올려라. 함정: 전체 합 음수면 -1, 이 체크 빠뜨리면 오답.",
+    "similar": [
+      "cd-036",
+      "cd-038"
+    ]
+  },
+  {
+    "id": "cd-038",
+    "title": "Task Scheduler",
+    "titleKo": "태스크 스케줄러",
+    "difficulty": "medium",
+    "patterns": [
+      "greedy"
+    ],
+    "companies": [
+      "카카오",
+      "라인",
+      "메타"
+    ],
+    "description": "같은 태스크는 n 간격 후 실행 가능할 때 모든 태스크 완료 최소 시간을 반환하라.",
+    "examples": [
+      {
+        "input": "tasks=[A,A,A,B,B,B], n=2",
+        "output": "8",
+        "explanation": "A->B->idle->A->B->idle->A->B"
+      }
+    ],
+    "constraints": [
+      "1 <= tasks 크기 <= 10^4",
+      "0 <= n <= 100"
+    ],
+    "hints": [
+      "최빈 태스크 기준으로 최소 시간 계산",
+      "수식: (maxFreq-1)*(n+1)+maxCount"
+    ],
+    "approach": "탐욕: 최빈 태스크 frequency로 프레임 계산, 실제 태스크 수와 최대 비교",
+    "code": "public int leastInterval(char[] tasks, int n) {\n    int[] freq = new int[26];\n    for (char t : tasks) freq[t-'A']++;\n    Arrays.sort(freq);\n    int maxFreq = freq[25];\n    int maxCount = 0;\n    for (int f : freq) if (f==maxFreq) maxCount++;\n    return Math.max(tasks.length, (maxFreq-1)*(n+1)+maxCount);\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "(maxFreq-1)개의 완전 프레임 + 마지막 행. 각 프레임 크기 n+1. 태스크가 많으면 idle 불필요.",
+    "secret": "태스크 스케줄 최소 시간 나오면 반드시 (maxFreq-1)*(n+1)+maxCount 공식 떠올려라. 함정: tasks.length와 max 비교 빠뜨리면 태스크 많을 때 오답.",
+    "similar": [
+      "cd-036",
+      "cd-039"
+    ]
+  },
+  {
+    "id": "cd-039",
+    "title": "Non-overlapping Intervals",
+    "titleKo": "겹치지 않는 구간",
+    "difficulty": "medium",
+    "patterns": [
+      "greedy"
+    ],
+    "companies": [
+      "네이버",
+      "카카오",
+      "쿠팡"
+    ],
+    "description": "구간이 겹치지 않도록 제거해야 할 최소 구간 수를 반환하라.",
+    "examples": [
+      {
+        "input": "intervals=[[1,2],[2,3],[3,4],[1,3]]",
+        "output": "1",
+        "explanation": "[1,3] 제거"
+      }
+    ],
+    "constraints": [
+      "1 <= intervals 크기 <= 10^5"
+    ],
+    "hints": [
+      "종료 시간 기준 정렬",
+      "이전 구간 종료 > 현재 시작이면 제거(짧은 것 유지)"
+    ],
+    "approach": "종료 시간 정렬 후 탐욕: 겹치면 종료가 늦은 구간 제거, end 갱신",
+    "code": "public int eraseOverlapIntervals(int[][] intervals) {\n    Arrays.sort(intervals, (a,b)->a[1]-b[1]);\n    int end=intervals[0][1], count=0;\n    for (int i=1;i<intervals.length;i++) {\n        if (intervals[i][0] < end) count++;\n        else end=intervals[i][1];\n    }\n    return count;\n}",
+    "complexity": {
+      "time": "O(n log n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "종료 시간 정렬 후 겹치면 현재(종료 늦은)를 버리고 end 유지. 안 겹치면 end를 현재 종료로 업데이트.",
+    "secret": "겹치는 구간 최소 제거 나오면 반드시 종료시간 정렬+탐욕 떠올려라. 함정: 시작 시간 정렬하면 탐욕 선택 복잡해짐.",
+    "similar": [
+      "cd-038",
+      "cd-040"
+    ]
+  },
+  {
+    "id": "cd-040",
+    "title": "Partition Labels",
+    "titleKo": "파티션 레이블",
+    "difficulty": "medium",
+    "patterns": [
+      "greedy"
+    ],
+    "companies": [
+      "라인",
+      "배민",
+      "당근"
+    ],
+    "description": "각 문자가 최대 하나의 파트에만 나타나도록 문자열을 파티션하고 각 파트의 길이를 반환하라.",
+    "examples": [
+      {
+        "input": "s=\"ababcbacadefegdehijhklij\"",
+        "output": "[9,7,8]",
+        "explanation": "세 파트로 분할"
+      }
+    ],
+    "constraints": [
+      "1 <= s.length <= 500"
+    ],
+    "hints": [
+      "각 문자의 마지막 등장 위치 사전 계산",
+      "현재 파트 끝을 max(last[c])로 확장"
+    ],
+    "approach": "각 문자 마지막 위치 기록 후 탐욕으로 파트 경계 결정",
+    "code": "public List<Integer> partitionLabels(String s) {\n    int[] last = new int[26];\n    for (int i=0;i<s.length();i++) last[s.charAt(i)-'a']=i;\n    List<Integer> res = new ArrayList<>();\n    int start=0, end=0;\n    for (int i=0;i<s.length();i++) {\n        end=Math.max(end, last[s.charAt(i)-'a']);\n        if (i==end) { res.add(end-start+1); start=i+1; }\n    }\n    return res;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "탐색하며 end를 현재 문자 마지막 위치로 확장. i==end에 도달하면 파트 확정, 다음 파트 시작.",
+    "secret": "각 문자 한 파트 포함 분할 나오면 반드시 마지막위치사전+end확장 탐욕 떠올려라. 함정: end 확장을 빠뜨리면 같은 문자가 다른 파트에 나뉨.",
+    "similar": [
+      "cd-039",
+      "cd-038"
+    ]
+  },
+  {
+    "id": "cd-041",
+    "title": "Top K Frequent Elements",
+    "titleKo": "상위 K개 빈도 원소",
+    "difficulty": "medium",
+    "patterns": [
+      "heap",
+      "hash-map"
+    ],
+    "companies": [
+      "카카오",
+      "네이버",
+      "구글"
+    ],
+    "description": "배열에서 가장 많이 등장하는 k개의 원소를 반환하라.",
+    "examples": [
+      {
+        "input": "nums=[1,1,1,2,2,3], k=2",
+        "output": "[1,2]",
+        "explanation": "1이 3번, 2가 2번"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10^5",
+      "k는 항상 유효"
+    ],
+    "hints": [
+      "빈도수 HashMap 후 크기 k 최소힙",
+      "버킷 정렬로 O(n) 가능"
+    ],
+    "approach": "빈도수 계산 후 크기 k 최소힙으로 상위 k개 유지",
+    "code": "public int[] topKFrequent(int[] nums, int k) {\n    Map<Integer,Integer> freq = new HashMap<>();\n    for (int n : nums) freq.merge(n, 1, Integer::sum);\n    PriorityQueue<Integer> pq = new PriorityQueue<>(Comparator.comparingInt(freq::get));\n    for (int key : freq.keySet()) {\n        pq.offer(key);\n        if (pq.size() > k) pq.poll();\n    }\n    return pq.stream().mapToInt(x->x).toArray();\n}",
+    "complexity": {
+      "time": "O(n log k)",
+      "space": "O(n)"
+    },
+    "walkthrough": "최소힙으로 상위 k개 유지. 힙 크기 k 초과 시 빈도 최솟값 제거. 최종 힙 원소가 답.",
+    "secret": "상위 K개 나오면 반드시 빈도맵+크기K 최소힙 떠올려라. 함정: 최대힙으로 전체 정렬하면 O(n log n), 최소힙 k 유지가 O(n log k).",
+    "similar": [
+      "cd-042",
+      "cd-044"
+    ]
+  },
+  {
+    "id": "cd-042",
+    "title": "Merge K Sorted Lists",
+    "titleKo": "K개 정렬 리스트 병합",
+    "difficulty": "hard",
+    "patterns": [
+      "heap"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
+    "description": "k개의 정렬된 연결 리스트를 하나의 정렬된 연결 리스트로 병합하라.",
+    "examples": [
+      {
+        "input": "lists=[[1,4,5],[1,3,4],[2,6]]",
+        "output": "[1,1,2,3,4,4,5,6]",
+        "explanation": "전체 정렬 병합"
+      }
+    ],
+    "constraints": [
+      "0 <= k <= 10^4",
+      "0 <= 각 리스트 크기 <= 500"
+    ],
+    "hints": [
+      "최소힙에 각 리스트 헤드 초기 삽입",
+      "pop 후 해당 리스트 다음 노드 push"
+    ],
+    "approach": "최소힙으로 k개 리스트 헤드 관리, 최솟값 추출 후 다음 노드 삽입",
+    "code": "public ListNode mergeKLists(ListNode[] lists) {\n    PriorityQueue<ListNode> pq = new PriorityQueue<>(Comparator.comparingInt(n->n.val));\n    for (ListNode node : lists) if (node!=null) pq.offer(node);\n    ListNode dummy=new ListNode(0), cur=dummy;\n    while (!pq.isEmpty()) {\n        cur.next=pq.poll();\n        cur=cur.next;\n        if (cur.next!=null) pq.offer(cur.next);\n    }\n    return dummy.next;\n}",
+    "complexity": {
+      "time": "O(N log k)",
+      "space": "O(k)"
+    },
+    "walkthrough": "힙에서 최솟값 노드를 꺼내 결과에 연결하고 그 다음 노드를 힙에 삽입. N개 총 노드에 대해 log k 연산.",
+    "secret": "K개 정렬 리스트 병합 나오면 반드시 최소힙+헤드관리 떠올려라. 함정: 분할정복도 가능하나 힙이 코드 간결, 힙에 null 삽입 방지.",
+    "similar": [
+      "cd-041",
+      "cd-043"
+    ]
+  },
+  {
+    "id": "cd-043",
+    "title": "Find Median from Data Stream",
+    "titleKo": "데이터 스트림에서 중앙값 찾기",
+    "difficulty": "hard",
+    "patterns": [
+      "heap"
+    ],
+    "companies": [
+      "카카오",
+      "구글",
+      "라인"
+    ],
+    "description": "데이터 스트림에서 중앙값을 효율적으로 반환하는 자료구조를 설계하라.",
+    "examples": [
+      {
+        "input": "addNum(1), addNum(2), findMedian() -> 1.5, addNum(3), findMedian() -> 2.0",
+        "output": "1.5, 2.0",
+        "explanation": "동적 중앙값 계산"
+      }
+    ],
+    "constraints": [
+      "-10^5 <= num <= 10^5",
+      "findMedian 호출 전 최소 1개 삽입"
+    ],
+    "hints": [
+      "최대힙(하위 절반) + 최소힙(상위 절반)",
+      "두 힙 크기 차이 1 이하 유지"
+    ],
+    "approach": "최대힙/최소힙으로 데이터를 균등 분할, 크기 균형 유지하며 중앙값 O(log n) 삽입",
+    "code": "class MedianFinder {\n    PriorityQueue<Integer> lo = new PriorityQueue<>(Collections.reverseOrder());\n    PriorityQueue<Integer> hi = new PriorityQueue<>();\n    public void addNum(int num) {\n        lo.offer(num);\n        hi.offer(lo.poll());\n        if (lo.size() < hi.size()) lo.offer(hi.poll());\n    }\n    public double findMedian() {\n        return lo.size() > hi.size() ? lo.peek() : (lo.peek()+hi.peek())/2.0;\n    }\n}",
+    "complexity": {
+      "time": "O(log n) addNum, O(1) findMedian",
+      "space": "O(n)"
+    },
+    "walkthrough": "lo(최대힙)에 삽입 후 lo의 최대를 hi(최소힙)로 이동해 상위 절반 보장. hi가 크면 hi 최소를 lo로 복구.",
+    "secret": "스트림 중앙값 나오면 반드시 최대힙+최소힙 균형 떠올려라. 함정: lo가 항상 hi보다 크거나 같게 유지해야 findMedian 단순해짐.",
+    "similar": [
+      "cd-041",
+      "cd-042"
+    ]
+  },
+  {
+    "id": "cd-044",
+    "title": "K Closest Points to Origin",
+    "titleKo": "원점에서 K개 가장 가까운 점",
+    "difficulty": "medium",
+    "patterns": [
+      "heap"
+    ],
+    "companies": [
+      "네이버",
+      "배민",
+      "쿠팡"
+    ],
+    "description": "2D 평면에서 원점에 가장 가까운 k개의 점을 반환하라.",
+    "examples": [
+      {
+        "input": "points=[[1,3],[-2,2]], k=1",
+        "output": "[[-2,2]]",
+        "explanation": "거리 8 vs 5"
+      }
+    ],
+    "constraints": [
+      "1 <= k <= points 크기 <= 10^4"
+    ],
+    "hints": [
+      "거리 기준 최대힙으로 크기 k 유지",
+      "실제 거리 계산 불필요, x^2+y^2 비교"
+    ],
+    "approach": "크기 k 최대힙으로 가장 가까운 k개 유지(힙 초과 시 가장 먼 것 제거)",
+    "code": "public int[][] kClosest(int[][] points, int k) {\n    PriorityQueue<int[]> pq = new PriorityQueue<>((a,b)->(b[0]*b[0]+b[1]*b[1])-(a[0]*a[0]+a[1]*a[1]));\n    for (int[] p : points) {\n        pq.offer(p);\n        if (pq.size() > k) pq.poll();\n    }\n    return pq.toArray(new int[k][]);\n}",
+    "complexity": {
+      "time": "O(n log k)",
+      "space": "O(k)"
+    },
+    "walkthrough": "최대힙으로 가장 먼 점을 힙 상단에 유지. k 초과 시 가장 먼 점 제거. 최종 힙이 가장 가까운 k개.",
+    "secret": "K개 최솟값 유지 나오면 반드시 최대힙 크기K 떠올려라. 함정: sqrt() 사용하면 불필요한 연산, 제곱 합 비교로 충분.",
+    "similar": [
+      "cd-041",
+      "cd-043"
+    ]
+  },
+  {
+    "id": "cd-045",
+    "title": "Number of Connected Components",
+    "titleKo": "연결된 컴포넌트 수",
+    "difficulty": "medium",
+    "patterns": [
+      "union-find"
+    ],
+    "companies": [
+      "카카오",
+      "라인",
+      "네이버"
+    ],
+    "description": "n개의 노드와 엣지 목록으로 이루어진 그래프에서 연결된 컴포넌트 수를 반환하라.",
+    "examples": [
+      {
+        "input": "n=5, edges=[[0,1],[1,2],[3,4]]",
+        "output": "2",
+        "explanation": "{0,1,2}와 {3,4}"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 2000",
+      "0 <= edges 크기 <= 5000"
+    ],
+    "hints": [
+      "Union-Find: parent 배열 초기화 후 엣지마다 union",
+      "컴포넌트 수 = root가 자신인 노드 수"
+    ],
+    "approach": "Union-Find로 엣지 연결, 경로 압축+랭크로 효율화",
+    "code": "int[] parent, rank;\npublic int countComponents(int n, int[][] edges) {\n    parent=new int[n]; rank=new int[n];\n    for (int i=0;i<n;i++) parent[i]=i;\n    int count=n;\n    for (int[] e:edges) if (union(e[0],e[1])) count--;\n    return count;\n}\nint find(int x) { return parent[x]==x?x:(parent[x]=find(parent[x])); }\nboolean union(int a, int b) {\n    int ra=find(a), rb=find(b);\n    if (ra==rb) return false;\n    if (rank[ra]<rank[rb]) parent[ra]=rb;\n    else if (rank[ra]>rank[rb]) parent[rb]=ra;\n    else { parent[rb]=ra; rank[ra]++; }\n    return true;\n}",
+    "complexity": {
+      "time": "O(n*alpha(n))",
+      "space": "O(n)"
+    },
+    "walkthrough": "초기 컴포넌트 n개. 엣지 union 성공할 때마다 컴포넌트 감소. 경로 압축으로 find가 거의 O(1).",
+    "secret": "연결 컴포넌트 수 나오면 반드시 Union-Find+경로압축 떠올려라. 함정: DFS도 가능하나 동적 엣지 추가 시 Union-Find가 월등히 효율적.",
+    "similar": [
+      "cd-046",
+      "cd-047"
+    ]
+  },
+  {
+    "id": "cd-046",
+    "title": "Redundant Connection",
+    "titleKo": "중복 연결",
+    "difficulty": "medium",
+    "patterns": [
+      "union-find"
+    ],
+    "companies": [
+      "토스",
+      "배민"
+    ],
+    "description": "트리에 엣지 하나를 추가해 사이클이 생겼을 때 제거해야 할 엣지를 반환하라.",
+    "examples": [
+      {
+        "input": "edges=[[1,2],[1,3],[2,3]]",
+        "output": "[2,3]",
+        "explanation": "[2,3]이 사이클 생성 엣지"
+      }
+    ],
+    "constraints": [
+      "3 <= n <= 1000"
+    ],
+    "hints": [
+      "엣지 추가 시 두 노드가 이미 같은 컴포넌트면 해당 엣지가 중복",
+      "Union-Find로 사이클 감지"
+    ],
+    "approach": "엣지를 순서대로 Union-Find에 추가, union 실패(사이클) 시 그 엣지 반환",
+    "code": "int[] parent;\npublic int[] findRedundantConnection(int[][] edges) {\n    parent=new int[edges.length+1];\n    for (int i=0;i<parent.length;i++) parent[i]=i;\n    for (int[] e:edges) {\n        if (find(e[0])==find(e[1])) return e;\n        union(e[0],e[1]);\n    }\n    return new int[]{};\n}\nint find(int x) { return parent[x]==x?x:(parent[x]=find(parent[x])); }\nvoid union(int a, int b) { parent[find(a)]=find(b); }",
+    "complexity": {
+      "time": "O(n*alpha(n))",
+      "space": "O(n)"
+    },
+    "walkthrough": "엣지 추가 전 두 끝점의 root 비교. 같으면 이미 연결됐으므로 이 엣지가 중복.",
+    "secret": "사이클 생성 엣지 찾기 나오면 반드시 Union-Find+union실패 감지 떠올려라. 함정: DFS로도 가능하나 Union-Find가 코드 간결.",
+    "similar": [
+      "cd-045",
+      "cd-047"
+    ]
+  },
+  {
+    "id": "cd-047",
+    "title": "Graph Valid Tree",
+    "titleKo": "유효한 트리 그래프",
+    "difficulty": "medium",
+    "patterns": [
+      "union-find",
+      "dfs"
+    ],
+    "companies": [
+      "라인",
+      "구글"
+    ],
+    "description": "n개의 노드와 엣지가 유효한 트리를 형성하는지 확인하라.",
+    "examples": [
+      {
+        "input": "n=5, edges=[[0,1],[0,2],[0,3],[1,4]]",
+        "output": "true",
+        "explanation": "사이클 없고 모두 연결됨"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 2000",
+      "0 <= edges 크기 <= 5000"
+    ],
+    "hints": [
+      "트리 조건: 엣지 수 = n-1, 사이클 없음",
+      "Union-Find로 사이클 감지 + 엣지 수 확인"
+    ],
+    "approach": "엣지 수 == n-1 확인 후 Union-Find로 사이클 부재 검증",
+    "code": "int[] parent;\npublic boolean validTree(int n, int[][] edges) {\n    if (edges.length != n-1) return false;\n    parent=new int[n];\n    for (int i=0;i<n;i++) parent[i]=i;\n    for (int[] e:edges) {\n        if (find(e[0])==find(e[1])) return false;\n        parent[find(e[0])]=find(e[1]);\n    }\n    return true;\n}\nint find(int x) { return parent[x]==x?x:(parent[x]=find(parent[x])); }",
+    "complexity": {
+      "time": "O(n*alpha(n))",
+      "space": "O(n)"
+    },
+    "walkthrough": "트리는 정확히 n-1개 엣지. 사이클 없음. Union-Find로 두 조건을 동시 확인.",
+    "secret": "그래프 트리 검증 나오면 반드시 엣지수==n-1+사이클없음 두 조건 떠올려라. 함정: 둘 중 하나만 확인하면 틀림(연결되지 않은 포레스트 케이스).",
+    "similar": [
+      "cd-045",
+      "cd-046"
+    ]
+  },
+  {
+    "id": "cd-048",
+    "title": "Accounts Merge",
+    "titleKo": "계정 합병",
+    "difficulty": "medium",
+    "patterns": [
+      "union-find",
+      "hash-map"
+    ],
+    "companies": [
+      "카카오",
+      "구글",
+      "쿠팡"
+    ],
+    "description": "이메일이 겹치는 계정을 하나로 합병하라.",
+    "examples": [
+      {
+        "input": "accounts=[[John,a,b],[John,c],[John,b,c]]",
+        "output": "[[John,a,b,c]]",
+        "explanation": "b,c 공유로 모두 합병"
+      }
+    ],
+    "constraints": [
+      "1 <= accounts 크기 <= 1000"
+    ],
+    "hints": [
+      "이메일을 노드로, 같은 계정의 이메일들을 union",
+      "이메일→이름 Map + Union-Find"
+    ],
+    "approach": "이메일을 Union-Find 노드로 취급, 같은 계정 이메일들 union 후 root 기준 그룹화",
+    "code": "public List<List<String>> accountsMerge(List<List<String>> accounts) {\n    Map<String,String> parent=new HashMap<>(), emailName=new HashMap<>();\n    for (List<String> acc:accounts) {\n        String name=acc.get(0);\n        for (int i=1;i<acc.size();i++) {\n            parent.putIfAbsent(acc.get(i),acc.get(i));\n            emailName.put(acc.get(i),name);\n            if (i>1) union(parent,acc.get(1),acc.get(i));\n        }\n    }\n    Map<String,TreeSet<String>> groups=new HashMap<>();\n    for (String email:parent.keySet()) {\n        String root=find(parent,email);\n        groups.computeIfAbsent(root,k->new TreeSet<>()).add(email);\n    }\n    List<List<String>> res=new ArrayList<>();\n    for (Map.Entry<String,TreeSet<String>> e:groups.entrySet()) {\n        List<String> list=new ArrayList<>();\n        list.add(emailName.get(e.getKey()));\n        list.addAll(e.getValue());\n        res.add(list);\n    }\n    return res;\n}\nString find(Map<String,String> p, String x) {\n    if (!p.get(x).equals(x)) p.put(x,find(p,p.get(x)));\n    return p.get(x);\n}\nvoid union(Map<String,String> p, String a, String b) { p.put(find(p,a),find(p,b)); }",
+    "complexity": {
+      "time": "O(n*alpha(n)*log n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "각 계정 첫 이메일을 기준으로 나머지 union. 모든 이메일 처리 후 root 기준으로 TreeSet 그룹화.",
+    "secret": "이메일 그룹화/계정 합병 나오면 반드시 이메일을 Union-Find 노드로 떠올려라. 함정: 정렬 출력 필요하므로 TreeSet 사용.",
+    "similar": [
+      "cd-045",
+      "cd-047"
+    ]
+  },
+  {
+    "id": "cd-049",
+    "title": "Implement Trie",
+    "titleKo": "트라이 구현",
+    "difficulty": "medium",
+    "patterns": [
+      "trie"
+    ],
+    "companies": [
+      "카카오",
+      "네이버",
+      "라인"
+    ],
+    "description": "insert, search, startsWith를 지원하는 트라이 자료구조를 구현하라.",
+    "examples": [
+      {
+        "input": "insert(\"apple\"), search(\"apple\")->true, startsWith(\"app\")->true",
+        "output": "설계 문제",
+        "explanation": "기본 트라이 연산"
+      }
+    ],
+    "constraints": [
+      "1 <= 단어 길이 <= 2000",
+      "소문자 알파벳만"
+    ],
+    "hints": [
+      "각 노드는 children[26] 배열 + isEnd 플래그",
+      "insert/search/startsWith 모두 O(L)"
+    ],
+    "approach": "26개 자식 배열 노드로 트라이 구성, isEnd로 단어 끝 표시",
+    "code": "class Trie {\n    TrieNode root = new TrieNode();\n    public void insert(String word) {\n        TrieNode cur=root;\n        for (char c:word.toCharArray()) {\n            if (cur.children[c-'a']==null) cur.children[c-'a']=new TrieNode();\n            cur=cur.children[c-'a'];\n        }\n        cur.isEnd=true;\n    }\n    public boolean search(String word) {\n        TrieNode cur=root;\n        for (char c:word.toCharArray()) {\n            if (cur.children[c-'a']==null) return false;\n            cur=cur.children[c-'a'];\n        }\n        return cur.isEnd;\n    }\n    public boolean startsWith(String prefix) {\n        TrieNode cur=root;\n        for (char c:prefix.toCharArray()) {\n            if (cur.children[c-'a']==null) return false;\n            cur=cur.children[c-'a'];\n        }\n        return true;\n    }\n}\nclass TrieNode { TrieNode[] children=new TrieNode[26]; boolean isEnd; }",
+    "complexity": {
+      "time": "O(L) 각 연산",
+      "space": "O(총 문자 수)"
+    },
+    "walkthrough": "insert는 문자별 노드 생성 후 isEnd=true. search는 경로 탐색 후 isEnd 확인. startsWith는 경로 존재만 확인.",
+    "secret": "문자열 검색/접두사 쿼리 나오면 반드시 트라이 떠올려라. 함정: HashMap 기반 자식도 가능하나 26배열이 메모리/속도 균형적.",
+    "similar": [
+      "cd-050",
+      "cd-051"
+    ]
+  },
+  {
+    "id": "cd-050",
+    "title": "Word Search II",
+    "titleKo": "단어 검색 II",
+    "difficulty": "hard",
+    "patterns": [
+      "trie",
+      "backtracking"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오"
+    ],
+    "description": "2D 격자에서 단어 목록에 있는 모든 단어를 찾아 반환하라.",
+    "examples": [
+      {
+        "input": "board=[[o,a,a,n],[e,t,a,e],[i,h,k,r],[i,f,l,v]], words=[\"oath\",\"pea\",\"eat\",\"rain\"]",
+        "output": "[\"eat\",\"oath\"]",
+        "explanation": "격자에서 찾은 단어들"
+      }
+    ],
+    "constraints": [
+      "1 <= m,n <= 12",
+      "1 <= words 크기 <= 3*10^4"
+    ],
+    "hints": [
+      "단어들을 트라이에 삽입 후 격자 DFS",
+      "트라이 노드에서 단어 끝 발견 시 결과 추가"
+    ],
+    "approach": "단어를 트라이에 삽입 후 격자 각 셀에서 DFS, 트라이 경로를 따라 탐색",
+    "code": "public List<String> findWords(char[][] board, String[] words) {\n    TrieNode root=new TrieNode();\n    for (String w:words) {\n        TrieNode cur=root;\n        for (char c:w.toCharArray()) {\n            if (cur.children[c-'a']==null) cur.children[c-'a']=new TrieNode();\n            cur=cur.children[c-'a'];\n        }\n        cur.word=w;\n    }\n    List<String> res=new ArrayList<>();\n    for (int i=0;i<board.length;i++)\n        for (int j=0;j<board[0].length;j++)\n            dfs(board,i,j,root,res);\n    return res;\n}\nvoid dfs(char[][] b, int i, int j, TrieNode node, List<String> res) {\n    if (i<0||i>=b.length||j<0||j>=b[0].length||b[i][j]=='#') return;\n    char c=b[i][j];\n    TrieNode next=node.children[c-'a'];\n    if (next==null) return;\n    if (next.word!=null) { res.add(next.word); next.word=null; }\n    b[i][j]='#';\n    dfs(b,i+1,j,next,res); dfs(b,i-1,j,next,res); dfs(b,i,j+1,next,res); dfs(b,i,j-1,next,res);\n    b[i][j]=c;\n}\nclass TrieNode { TrieNode[] children=new TrieNode[26]; String word; }",
+    "complexity": {
+      "time": "O(m*n*4^L)",
+      "space": "O(총 단어 문자 수)"
+    },
+    "walkthrough": "트라이로 공통 접두사 공유. DFS 중 트라이 노드 없으면 즉시 가지치기. word!=null이면 단어 발견.",
+    "secret": "격자에서 여러 단어 동시 탐색 나오면 반드시 트라이+DFS 조합 떠올려라. 함정: 단어별 DFS는 O(words*m*n*4^L), 트라이로 가지치기하면 훨씬 빠름.",
+    "similar": [
+      "cd-049",
+      "cd-035"
+    ]
+  },
+  {
+    "id": "cd-051",
+    "title": "Design Add and Search Words",
+    "titleKo": "단어 추가 및 검색 설계",
+    "difficulty": "medium",
+    "patterns": [
+      "trie"
+    ],
+    "companies": [
+      "카카오",
+      "배민"
+    ],
+    "description": "'.'가 임의의 문자를 나타낼 수 있는 패턴 검색을 지원하는 자료구조를 설계하라.",
+    "examples": [
+      {
+        "input": "addWord(\"bad\"), search(\".ad\")->true, search(\"b..\")->true",
+        "output": "설계 문제",
+        "explanation": "와일드카드 검색"
+      }
+    ],
+    "constraints": [
+      "1 <= 단어 길이 <= 25",
+      "소문자 + '.'"
+    ],
+    "hints": [
+      "트라이 + '.' 만나면 모든 자식에 재귀",
+      "DFS로 '.' 처리"
+    ],
+    "approach": "트라이에 단어 저장, '.' 만나면 모든 자식 노드에 재귀 DFS",
+    "code": "class WordDictionary {\n    TrieNode root=new TrieNode();\n    public void addWord(String word) {\n        TrieNode cur=root;\n        for (char c:word.toCharArray()) {\n            if (cur.children[c-'a']==null) cur.children[c-'a']=new TrieNode();\n            cur=cur.children[c-'a'];\n        }\n        cur.isEnd=true;\n    }\n    public boolean search(String word) { return dfs(word,0,root); }\n    boolean dfs(String word, int i, TrieNode node) {\n        if (i==word.length()) return node.isEnd;\n        char c=word.charAt(i);\n        if (c=='.') {\n            for (TrieNode child:node.children)\n                if (child!=null && dfs(word,i+1,child)) return true;\n            return false;\n        }\n        if (node.children[c-'a']==null) return false;\n        return dfs(word,i+1,node.children[c-'a']);\n    }\n}\nclass TrieNode { TrieNode[] children=new TrieNode[26]; boolean isEnd; }",
+    "complexity": {
+      "time": "O(L) addWord, O(26^n) 최악 search",
+      "space": "O(총 문자 수)"
+    },
+    "walkthrough": "일반 문자는 해당 자식으로 이동, '.'는 모든 비null 자식에 재귀. 인덱스 끝에서 isEnd 반환.",
+    "secret": "와일드카드 패턴 트라이 검색 나오면 반드시 '.'=모든자식 재귀 DFS 떠올려라. 함정: '.' 처리에 반복문 + 재귀 조합 필수.",
+    "similar": [
+      "cd-049",
+      "cd-050"
+    ]
+  },
+  {
+    "id": "cd-052",
+    "title": "Longest Word in Dictionary",
+    "titleKo": "사전에서 가장 긴 단어",
+    "difficulty": "medium",
+    "patterns": [
+      "trie"
+    ],
+    "companies": [
+      "당근",
+      "토스"
+    ],
+    "description": "단어 목록에서 다른 단어들로 한 글자씩 만들 수 있는 가장 긴 단어를 반환하라.",
+    "examples": [
+      {
+        "input": "words=[\"w\",\"wo\",\"wor\",\"word\",\"world\"]",
+        "output": "\"world\"",
+        "explanation": "w->wo->wor->word->world 모두 사전에 존재"
+      }
+    ],
+    "constraints": [
+      "1 <= words 크기 <= 1000",
+      "1 <= 단어 길이 <= 30"
+    ],
+    "hints": [
+      "트라이에 삽입 후 BFS/DFS로 isEnd 체인 탐색",
+      "Set으로 O(n) 접근도 가능"
+    ],
+    "approach": "단어를 Set에 저장 후 각 단어의 모든 접두사가 Set에 있는지 확인",
+    "code": "public String longestWord(String[] words) {\n    Set<String> set = new HashSet<>(Arrays.asList(words));\n    String res=\"\";\n    for (String word:words) {\n        if (word.length()>res.length() ||\n            (word.length()==res.length() && word.compareTo(res)<0)) {\n            boolean valid=true;\n            for (int i=1;i<word.length();i++)\n                if (!set.contains(word.substring(0,i))) { valid=false; break; }\n            if (valid) res=word;\n        }\n    }\n    return res;\n}",
+    "complexity": {
+      "time": "O(n*L)",
+      "space": "O(n*L)"
+    },
+    "walkthrough": "각 단어의 길이 1~length-1 접두사가 모두 Set에 있으면 유효. 더 길거나 같은 길이면 사전순 비교.",
+    "secret": "접두사 체인 완성 최장 단어 나오면 반드시 Set 접두사 검증 떠올려라. 함정: 트라이 BFS도 가능하나 Set 풀이가 구현 더 간단.",
+    "similar": [
+      "cd-049",
+      "cd-051"
+    ]
+  },
+  {
+    "id": "cd-053",
+    "title": "Single Number",
+    "titleKo": "단독 숫자",
+    "difficulty": "easy",
+    "patterns": [
+      "bit-manipulation"
+    ],
+    "companies": [
+      "카카오",
+      "네이버",
+      "배민"
+    ],
+    "description": "모든 원소가 두 번 등장하고 하나만 한 번 등장하는 배열에서 그 원소를 찾아라.",
+    "examples": [
+      {
+        "input": "nums=[4,1,2,1,2]",
+        "output": "4",
+        "explanation": "4만 한 번 등장"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 3*10^4",
+      "선형 시간, 상수 공간"
+    ],
+    "hints": [
+      "XOR: a^a=0, a^0=a",
+      "모든 원소 XOR 하면 쌍은 사라지고 단독 원소만 남음"
+    ],
+    "approach": "모든 원소를 XOR 연산, 쌍끼리 상쇄되어 단독 원소만 남음",
+    "code": "public int singleNumber(int[] nums) {\n    int res = 0;\n    for (int n : nums) res ^= n;\n    return res;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "XOR는 교환/결합법칙 성립. 같은 수는 0이 되고 단독 수만 최종 남는다.",
+    "secret": "쌍에서 단독 원소 찾기 나오면 반드시 XOR 전체 떠올려라. 함정: HashMap 풀이는 O(n) 공간, XOR는 O(1) 공간.",
+    "similar": [
+      "cd-054",
+      "cd-055"
+    ]
+  },
+  {
+    "id": "cd-054",
+    "title": "Number of 1 Bits",
+    "titleKo": "1 비트의 수",
+    "difficulty": "easy",
+    "patterns": [
+      "bit-manipulation"
+    ],
+    "companies": [
+      "토스",
+      "당근"
+    ],
+    "description": "양의 정수의 이진 표현에서 1의 개수(해밍 웨이트)를 반환하라.",
+    "examples": [
+      {
+        "input": "n=11 (1011)",
+        "output": "3",
+        "explanation": "세 개의 1 비트"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 2^31-1"
+    ],
+    "hints": [
+      "n & (n-1)로 최하위 1 비트 제거 반복",
+      "또는 n & 1로 최하위 비트 확인 후 우측 시프트"
+    ],
+    "approach": "n & (n-1)로 최하위 1비트를 매번 제거하며 1의 개수 카운트",
+    "code": "public int hammingWeight(int n) {\n    int count = 0;\n    while (n != 0) {\n        n &= (n-1);\n        count++;\n    }\n    return count;\n}",
+    "complexity": {
+      "time": "O(k) k=1의 개수",
+      "space": "O(1)"
+    },
+    "walkthrough": "n & (n-1)은 n의 최하위 1 비트를 0으로 만든다. 이를 반복해 0이 될 때까지 카운트.",
+    "secret": "비트 1 개수 나오면 반드시 n&(n-1) 트릭 떠올려라. 함정: 음수 처리 시 >>> 사용 필요(Java에서 >> 는 부호 유지).",
+    "similar": [
+      "cd-053",
+      "cd-055"
+    ]
+  },
+  {
+    "id": "cd-055",
+    "title": "Counting Bits",
+    "titleKo": "비트 카운팅",
+    "difficulty": "easy",
+    "patterns": [
+      "bit-manipulation",
+      "dp"
+    ],
+    "companies": [
+      "배민",
+      "쿠팡"
+    ],
+    "description": "0부터 n까지 각 정수의 이진 표현에서 1의 개수를 배열로 반환하라.",
+    "examples": [
+      {
+        "input": "n=5",
+        "output": "[0,1,1,2,1,2]",
+        "explanation": "0~5의 popcount"
+      }
+    ],
+    "constraints": [
+      "0 <= n <= 10^5"
+    ],
+    "hints": [
+      "dp[i] = dp[i>>1] + (i&1)",
+      "짝수는 1 비트가 절반과 동일, 홀수는 +1"
+    ],
+    "approach": "DP: 이전 값 재활용, dp[i] = dp[i/2] + i%2",
+    "code": "public int[] countBits(int n) {\n    int[] dp = new int[n+1];\n    for (int i=1; i<=n; i++)\n        dp[i] = dp[i>>1] + (i&1);\n    return dp;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "i를 오른쪽 시프트하면 최하위 비트가 제거된 수. 그 1 개수에 제거된 비트(i&1)를 더한다.",
+    "secret": "0~n popcount 배열 나오면 반드시 dp[i]=dp[i>>1]+(i&1) 떠올려라. 함정: 각각 hammingWeight 계산하면 O(n log n), DP는 O(n).",
+    "similar": [
+      "cd-054",
+      "cd-056"
+    ]
+  },
+  {
+    "id": "cd-056",
+    "title": "Reverse Bits",
+    "titleKo": "비트 뒤집기",
+    "difficulty": "easy",
+    "patterns": [
+      "bit-manipulation"
+    ],
+    "companies": [
+      "네이버",
+      "라인"
+    ],
+    "description": "32비트 부호 없는 정수의 비트를 뒤집어라.",
+    "examples": [
+      {
+        "input": "n=43261596 (00000010100101...)",
+        "output": "964176192",
+        "explanation": "비트 순서 반전"
+      }
+    ],
+    "constraints": [
+      "입력은 32비트 부호 없는 정수"
+    ],
+    "hints": [
+      "최하위 비트를 res에 추가하고 n을 오른쪽 시프트",
+      "res를 왼쪽 시프트로 공간 확보"
+    ],
+    "approach": "32번 반복: res를 1 왼쪽 시프트 후 n의 최하위 비트 추가, n을 1 오른쪽 시프트",
+    "code": "public int reverseBits(int n) {\n    int res = 0;\n    for (int i=0; i<32; i++) {\n        res = (res << 1) | (n & 1);\n        n >>>= 1;\n    }\n    return res;\n}",
+    "complexity": {
+      "time": "O(1)",
+      "space": "O(1)"
+    },
+    "walkthrough": "n의 최하위 비트를 res의 현재 최하위로 이동. 32번 반복으로 모든 비트 위치 역전.",
+    "secret": "비트 뒤집기 나오면 반드시 res<<=1 | (n&1) + n>>>=1 루프 떠올려라. 함정: Java에서 음수 처리 시 >> 대신 >>> 사용 필수.",
+    "similar": [
+      "cd-053",
+      "cd-055"
+    ]
+  },
+  {
+    "id": "cd-057",
+    "title": "Daily Temperatures",
+    "titleKo": "일일 온도",
+    "difficulty": "medium",
+    "patterns": [
+      "monotonic-stack"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡",
+      "라인"
+    ],
+    "description": "각 날에 대해 더 따뜻한 날이 며칠 후인지 배열로 반환하라.",
+    "examples": [
+      {
+        "input": "temperatures=[73,74,75,71,69,72,76,73]",
+        "output": "[1,1,4,2,1,1,0,0]",
+        "explanation": "각 날의 대기 일수"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10^5",
+      "30 <= temperatures[i] <= 100"
+    ],
+    "hints": [
+      "단조 감소 스택에 인덱스 저장",
+      "더 큰 값 발견 시 스택 top들을 pop하며 간격 계산"
+    ],
+    "approach": "단조 감소 스택: 더 높은 온도 발견 시 스택에서 pop하며 answer 배열 갱신",
+    "code": "public int[] dailyTemperatures(int[] temperatures) {\n    int n=temperatures.length;\n    int[] ans=new int[n];\n    Deque<Integer> stack=new ArrayDeque<>();\n    for (int i=0;i<n;i++) {\n        while (!stack.isEmpty() && temperatures[i]>temperatures[stack.peek()]) {\n            int idx=stack.pop();\n            ans[idx]=i-idx;\n        }\n        stack.push(i);\n    }\n    return ans;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "스택에 인덱스 저장. 현재 온도가 스택 top 온도보다 크면 pop하고 차이를 답으로 저장.",
+    "secret": "다음 더 큰 값까지 거리 나오면 반드시 단조 감소 스택 떠올려라. 함정: 값 대신 인덱스를 스택에 저장해야 거리 계산 가능.",
+    "similar": [
+      "cd-058",
+      "cd-060"
+    ]
+  },
+  {
+    "id": "cd-058",
+    "title": "Next Greater Element",
+    "titleKo": "다음 더 큰 원소",
+    "difficulty": "medium",
+    "patterns": [
+      "monotonic-stack"
+    ],
+    "companies": [
+      "배민",
+      "당근"
+    ],
+    "description": "nums1의 각 원소에 대해 nums2에서 그 오른쪽에 있는 첫 번째 더 큰 원소를 반환하라.",
+    "examples": [
+      {
+        "input": "nums1=[4,1,2], nums2=[1,3,4,2]",
+        "output": "[-1,3,-1]",
+        "explanation": "4의 다음 큰 수 없음, 1의 다음 큰 수 3"
+      }
+    ],
+    "constraints": [
+      "1 <= nums1,nums2 크기 <= 1000",
+      "nums1은 nums2의 부분집합"
+    ],
+    "hints": [
+      "nums2 단조 감소 스택으로 nextGreater Map 생성",
+      "nums1 원소를 Map에서 조회"
+    ],
+    "approach": "nums2에서 단조 스택으로 각 원소의 nextGreater 사전 계산 후 nums1 조회",
+    "code": "public int[] nextGreaterElement(int[] nums1, int[] nums2) {\n    Map<Integer,Integer> nextGreater=new HashMap<>();\n    Deque<Integer> stack=new ArrayDeque<>();\n    for (int n:nums2) {\n        while (!stack.isEmpty() && stack.peek()<n)\n            nextGreater.put(stack.pop(), n);\n        stack.push(n);\n    }\n    int[] res=new int[nums1.length];\n    for (int i=0;i<nums1.length;i++)\n        res[i]=nextGreater.getOrDefault(nums1[i],-1);\n    return res;\n}",
+    "complexity": {
+      "time": "O(m+n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "nums2 순회 중 스택 top보다 크면 pop하며 map에 저장. 스택에 남은 원소는 nextGreater 없음(-1).",
+    "secret": "다음 큰 원소 쿼리 나오면 반드시 단조 스택으로 사전계산+Map 조회 떠올려라. 함정: nums2 전체 먼저 처리 후 nums1 조회, 반대 순서면 오답.",
+    "similar": [
+      "cd-057",
+      "cd-059"
+    ]
+  },
+  {
+    "id": "cd-059",
+    "title": "Largest Rectangle in Histogram",
+    "titleKo": "히스토그램에서 가장 큰 직사각형",
+    "difficulty": "hard",
+    "patterns": [
+      "monotonic-stack"
+    ],
+    "companies": [
+      "구글",
+      "카카오",
+      "쿠팡"
+    ],
+    "description": "히스토그램에서 만들 수 있는 가장 큰 직사각형의 넓이를 반환하라.",
+    "examples": [
+      {
+        "input": "heights=[2,1,5,6,2,3]",
+        "output": "10",
+        "explanation": "높이 5,6으로 넓이 10"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 10^5",
+      "0 <= heights[i] <= 10^4"
+    ],
+    "hints": [
+      "단조 증가 스택에 인덱스 저장",
+      "높이 감소 시 pop하며 넓이 계산"
+    ],
+    "approach": "단조 증가 스택: 높이 감소 시 pop하며 해당 높이로 만들 수 있는 최대 넓이 계산",
+    "code": "public int largestRectangleArea(int[] heights) {\n    Deque<Integer> stack=new ArrayDeque<>();\n    int max=0;\n    int[] h=Arrays.copyOf(heights, heights.length+1);\n    for (int i=0;i<h.length;i++) {\n        while (!stack.isEmpty() && h[i]<h[stack.peek()]) {\n            int height=h[stack.pop()];\n            int width=stack.isEmpty()?i:i-stack.peek()-1;\n            max=Math.max(max, height*width);\n        }\n        stack.push(i);\n    }\n    return max;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(n)"
+    },
+    "walkthrough": "스택에 인덱스 저장. 높이 감소 시 pop한 높이로 직사각형 계산: 너비는 현재i와 새 top 사이. 끝에 0 추가로 나머지 처리.",
+    "secret": "히스토그램 최대 직사각형 나오면 반드시 단조 증가 스택+높이감소시pop 떠올려라. 함정: 넓이 계산 시 width=i-stack.peek()-1(새 top 포함 안 함).",
+    "similar": [
+      "cd-057",
+      "cd-060"
+    ]
+  },
+  {
+    "id": "cd-060",
+    "title": "Trapping Rain Water",
+    "titleKo": "빗물 가두기",
+    "difficulty": "hard",
+    "patterns": [
+      "monotonic-stack",
+      "two-pointers"
+    ],
+    "companies": [
+      "구글",
+      "메타",
+      "카카오",
+      "쿠팡"
+    ],
+    "description": "높이 배열에서 가둘 수 있는 빗물의 총량을 반환하라.",
+    "examples": [
+      {
+        "input": "height=[0,1,0,2,1,0,1,3,2,1,2,1]",
+        "output": "6",
+        "explanation": "6 단위의 빗물"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 2*10^4",
+      "0 <= height[i] <= 3*10^4"
+    ],
+    "hints": [
+      "각 위치의 물 = min(왼쪽최대, 오른쪽최대) - 현재높이",
+      "투 포인터: maxLeft, maxRight 유지"
+    ],
+    "approach": "투 포인터: 양끝에서 좁혀오며 낮은 쪽 처리, min(maxL,maxR)-h 계산",
+    "code": "public int trap(int[] height) {\n    int left=0, right=height.length-1;\n    int maxL=0, maxR=0, water=0;\n    while (left < right) {\n        if (height[left] < height[right]) {\n            if (height[left] >= maxL) maxL=height[left];\n            else water+=maxL-height[left];\n            left++;\n        } else {\n            if (height[right] >= maxR) maxR=height[right];\n            else water+=maxR-height[right];\n            right--;\n        }\n    }\n    return water;\n}",
+    "complexity": {
+      "time": "O(n)",
+      "space": "O(1)"
+    },
+    "walkthrough": "낮은 쪽 포인터 처리: maxL/maxR보다 낮으면 차이만큼 물 채움. 높으면 max 갱신. 항상 낮은 쪽이 보틀넥.",
+    "secret": "빗물 가두기 나오면 반드시 투 포인터 maxL/maxR 떠올려라. 함정: 스택 풀이도 가능하나 투포인터가 O(1) 공간으로 최적.",
+    "similar": [
+      "cd-003",
+      "cd-059"
+    ]
   }
 ]
