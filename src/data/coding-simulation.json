@@ -1,0 +1,522 @@
+[
+  {
+    "id": "cdm-001",
+    "title": "Report Result",
+    "titleKo": "신고 결과 받기",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "hashmap"],
+    "companies": ["카카오"],
+    "description": "게시판 이용자들은 부적절한 사용자를 신고할 수 있습니다. 신고 규칙:\n1. 이용자는 한 번에 한 명만 신고할 수 있으며, 자기 자신은 신고할 수 없습니다.\n2. 동일 이용자를 여러 번 신고해도 1회로 처리됩니다.\n3. k번 이상 신고된 이용자는 게시판 이용이 정지됩니다.\n4. 정지된 이용자를 신고한 모든 이용자에게 이메일이 1건씩 발송됩니다.\n\n입력: id_list (이용자 ID 목록), report (신고 내역, 'a b'는 a가 b를 신고), k (정지 기준 신고 횟수)\n출력: id_list 순서대로 각 이용자가 받을 이메일 수 배열",
+    "examples": [
+      {
+        "input": "id_list=[\"muzi\",\"frodo\",\"apeach\",\"neo\"], report=[\"muzi frodo\",\"apeach frodo\",\"frodo neo\",\"muzi neo\",\"apeach muzi\"], k=2",
+        "output": "[2, 1, 1, 0]",
+        "explanation": "frodo는 muzi, apeach에게 2번 신고 → 정지. neo는 frodo, muzi에게 2번 신고 → 정지. muzi는 frodo, neo 신고 → 2건. apeach는 frodo 신고 → 1건. frodo는 neo 신고 → 1건. neo는 0건."
+      }
+    ],
+    "constraints": [
+      "2 <= id_list.length <= 1000",
+      "1 <= report.length <= 200000",
+      "1 <= k <= 200",
+      "자기 자신 신고 없음",
+      "동일인 중복 신고는 1회로 처리"
+    ],
+    "hints": [
+      "Set을 사용해 중복 신고 제거 (reportSet per user)",
+      "신고당한 횟수를 카운팅 후 k 이상이면 정지 처리",
+      "정지된 사람을 신고한 사람들에게 이메일 카운트 +1"
+    ],
+    "approach": "HashMap<String, Set<String>>으로 각 피신고자에 신고자 목록 관리, 신고 횟수 집계 후 k 이상인 사람을 신고한 유저에게 이메일 카운트.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public int[] solution(String[] id_list, String[] report, int k) {\n        int n = id_list.length;\n        Map<String, Integer> idxMap = new HashMap<>();\n        for (int i = 0; i < n; i++) idxMap.put(id_list[i], i);\n\n        // 각 피신고자를 신고한 사람 Set (중복 제거)\n        Map<String, Set<String>> reportedBy = new HashMap<>();\n        for (String id : id_list) reportedBy.put(id, new HashSet<>());\n\n        for (String r : report) {\n            String[] parts = r.split(\" \");\n            String reporter = parts[0], target = parts[1];\n            reportedBy.get(target).add(reporter);\n        }\n\n        // k번 이상 신고된 사람 판별 후 신고자에게 이메일 카운트\n        int[] answer = new int[n];\n        for (String target : id_list) {\n            Set<String> reporters = reportedBy.get(target);\n            if (reporters.size() >= k) {\n                for (String reporter : reporters) {\n                    answer[idxMap.get(reporter)]++;\n                }\n            }\n        }\n        return answer;\n    }\n}",
+    "complexity": {"time": "O(N + M) where M = report.length", "space": "O(N + M)"},
+    "walkthrough": "각 피신고자에 대해 신고자 Set을 만들어 중복을 자동 제거합니다. 이후 Set 크기가 k 이상인 피신고자를 찾아, 그 Set에 속한 신고자들의 이메일 카운트를 증가시킵니다. id_list 순서에 맞게 idxMap으로 인덱스를 관리합니다.",
+    "secret": "실수 Top 3: 1) 동일인 중복 신고를 Set 없이 단순 카운트하면 오답 (반드시 Set으로 중복 제거). 2) reportedBy의 키를 신고자로 잡으면 역방향 집계가 어려움 (피신고자 기준으로 관리). 3) id_list 순서와 다르게 출력하면 오답 (idxMap 필수).",
+    "similar": ["cdm-002", "cdm-009"]
+  },
+  {
+    "id": "cdm-002",
+    "title": "Parking Fee Calculator",
+    "titleKo": "주차 요금 계산",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "string-parsing"],
+    "companies": ["카카오"],
+    "description": "주차장에서 주차 요금을 정산합니다. 요금 규칙:\n1. 차량이 입차 후 출차 기록이 없으면 23:59에 출차된 것으로 처리합니다.\n2. 누적 주차 시간 계산: 같은 차량이 여러 번 입출차 가능하며 시간은 누적됩니다.\n3. 기본 시간 이하이면 기본 요금만 부과됩니다.\n4. 기본 시간 초과 시: 기본 요금 + ceil((초과 시간) / 단위 시간) * 단위 요금\n5. 차량 번호 오름차순으로 정산 결과 반환\n\n입력: fees=[기본시간, 기본요금, 단위시간, 단위요금], records=[\"HH:MM 차량번호 IN/OUT\"]\n출력: 차량 번호 오름차순으로 각 차량의 주차 요금 배열",
+    "examples": [
+      {
+        "input": "fees=[180, 5000, 10, 600], records=[\"05:34 5961 IN\",\"06:00 0000 IN\",\"06:34 0000 OUT\",\"07:59 5961 OUT\",\"07:59 0000 IN\",\"18:59 0000 OUT\",\"19:09 8888 IN\",\"21:19 0000 IN\",\"22:09 5961 IN\"]",
+        "output": "[14600, 34400, 5000]",
+        "explanation": "0000: 34분+660분+100분=794분 누적, 180분 기본 초과 614분, ceil(614/10)*600+5000=41400. 5961: 25분+53분+90분(23:59기준)=168분, 기본 이하 5000. 8888: 170분(23:59기준), 기본 이하 5000. (차량번호 오름차순: 0000, 5961, 8888)"
+      }
+    ],
+    "constraints": [
+      "1 <= fees.length == 4",
+      "1 <= records.length <= 1000",
+      "시간은 HH:MM 형식 (00:00 ~ 23:59)",
+      "차량 번호는 4자리 숫자",
+      "OUT 기록은 항상 대응하는 IN 기록 뒤에 있음",
+      "기본 시간, 단위 시간 >= 1"
+    ],
+    "hints": [
+      "시간을 분 단위 정수로 변환해서 계산",
+      "IN 기록이 있는데 OUT이 없으면 23:59(=1439분)에 출차 처리",
+      "Math.ceil을 사용하거나 (초과 + 단위-1) / 단위 정수 나눗셈으로 올림"
+    ],
+    "approach": "HashMap으로 차량별 입차 시각과 누적 주차 시간을 관리, 출차 때마다 누적, 마지막에 IN 상태인 차량은 23:59 기준 추가 누적 후 요금 계산.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public int[] solution(int[] fees, String[] records) {\n        int basTime = fees[0], baseFee = fees[1], unitTime = fees[2], unitFee = fees[3];\n        Map<String, Integer> inTime = new HashMap<>();    // 현재 입차 시각\n        Map<String, Integer> totalTime = new HashMap<>(); // 누적 주차 시간\n\n        for (String record : records) {\n            String[] parts = record.split(\" \");\n            int time = toMinutes(parts[0]);\n            String carNum = parts[1];\n            String status = parts[2];\n\n            if (status.equals(\"IN\")) {\n                inTime.put(carNum, time);\n                totalTime.putIfAbsent(carNum, 0);\n            } else {\n                int parked = time - inTime.remove(carNum);\n                totalTime.merge(carNum, parked, Integer::sum);\n            }\n        }\n\n        // 아직 IN 상태인 차량 23:59 처리\n        for (Map.Entry<String, Integer> entry : inTime.entrySet()) {\n            int parked = 1439 - entry.getValue();\n            totalTime.merge(entry.getKey(), parked, Integer::sum);\n        }\n\n        // 차량 번호 오름차순 정렬\n        List<String> sortedCars = new ArrayList<>(totalTime.keySet());\n        Collections.sort(sortedCars);\n\n        int[] answer = new int[sortedCars.size()];\n        for (int i = 0; i < sortedCars.size(); i++) {\n            int t = totalTime.get(sortedCars.get(i));\n            if (t <= basTime) {\n                answer[i] = baseFee;\n            } else {\n                int over = t - basTime;\n                answer[i] = baseFee + (int) Math.ceil((double) over / unitTime) * unitFee;\n            }\n        }\n        return answer;\n    }\n\n    private int toMinutes(String time) {\n        String[] hm = time.split(\":\");\n        return Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);\n    }\n}",
+    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "walkthrough": "각 레코드를 순회하며 IN이면 입차 시각 저장, OUT이면 누적 시간에 추가합니다. 모든 레코드 처리 후 아직 inTime에 남은 차량은 23:59 기준으로 추가 계산합니다. 마지막으로 차량 번호 오름차순 정렬 후 요금을 계산합니다.",
+    "secret": "실수 Top 3: 1) 출차 없는 차량의 23:59 처리 누락 (inTime 잔여 처리 필수). 2) Math.ceil 시 정수 나눗셈으로 하면 올림이 안 됨 (double 캐스팅 또는 (over+unitTime-1)/unitTime 사용). 3) 누적 시간이 기본 시간과 정확히 같을 때 기본 요금만 부과해야 하는데 초과 요금도 추가하는 실수.",
+    "similar": ["cdm-001", "cdm-015"]
+  },
+  {
+    "id": "cdm-003",
+    "title": "Keypad Press",
+    "titleKo": "키패드 누르기",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation"],
+    "companies": ["카카오"],
+    "description": "스마트폰 키패드를 누를 때 두 엄지 손가락을 사용합니다. 키패드 배치:\n1 2 3\n4 5 6\n7 8 9\n* 0 #\n\n규칙:\n1. 왼손 엄지는 처음에 *, 오른손 엄지는 처음에 #에 위치\n2. 1, 4, 7은 왼손으로, 3, 6, 9는 오른손으로 누름\n3. 2, 5, 8, 0은 현재 위치에서 더 가까운 손으로 누름\n4. 거리가 같으면 handedness(\"right\" or \"left\")에 따라 결정\n5. 거리는 상하좌우 이동 횟수(맨하탄 거리)\n\n입력: numbers (누를 번호 배열), hand (주로 사용하는 손)\n출력: 각 번호를 누른 손 (\"L\" or \"R\") 문자열",
+    "examples": [
+      {
+        "input": "numbers=[1, 3, 4, 5, 8, 2, 1, 4, 5, 9, 5], hand=\"right\"",
+        "output": "\"LRLLLRLLRRL\"",
+        "explanation": "1→L(왼손 열), 3→R(오른손 열), 4→L, 5→L(왼손이 4에서 거리1, 오른손이 3에서 거리2, 왼손 더 가까움), 8→L, 2→R(거리 동률 시 right 손), ..."
+      }
+    ],
+    "constraints": [
+      "1 <= numbers.length <= 1000",
+      "0 <= numbers[i] <= 9",
+      "hand는 \"right\" 또는 \"left\"",
+      "거리는 맨하탄 거리 (상하좌우만)"
+    ],
+    "hints": [
+      "키패드 번호를 2D 좌표로 매핑: 0→(3,1), 1→(0,0), 2→(0,1), ..., *→(3,0), #→(3,2)",
+      "맨하탄 거리 = Math.abs(r1-r2) + Math.abs(c1-c2)",
+      "왼손/오른손 현재 위치를 변수로 추적"
+    ],
+    "approach": "키패드 번호→(row, col) 배열로 매핑, 각 숫자마다 왼손/오른손 거리 계산 후 규칙에 따라 손 선택 및 위치 업데이트.",
+    "code": "class Solution {\n    // 키패드 좌표: 1,2,3 → row0 / 4,5,6 → row1 / 7,8,9 → row2 / *,0,# → row3\n    int[][] pad = {\n        {3, 1}, // 0\n        {0, 0}, // 1\n        {0, 1}, // 2\n        {0, 2}, // 3\n        {1, 0}, // 4\n        {1, 1}, // 5\n        {1, 2}, // 6\n        {2, 0}, // 7\n        {2, 1}, // 8\n        {2, 2}, // 9\n    };\n\n    public String solution(int[] numbers, String hand) {\n        StringBuilder sb = new StringBuilder();\n        int[] left = {3, 0};  // * 위치\n        int[] right = {3, 2}; // # 위치\n\n        for (int num : numbers) {\n            int[] target = pad[num];\n            if (num == 1 || num == 4 || num == 7) {\n                sb.append('L');\n                left = new int[]{target[0], target[1]};\n            } else if (num == 3 || num == 6 || num == 9) {\n                sb.append('R');\n                right = new int[]{target[0], target[1]};\n            } else {\n                int distL = Math.abs(left[0] - target[0]) + Math.abs(left[1] - target[1]);\n                int distR = Math.abs(right[0] - target[0]) + Math.abs(right[1] - target[1]);\n                if (distL < distR || (distL == distR && hand.equals(\"left\"))) {\n                    sb.append('L');\n                    left = new int[]{target[0], target[1]};\n                } else {\n                    sb.append('R');\n                    right = new int[]{target[0], target[1]};\n                }\n            }\n        }\n        return sb.toString();\n    }\n}",
+    "complexity": {"time": "O(N)", "space": "O(1)"},
+    "walkthrough": "각 숫자에 대해 왼손/오른손 열에 속하면 바로 해당 손으로 처리합니다. 중간 열(2,5,8,0)은 현재 손 위치에서 맨하탄 거리를 계산해 가까운 손으로 누르고 위치를 업데이트합니다. 거리가 같으면 hand 파라미터로 결정합니다.",
+    "secret": "실수 Top 3: 1) 0의 좌표를 (3,1)로 매핑해야 하는데 잘못 계산하는 실수 (0은 *와 # 사이, row3 col1). 2) left/right 배열 업데이트 시 pad[num] 참조를 그대로 대입하면 pad 원본 훼손 가능 (new int[] 복사 권장). 3) 거리 동일 시 hand 조건을 반대로 적용해 L/R 뒤집는 실수.",
+    "similar": ["cdm-004", "cdm-010"]
+  },
+  {
+    "id": "cdm-004",
+    "title": "Table Edit",
+    "titleKo": "표 편집",
+    "difficulty": "hard",
+    "patterns": ["simulation", "implementation", "linked-list"],
+    "companies": ["카카오"],
+    "description": "n행짜리 표를 편집합니다. 처음에 k번 행이 선택되어 있습니다. 가능한 명령:\n- U X: 현재 선택 행에서 X칸 위로 이동\n- D X: 현재 선택 행에서 X칸 아래로 이동\n- C: 현재 선택 행 삭제 (삭제 후 아래 행 선택, 마지막 행이면 위 행 선택)\n- Z: 최근 삭제 행 복원 (원래 위치에 삽입, 선택 행 변경 없음)\n\n모든 명령 수행 후 표 상태를 출력합니다.\n출력: n개 문자로, 남아있으면 'O' 삭제되어 있으면 'X'",
+    "examples": [
+      {
+        "input": "n=8, k=2, cmd=[\"D 2\",\"C\",\"U 3\",\"C\",\"D 4\",\"C\",\"U 2\",\"Z\",\"Z\"]",
+        "output": "\"OOOOXOOO\"",
+        "explanation": "초기 [0,1,2,3,4,5,6,7], cur=2. D2→cur=4. C→4 삭제 cur=5. U3→cur=2. C→2 삭제 cur=3. D4→cur=7. C→7 삭제 cur=6. U2→cur=4. Z→7 복원. Z→2 복원. 최종 삭제={4} → OOOOXOOO"
+      }
+    ],
+    "constraints": [
+      "5 <= n <= 1000000",
+      "0 <= k < n",
+      "1 <= cmd.length <= 200000",
+      "U X, D X에서 X는 항상 이동 가능한 범위",
+      "C는 남은 행이 1개 이상일 때만 실행",
+      "Z는 삭제 이력이 있을 때만 실행"
+    ],
+    "hints": [
+      "n이 최대 100만이므로 배열 직접 삭제/삽입은 O(N) → TLE 가능",
+      "이중 연결 리스트로 구현하면 삭제/복원 O(1)",
+      "prev[], next[] 배열로 연결 리스트 표현 (실제 LinkedList 객체 생성 없이)"
+    ],
+    "approach": "prev[], next[] 배열로 이중 연결 리스트 구현. 삭제 시 스택에 원래 인덱스 저장, Z 명령 시 스택에서 꺼내 prev/next 연결 복원.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public String solution(int n, int k, String[] cmd) {\n        int[] prev = new int[n + 2];\n        int[] next = new int[n + 2];\n        // 인덱스 1~n이 실제 행(0-indexed+1), 0은 더미 헤드, n+1은 더미 테일\n        for (int i = 0; i <= n + 1; i++) {\n            prev[i] = i - 1;\n            next[i] = i + 1;\n        }\n\n        int cur = k + 1; // 1-indexed\n        Deque<Integer> deleted = new ArrayDeque<>();\n\n        for (String c : cmd) {\n            if (c.equals(\"C\")) {\n                deleted.push(cur);\n                next[prev[cur]] = next[cur];\n                prev[next[cur]] = prev[cur];\n                cur = (next[cur] == n + 1) ? prev[cur] : next[cur];\n            } else if (c.equals(\"Z\")) {\n                int restored = deleted.pop();\n                next[prev[restored]] = restored;\n                prev[next[restored]] = restored;\n            } else {\n                char dir = c.charAt(0);\n                int x = Integer.parseInt(c.substring(2));\n                for (int i = 0; i < x; i++) {\n                    cur = (dir == 'U') ? prev[cur] : next[cur];\n                }\n            }\n        }\n\n        // 결과 생성 (1-indexed → 0-indexed)\n        boolean[] alive = new boolean[n];\n        int node = next[0]; // 더미 헤드 다음부터\n        while (node != n + 1) {\n            alive[node - 1] = true;\n            node = next[node];\n        }\n        StringBuilder sb = new StringBuilder();\n        for (boolean a : alive) sb.append(a ? 'O' : 'X');\n        return sb.toString();\n    }\n}",
+    "complexity": {"time": "O(N + M*X) where M=cmd.length, X=평균 이동거리", "space": "O(N)"},
+    "walkthrough": "더미 헤드/테일을 포함한 이중 연결 리스트를 prev[], next[] 배열로 구현합니다. C 명령 시 현재 노드를 리스트에서 분리하고 스택에 저장, Z 명령 시 스택 top을 꺼내 prev/next 연결을 복원합니다. 최종적으로 연결 리스트를 순회해 생존 여부를 확인합니다.",
+    "secret": "실수 Top 3: 1) 더미 헤드/테일 없이 구현하면 경계 조건(첫/마지막 삭제) 처리가 복잡해짐 (더미 노드 패턴 필수). 2) C 후 cur 업데이트 시 연결 해제 전 next[cur]을 저장해야 하는데 해제 후 접근하는 실수 (next[cur]이 n+1이면 위로). 3) 1-indexed vs 0-indexed 혼용으로 alive 배열 off-by-one 오류 빈발.",
+    "similar": ["cdm-003", "cdm-010"]
+  },
+  {
+    "id": "cdm-005",
+    "title": "Menu Renewal",
+    "titleKo": "메뉴 리뉴얼",
+    "difficulty": "medium",
+    "patterns": ["simulation", "implementation", "combination", "sorting"],
+    "companies": ["카카오"],
+    "description": "레스토랑 메뉴 리뉴얼을 위해 가장 많이 함께 주문된 단품 메뉴 조합을 찾습니다. 규칙:\n1. course에 지정된 길이별로 조합을 생성합니다.\n2. 각 길이에서 가장 많이 주문된 조합을 선정합니다.\n3. 최대 주문 횟수가 2번 이상이어야 코스 메뉴로 등록합니다.\n4. 동일 주문 횟수인 조합은 모두 등록합니다.\n5. 최종 결과는 알파벳 오름차순으로 반환합니다.\n\n입력: orders (각 손님의 주문 메뉴 문자열 배열), course (코스 메뉴로 구성할 단품 개수 배열)\n출력: 코스 메뉴 후보 문자열 배열 (알파벳 오름차순)",
+    "examples": [
+      {
+        "input": "orders=[\"ABCFG\",\"AC\",\"CDE\",\"ACDE\",\"BCFG\",\"ACDEH\"], course=[2,3,4]",
+        "output": "[\"AC\",\"ACDE\",\"BCFG\",\"CDE\"]",
+        "explanation": "2개 조합 중 AC(3회) 최다. 3개 조합 중 ACD, ACE, CDE 각 2회 동률 → 모두 등록. 4개 조합 중 ACDE(2회). 알파벳 정렬: AC, ACDE, BCFG, CDE."
+      }
+    ],
+    "constraints": [
+      "2 <= orders.length <= 1000",
+      "2 <= orders[i].length <= 10",
+      "1 <= course.length <= 10",
+      "2 <= course[i] <= 10",
+      "각 손님 주문에 중복 메뉴 없음",
+      "메뉴는 대문자 알파벳"
+    ],
+    "hints": [
+      "각 주문 문자열을 정렬 후 조합 생성 (순서 통일 필수)",
+      "조합 카운팅은 HashMap<String, Integer> 사용",
+      "각 course 길이마다 최대값 찾고, 최대값>=2인 것만 결과에 추가"
+    ],
+    "approach": "각 주문을 정렬, course 길이별로 모든 손님 주문에서 조합 생성 및 카운팅. 각 길이별 최대값 구해 2 이상인 조합만 결과에 추가 후 정렬.",
+    "code": "import java.util.*;\n\nclass Solution {\n    Map<String, Integer> countMap = new HashMap<>();\n\n    public String[] solution(String[] orders, int[] course) {\n        List<String> result = new ArrayList<>();\n\n        for (int len : course) {\n            countMap.clear();\n            for (String order : orders) {\n                char[] arr = order.toCharArray();\n                Arrays.sort(arr);\n                combination(arr, new StringBuilder(), 0, len);\n            }\n            if (countMap.isEmpty()) continue;\n            int maxCount = Collections.max(countMap.values());\n            if (maxCount >= 2) {\n                for (Map.Entry<String, Integer> e : countMap.entrySet()) {\n                    if (e.getValue() == maxCount) result.add(e.getKey());\n                }\n            }\n        }\n\n        Collections.sort(result);\n        return result.toArray(new String[0]);\n    }\n\n    private void combination(char[] arr, StringBuilder current, int start, int remain) {\n        if (remain == 0) {\n            countMap.merge(current.toString(), 1, Integer::sum);\n            return;\n        }\n        for (int i = start; i <= arr.length - remain; i++) {\n            current.append(arr[i]);\n            combination(arr, current, i + 1, remain - 1);\n            current.deleteCharAt(current.length() - 1);\n        }\n    }\n}",
+    "complexity": {"time": "O(orders.length * C(10,k) * course.length)", "space": "O(C(10,k))"},
+    "walkthrough": "각 course 길이마다 countMap을 초기화하고, 모든 주문에서 해당 길이의 조합을 생성해 카운팅합니다. 주문 문자열을 먼저 정렬해야 'AB'와 'BA'를 같은 조합으로 처리합니다. 길이별 최대 카운트가 2 이상인 조합만 수집 후 알파벳 정렬합니다.",
+    "secret": "실수 Top 3: 1) 주문 문자열 정렬 안 하면 같은 조합이 다른 키로 저장됨 (반드시 정렬 후 조합 생성). 2) 최대값이 1인 경우도 등록하는 실수 (maxCount >= 2 조건 필수). 3) course 길이마다 countMap을 초기화하지 않으면 이전 길이의 카운트가 오염됨.",
+    "similar": ["cdm-006", "cdm-007"]
+  },
+  {
+    "id": "cdm-006",
+    "title": "Expression Maximization",
+    "titleKo": "수식 최대화",
+    "difficulty": "medium",
+    "patterns": ["simulation", "implementation", "permutation"],
+    "companies": ["카카오"],
+    "description": "수식에서 +, -, * 연산자의 우선순위를 임의로 정해 결과값의 절댓값을 최대화합니다. 규칙:\n1. 수식은 숫자와 +, -, * 연산자로만 구성됩니다.\n2. 연산자 우선순위는 +, -, * 세 연산자의 순열 6가지를 모두 시도합니다.\n3. 각 우선순위 설정에서 높은 우선순위 연산자부터 계산합니다.\n4. 결과값의 절댓값이 최대인 것을 반환합니다.\n5. 같은 우선순위를 갖는 연산자는 없습니다.\n\n입력: expression (숫자와 연산자로 이루어진 수식 문자열)\n출력: 결과값 절댓값의 최대값 (long)",
+    "examples": [
+      {
+        "input": "expression=\"100-200*300-500+20\"",
+        "output": "60420",
+        "explanation": "6가지 우선순위 중 [-가 최우선, +, *] 순서로 계산 시 최대 절댓값 60420 달성. 우선순위에 따라 괄호 적용 위치가 달라져 결과가 크게 변동됨."
+      }
+    ],
+    "constraints": [
+      "3 <= expression.length <= 100",
+      "숫자는 1 이상 9자리 이하",
+      "연산자는 +, -, * 만 사용",
+      "첫/마지막 문자는 항상 숫자",
+      "결과값은 long 범위 내"
+    ],
+    "hints": [
+      "수식을 숫자 리스트와 연산자 리스트로 파싱",
+      "3! = 6가지 우선순위 순열을 모두 시도",
+      "높은 우선순위 연산자를 먼저 처리: 해당 연산자 위치를 찾아 인접 숫자를 계산 결과로 대체"
+    ],
+    "approach": "수식을 숫자/연산자 리스트로 파싱, +,-,* 6가지 순열 각각에 대해 우선순위 높은 연산자부터 순차 계산, 절댓값 최대값 반환.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public long solution(String expression) {\n        List<Long> nums = new ArrayList<>();\n        List<Character> ops = new ArrayList<>();\n        StringBuilder sb = new StringBuilder();\n        for (char c : expression.toCharArray()) {\n            if (c == '+' || c == '-' || c == '*') {\n                nums.add(Long.parseLong(sb.toString()));\n                sb.setLength(0);\n                ops.add(c);\n            } else {\n                sb.append(c);\n            }\n        }\n        nums.add(Long.parseLong(sb.toString()));\n\n        char[] operators = {'+', '-', '*'};\n        long maxVal = 0;\n\n        // 3! = 6가지 순열\n        int[][] perms = {{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};\n        for (int[] perm : perms) {\n            List<Long> n = new ArrayList<>(nums);\n            List<Character> o = new ArrayList<>(ops);\n            for (int p : perm) {\n                char op = operators[p];\n                for (int i = 0; i < o.size(); ) {\n                    if (o.get(i) == op) {\n                        long result = calc(n.get(i), n.get(i + 1), op);\n                        n.set(i, result);\n                        n.remove(i + 1);\n                        o.remove(i);\n                    } else {\n                        i++;\n                    }\n                }\n            }\n            maxVal = Math.max(maxVal, Math.abs(n.get(0)));\n        }\n        return maxVal;\n    }\n\n    private long calc(long a, long b, char op) {\n        if (op == '+') return a + b;\n        if (op == '-') return a - b;\n        return a * b;\n    }\n}",
+    "complexity": {"time": "O(6 * N^2) where N = 연산자 수", "space": "O(N)"},
+    "walkthrough": "수식을 숫자 리스트와 연산자 리스트로 분리합니다. 6가지 연산자 우선순위 순열 각각에 대해, 가장 높은 우선순위 연산자를 리스트에서 찾아 계산 결과로 두 피연산자를 하나로 합칩니다. 모든 연산 후 절댓값 최대를 반환합니다.",
+    "secret": "실수 Top 3: 1) 숫자를 int로 파싱하면 중간 계산 시 오버플로우 (반드시 long 사용). 2) 연산자 처리 후 i를 증가시켜 같은 위치의 다음 연산자를 건너뜀 (연산자 제거 후 i 유지하고 다음 순회에서 자연스럽게 처리). 3) perms 배열을 직접 하드코딩하는 것이 안전하지만 누락하는 케이스 있음.",
+    "similar": ["cdm-005", "cdm-007"]
+  },
+  {
+    "id": "cdm-007",
+    "title": "Parenthesis Transform",
+    "titleKo": "괄호 변환",
+    "difficulty": "medium",
+    "patterns": ["simulation", "implementation", "recursion", "string"],
+    "companies": ["카카오"],
+    "description": "균형잡힌 괄호 문자열을 올바른 괄호 문자열로 변환합니다. 변환 알고리즘:\n1. 입력이 빈 문자열이면 빈 문자열 반환\n2. 입력 w를 균형잡힌 괄호 문자열 u, v로 분리 (u는 가장 짧은 균형잡힌 접두사)\n3. u가 올바른 괄호 문자열이면: u + transform(v)\n4. u가 올바르지 않으면: '(' + transform(v) + ')' + u의 첫/마지막 문자 제거 후 나머지 문자의 괄호 방향 반전\n\n균형잡힌: '('와 ')'의 개수가 같은 문자열\n올바른: 모든 접두사에서 '(' 개수 >= ')' 개수이고 전체 개수가 같음",
+    "examples": [
+      {
+        "input": "p=\"(()())()\"",
+        "output": "\"(()())()\"",
+        "explanation": "이미 올바른 괄호 문자열이므로 u 전체가 올바름 → 재귀 처리 후 그대로 반환."
+      },
+      {
+        "input": "p=\")(\"",
+        "output": "\"()\"",
+        "explanation": "u=\")(\", v=\"\". u가 올바르지 않음. '(' + transform(\"\") + ')' + 반전(첫/마지막 제거 후 빈 문자열) = \"()\"."
+      }
+    ],
+    "constraints": [
+      "1 <= p.length <= 1000",
+      "p.length는 항상 짝수",
+      "p는 '('와 ')'로만 구성",
+      "p는 항상 균형잡힌 괄호 문자열"
+    ],
+    "hints": [
+      "균형잡힌 접두사 찾기: 왼/오른 카운트가 같아지는 최소 지점",
+      "올바른 괄호 판별: 왼쪽부터 스캔 시 항상 '(' >= ')'",
+      "4단계 변환에서 u의 첫/마지막 문자 제거 후 내부만 반전"
+    ],
+    "approach": "재귀 함수로 균형잡힌 접두사 u와 나머지 v 분리, u가 올바르면 u + rec(v), 아니면 '(' + rec(v) + ')' + reverse(u 내부).",
+    "code": "class Solution {\n    public String solution(String p) {\n        return transform(p);\n    }\n\n    private String transform(String w) {\n        if (w.isEmpty()) return \"\";\n\n        // u: 가장 짧은 균형 접두사 분리\n        int balance = 0, splitIdx = 0;\n        for (int i = 0; i < w.length(); i++) {\n            balance += (w.charAt(i) == '(') ? 1 : -1;\n            if (balance == 0) { splitIdx = i + 1; break; }\n        }\n        String u = w.substring(0, splitIdx);\n        String v = w.substring(splitIdx);\n\n        if (isCorrect(u)) {\n            return u + transform(v);\n        } else {\n            String inner = u.substring(1, u.length() - 1);\n            StringBuilder reversed = new StringBuilder();\n            for (char c : inner.toCharArray()) {\n                reversed.append(c == '(' ? ')' : '(');\n            }\n            return \"(\" + transform(v) + \")\" + reversed.toString();\n        }\n    }\n\n    private boolean isCorrect(String s) {\n        int count = 0;\n        for (char c : s.toCharArray()) {\n            if (c == '(') count++;\n            else count--;\n            if (count < 0) return false;\n        }\n        return true;\n    }\n}",
+    "complexity": {"time": "O(N^2)", "space": "O(N)"},
+    "walkthrough": "재귀적으로 가장 짧은 균형잡힌 접두사 u를 분리합니다. u가 올바르면 u를 그대로 앞에 붙이고, 올바르지 않으면 u의 첫/마지막 괄호를 제거한 내부를 반전시켜 뒤에 붙입니다. 나머지 v는 재귀 호출로 처리합니다.",
+    "secret": "실수 Top 3: 1) 4단계에서 u의 첫/마지막 제거 후 내부만 반전인데 u 전체를 반전하는 실수. 2) isCorrect 판별 시 count < 0이 되면 바로 false (누적 음수 체크 필수, 마지막 count==0으로만 판별하면 부족). 3) 균형잡힌 접두사를 찾는 루프에서 balance가 0이 되는 첫 지점을 찾아야 하는데 루프를 끝까지 돌려 마지막 지점을 쓰는 실수.",
+    "similar": ["cdm-006", "cdm-008"]
+  },
+  {
+    "id": "cdm-008",
+    "title": "Tuple",
+    "titleKo": "튜플",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "string-parsing", "sorting"],
+    "companies": ["카카오"],
+    "description": "집합 표현으로 주어진 튜플을 복원합니다. n개 원소 튜플 (a1, a2, ..., an)은 다음과 같이 집합으로 표현됩니다:\n{{a1}, {a1,a2}, {a1,a2,a3}, ..., {a1,a2,...,an}}\n\n규칙:\n1. 주어진 문자열에서 각 집합을 파싱합니다.\n2. 집합을 원소 개수 기준 오름차순 정렬합니다.\n3. 원소 1개인 집합이 a1, 원소 2개 집합에서 새로 추가된 것이 a2, ... 순으로 튜플 복원\n4. 원소 값은 자연수\n5. 집합의 순서는 임의로 섞여 있을 수 있음\n\n입력: s (집합 표현 문자열, \"{{...},{...},...}\" 형식)\n출력: 튜플 원소 배열 (int[])",
+    "examples": [
+      {
+        "input": "s=\"{{2},{2,1},{2,1,3},{2,1,3,4}}\"",
+        "output": "[2, 1, 3, 4]",
+        "explanation": "집합 크기 1: {2} → a1=2. 크기 2: {2,1} → 새 원소 1 → a2=1. 크기 3: {2,1,3} → 새 원소 3 → a3=3. 크기 4: {2,1,3,4} → 새 원소 4 → a4=4."
+      }
+    ],
+    "constraints": [
+      "5 <= s.length <= 1000000",
+      "원소 값은 1 이상 100000 이하 자연수",
+      "중복 원소 없음",
+      "s는 항상 유효한 형식",
+      "집합 순서는 임의"
+    ],
+    "hints": [
+      "s를 파싱해 각 {} 집합을 추출",
+      "각 집합 원소 수 기준 정렬",
+      "이미 결과에 있는 원소를 Set으로 추적하며 새로 등장하는 원소만 추가"
+    ],
+    "approach": "문자열에서 각 {} 집합을 파싱해 리스트로 변환, 크기 오름차순 정렬, 이미 등장한 원소 Set으로 추적하며 새 원소만 결과에 추가.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public int[] solution(String s) {\n        // 바깥쪽 {{ }} 제거: s = \"{{...}}\" → 내부 파싱\n        // 각 집합을 중괄호 단위로 분리\n        List<int[]> sets = new ArrayList<>();\n        int depth = 0;\n        StringBuilder cur = new StringBuilder();\n\n        for (int i = 1; i < s.length() - 1; i++) { // 바깥 {} 제외\n            char c = s.charAt(i);\n            if (c == '{') {\n                depth++;\n                cur.setLength(0);\n            } else if (c == '}') {\n                depth--;\n                if (depth == 0 && cur.length() > 0) {\n                    String content = cur.toString();\n                    String[] parts = content.split(\",\");\n                    int[] set = new int[parts.length];\n                    for (int j = 0; j < parts.length; j++) set[j] = Integer.parseInt(parts[j]);\n                    sets.add(set);\n                    cur.setLength(0);\n                }\n            } else if (depth > 0) {\n                cur.append(c);\n            }\n        }\n\n        // 크기 오름차순 정렬\n        sets.sort(Comparator.comparingInt(a -> a.length));\n\n        // 튜플 복원\n        Set<Integer> seen = new HashSet<>();\n        int[] answer = new int[sets.size()];\n        int idx = 0;\n        for (int[] set : sets) {\n            for (int num : set) {\n                if (seen.add(num)) {\n                    answer[idx++] = num;\n                    break;\n                }\n            }\n        }\n        return answer;\n    }\n}",
+    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "walkthrough": "문자열에서 각 집합을 파싱해 크기 오름차순 정렬합니다. 크기가 작은 집합부터 순서대로 이미 seen에 없는 원소를 찾아 튜플에 추가합니다. 크기 k인 집합에는 크기 k-1 집합 원소 + 새 원소 1개가 있으므로 새 원소가 정확히 1개 존재합니다.",
+    "secret": "실수 Top 3: 1) 숫자가 여러 자릿수일 수 있는데 한 자리만 추출하는 실수 (split(',') 후 parseInt 필수). 2) 집합 크기 정렬 없이 문자열에 나온 순서 그대로 처리하면 오답 (반드시 크기 기준 정렬). 3) 바깥 {{ 파싱 시 인덱스 계산 실수로 내부 집합 경계가 어긋나는 오류.",
+    "similar": ["cdm-007", "cdm-012"]
+  },
+  {
+    "id": "cdm-009",
+    "title": "Open Chat Room",
+    "titleKo": "오픈채팅방",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "hashmap"],
+    "companies": ["카카오"],
+    "description": "카카오톡 오픈채팅방 로그를 처리합니다. 이벤트 종류:\n1. Enter uid nickname: uid를 가진 유저가 nickname으로 입장 (기존 닉네임 갱신)\n2. Leave uid: uid를 가진 유저 퇴장\n3. Change uid nickname: uid의 닉네임을 nickname으로 변경\n\n규칙:\n- 같은 uid는 항상 같은 사람\n- Enter/Leave/Change 이후 메시지는 최신 닉네임 사용\n- Enter: '[nickname]님이 들어왔습니다.' 출력\n- Leave: '[nickname]님이 나갔습니다.' 출력\n- Change는 메시지 없음\n\n출력: 순서대로 메시지 배열",
+    "examples": [
+      {
+        "input": "record=[\"Enter uid1234 Muzi\",\"Enter uid4567 Prodo\",\"Leave uid1234\",\"Enter uid1234 Muzi\",\"Change uid4567 Prodo\"]",
+        "output": "[\"Muzi님이 들어왔습니다.\",\"Prodo님이 들어왔습니다.\",\"Muzi님이 나갔습니다.\",\"Muzi님이 들어왔습니다.\"]",
+        "explanation": "uid1234의 최종 닉네임은 Muzi, uid4567의 최종 닉네임은 Prodo. Enter/Leave 이벤트에 최신 닉네임 적용."
+      }
+    ],
+    "constraints": [
+      "1 <= record.length <= 100000",
+      "uid는 숫자와 알파벳 조합",
+      "닉네임은 알파벳, 공백 없음",
+      "Leave/Change는 반드시 Enter가 먼저 있음"
+    ],
+    "hints": [
+      "1패스: uid → 최종 닉네임 HashMap 구성",
+      "2패스: Enter/Leave 이벤트만 추출, 최종 닉네임으로 메시지 생성",
+      "Change는 1패스에서 닉네임 업데이트만 하고 이벤트 로그에 추가 안 함"
+    ],
+    "approach": "2패스: 1패스에서 uid별 최종 닉네임 HashMap 구성, 2패스에서 Enter/Leave 이벤트에 최종 닉네임을 적용해 메시지 생성.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public String[] solution(String[] record) {\n        Map<String, String> nickMap = new HashMap<>();\n\n        // 1패스: 최종 닉네임 수집\n        for (String r : record) {\n            String[] parts = r.split(\" \");\n            if (parts[0].equals(\"Enter\") || parts[0].equals(\"Change\")) {\n                nickMap.put(parts[1], parts[2]);\n            }\n        }\n\n        // 2패스: 메시지 생성\n        List<String> result = new ArrayList<>();\n        for (String r : record) {\n            String[] parts = r.split(\" \");\n            String action = parts[0];\n            String uid = parts[1];\n            String nick = nickMap.get(uid);\n            if (action.equals(\"Enter\")) {\n                result.add(nick + \"님이 들어왔습니다.\");\n            } else if (action.equals(\"Leave\")) {\n                result.add(nick + \"님이 나갔습니다.\");\n            }\n        }\n        return result.toArray(new String[0]);\n    }\n}",
+    "complexity": {"time": "O(N)", "space": "O(N)"},
+    "walkthrough": "첫 번째 패스에서 모든 Enter/Change 이벤트로부터 uid별 최신 닉네임을 HashMap에 저장합니다. 두 번째 패스에서 Enter/Leave 이벤트만 추출해 최신 닉네임으로 메시지를 만듭니다. Change는 메시지 없으므로 두 번째 패스에서 무시합니다.",
+    "secret": "실수 Top 3: 1) 단일 패스로 현재 닉네임으로 메시지 생성하면 나중에 Change된 닉네임을 반영 못함 (2패스 구조 필수). 2) Leave를 파싱할 때 parts[2]가 없어 ArrayIndexOutOfBoundsException 발생 가능 (Leave는 parts 2개뿐). 3) Change 이벤트로 메시지를 생성하는 실수.",
+    "similar": ["cdm-001", "cdm-010"]
+  },
+  {
+    "id": "cdm-010",
+    "title": "Crane Doll Catcher",
+    "titleKo": "크레인 인형뽑기",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "stack"],
+    "companies": ["카카오"],
+    "description": "N×N 격자 형태의 게임에서 크레인으로 인형을 뽑습니다. 규칙:\n1. 각 격자에 번호로 인형이 있거나(1 이상) 없음(0)\n2. 크레인이 특정 열에서 인형을 뽑으면 해당 열에서 가장 위(행 번호 작은)의 인형 뽑음\n3. 뽑은 인형은 바구니(Stack)에 쌓임\n4. 바구니 맨 위의 인형과 방금 뽑은 인형이 같은 종류면 두 인형이 사라짐\n5. 해당 열에 인형이 없으면 아무 일도 일어나지 않음\n\n출력: 뽑기 완료 후 터진 인형의 총 개수",
+    "examples": [
+      {
+        "input": "board=[[0,0,0,0,0],[0,0,1,0,3],[0,2,5,0,1],[4,2,4,4,2],[3,5,1,3,1]], moves=[1,5,3,5,1,2,1,4]",
+        "output": "4",
+        "explanation": "col1→4, col5→3, col3→1, col5→1(top=1 같음! 터짐 count=2), col1→3(스택에 4,3이 있고 top=3? → 실제 top이 3이면 터짐), 순서대로 시뮬레이션 후 총 4번 터짐."
+      }
+    ],
+    "constraints": [
+      "1 <= board.length <= 30",
+      "board[i].length == board.length",
+      "0 <= board[i][j] <= 100",
+      "1 <= moves.length <= 1000",
+      "moves[i]는 1 이상 N 이하"
+    ],
+    "hints": [
+      "각 열의 인형을 위에서부터 순서대로 접근 (board[0]이 최상단)",
+      "각 열의 현재 인형 위치 추적 (topRow 배열로 O(1) 접근)",
+      "Stack에 push 후 peek이 같으면 pop 두 번 후 count += 2"
+    ],
+    "approach": "각 열의 최상단 인형 위치를 topRow 배열로 추적하며 moves 시뮬레이션. 뽑은 인형을 Stack에 push, 스택 top과 같으면 두 개 제거 및 카운트.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public int solution(int[][] board, int[] moves) {\n        int n = board.length;\n        int[] topRow = new int[n];\n\n        Stack<Integer> basket = new Stack<>();\n        int count = 0;\n\n        for (int move : moves) {\n            int col = move - 1; // 0-indexed\n            int doll = 0;\n            while (topRow[col] < n) {\n                if (board[topRow[col]][col] != 0) {\n                    doll = board[topRow[col]][col];\n                    board[topRow[col]][col] = 0;\n                    topRow[col]++;\n                    break;\n                }\n                topRow[col]++;\n            }\n            if (doll == 0) continue;\n\n            if (!basket.isEmpty() && basket.peek() == doll) {\n                basket.pop();\n                count += 2;\n            } else {\n                basket.push(doll);\n            }\n        }\n        return count;\n    }\n}",
+    "complexity": {"time": "O(M * N) where M = moves.length", "space": "O(N^2)"},
+    "walkthrough": "각 move에서 해당 열의 최상단 인형을 찾아 뽑습니다. 뽑은 인형을 스택에 push하기 전 스택 top과 비교해 같으면 두 인형을 제거합니다. topRow 배열로 각 열의 현재 최상단 위치를 빠르게 추적합니다.",
+    "secret": "실수 Top 3: 1) board[row][col]에서 row=0이 최상단임을 놓치고 아래에서부터 탐색하는 실수. 2) 인형이 없는 열에서 뽑기 시도 시 doll==0을 스택에 push하는 실수 (continue 필수). 3) 터질 때 count += 2가 아닌 count += 1하는 실수 (두 인형이 모두 없어지므로 2씩 증가).",
+    "similar": ["cdm-003", "cdm-009"]
+  },
+  {
+    "id": "cdm-011",
+    "title": "Secret Map",
+    "titleKo": "비밀지도",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "bitwise"],
+    "companies": ["카카오"],
+    "description": "두 지도를 겹쳐 비밀지도를 완성합니다. 규칙:\n1. 지도는 n×n 격자이며 각 칸은 벽(1) 또는 공백(0)\n2. 두 지도 중 하나라도 벽이면 비밀지도에서 벽('#')\n3. 둘 다 공백이면 비밀지도에서 공백(' ')\n4. 지도는 각 행이 n비트 이진수로 주어짐 (십진수)\n5. 두 지도의 같은 행을 OR 연산하면 비밀지도 행 완성\n\n입력: n (지도 크기), arr1, arr2 (각 행의 십진수 배열)\n출력: 비밀지도 문자열 배열 (각 행)",
+    "examples": [
+      {
+        "input": "n=5, arr1=[9, 20, 28, 18, 11], arr2=[30, 1, 21, 17, 28]",
+        "output": "[\"#####\",\"# # #\",\"### #\",\"#  ##\",\"#####\"]",
+        "explanation": "9=01001, 30=11110 → OR=11111='#####'. 20=10100, 1=00001 → OR=10101='# # #'. 28=11100, 21=10101 → OR=11101='### #'. ..."
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 16",
+      "0 <= arr1[i], arr2[i] < 2^n"
+    ],
+    "hints": [
+      "arr1[i] | arr2[i] 로 OR 연산",
+      "결과를 n비트 이진수로 변환 (앞에 0 패딩 주의)",
+      "1이면 '#', 0이면 ' '"
+    ],
+    "approach": "각 행마다 OR 연산 수행, 결과를 n비트 이진 문자열로 변환해 '#'/' ' 매핑.",
+    "code": "class Solution {\n    public String[] solution(int n, int[] arr1, int[] arr2) {\n        String[] answer = new String[n];\n        for (int i = 0; i < n; i++) {\n            int combined = arr1[i] | arr2[i];\n            StringBuilder sb = new StringBuilder();\n            for (int bit = n - 1; bit >= 0; bit--) {\n                sb.append(((combined >> bit) & 1) == 1 ? '#' : ' ');\n            }\n            answer[i] = sb.toString();\n        }\n        return answer;\n    }\n}",
+    "complexity": {"time": "O(N^2)", "space": "O(N^2)"},
+    "walkthrough": "각 행에 대해 arr1과 arr2를 OR 연산합니다. 결과 값의 각 비트를 n-1번째(왼쪽)부터 0번째(오른쪽)까지 확인해 1이면 '#', 0이면 ' '를 추가합니다.",
+    "secret": "실수 Top 3: 1) 비트 순서를 낮은 비트부터 읽으면 좌우 반전 (반드시 n-1 비트부터 읽어야 함). 2) Integer.toBinaryString()을 쓰면 앞의 0이 생략되어 n 자리가 안 될 수 있음 (직접 비트 연산 권장). 3) n=1일 때 또는 값이 0일 때 전부 공백 처리가 되는지 검증 필요.",
+    "similar": ["cdm-012", "cdm-013"]
+  },
+  {
+    "id": "cdm-012",
+    "title": "Dart Game",
+    "titleKo": "다트 게임",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "string-parsing"],
+    "companies": ["카카오"],
+    "description": "다트 게임 결과를 파싱해 최종 점수를 계산합니다. 규칙:\n1. 다트는 3번 던지며 점수를 얻음\n2. 각 점수는 0~10 사이 정수\n3. 보너스: S=1제곱, D=2제곱, T=3제곱\n4. 옵션: *=현재와 바로 전 점수 2배, #=현재 점수 음수\n5. 옵션은 생략 가능\n6. *는 바로 앞 다트 점수도 2배 처리 (첫 번째 다트면 직전 없음)\n\n입력: dartResult (다트 점수 문자열)\n출력: 세 다트 점수의 합 (int)",
+    "examples": [
+      {
+        "input": "dartResult=\"1S2D*3T\"",
+        "output": "37",
+        "explanation": "1^1=1, 2^2=4 (* 옵션: 현재 4→8, 직전 1→2), 3^3=27. 합=2+8+27=37."
+      },
+      {
+        "input": "dartResult=\"1D2S#10S\"",
+        "output": "9",
+        "explanation": "1^2=1, 2^1=2 (# 옵션: -2), 10^1=10. 합=1+(-2)+10=9."
+      }
+    ],
+    "constraints": [
+      "dartResult.length는 9~17",
+      "점수는 0~10 (10은 두 자리 숫자)",
+      "보너스 S, D, T는 반드시 있음",
+      "옵션 *, #는 생략 가능",
+      "* 와 # 은 함께 오지 않음"
+    ],
+    "hints": [
+      "문자열 순차 파싱: 숫자(1~2자리) → 보너스(S/D/T) → 옵션(*/#, 생략가능)",
+      "10은 두 자리 숫자이므로 파싱 시 '1'+'0' 여부 확인",
+      "* 는 현재 점수와 직전 점수 모두 2배"
+    ],
+    "approach": "인덱스 기반 파싱으로 숫자→보너스→옵션 순서로 처리. 점수 배열에 저장 후 * 옵션 시 직전 점수도 2배.",
+    "code": "class Solution {\n    public int solution(String dartResult) {\n        int[] scores = new int[3];\n        int idx = 0, round = 0;\n\n        while (idx < dartResult.length()) {\n            // 숫자 파싱 (10은 두 자리)\n            int num;\n            if (dartResult.charAt(idx) == '1'\n                    && idx + 1 < dartResult.length()\n                    && dartResult.charAt(idx + 1) == '0') {\n                num = 10;\n                idx += 2;\n            } else {\n                num = dartResult.charAt(idx) - '0';\n                idx++;\n            }\n\n            // 보너스\n            char bonus = dartResult.charAt(idx++);\n            if (bonus == 'D') num = num * num;\n            else if (bonus == 'T') num = num * num * num;\n\n            // 옵션\n            if (idx < dartResult.length()\n                    && (dartResult.charAt(idx) == '*' || dartResult.charAt(idx) == '#')) {\n                char opt = dartResult.charAt(idx++);\n                if (opt == '*') {\n                    num *= 2;\n                    if (round > 0) scores[round - 1] *= 2;\n                } else {\n                    num = -num;\n                }\n            }\n\n            scores[round++] = num;\n        }\n        return scores[0] + scores[1] + scores[2];\n    }\n}",
+    "complexity": {"time": "O(N)", "space": "O(1)"},
+    "walkthrough": "문자열을 왼쪽부터 순서대로 파싱합니다. 먼저 1-2자리 숫자를 읽고, 보너스 문자(S/D/T)로 제곱 적용, 이후 옵션(*/#)이 있으면 처리합니다. *는 현재 점수와 직전 점수 모두 2배로 만듭니다.",
+    "secret": "실수 Top 3: 1) '1' 다음이 '0'일 때만 10인데 다음 문자가 S/D/T이면 점수 1임 (반드시 다음 문자가 '0'인지 확인). 2) * 옵션에서 직전 점수 2배 처리를 누락하는 실수 (첫 번째 다트에 *는 직전 없으므로 round>0 체크). 3) 보너스 문자를 옵션으로 오인해 파싱 순서를 어기는 실수.",
+    "similar": ["cdm-008", "cdm-015"]
+  },
+  {
+    "id": "cdm-013",
+    "title": "Failure Rate",
+    "titleKo": "실패율",
+    "difficulty": "easy",
+    "patterns": ["simulation", "implementation", "sorting"],
+    "companies": ["카카오"],
+    "description": "게임의 각 스테이지 실패율을 계산해 내림차순으로 스테이지 번호를 반환합니다. 실패율 정의:\n1. 실패율 = 스테이지에 도달했으나 아직 클리어하지 못한 플레이어 수 / 스테이지에 도달한 플레이어 수\n2. 스테이지에 도달한 플레이어가 없으면 실패율 0\n3. 스테이지 번호는 1부터 N까지\n4. stages 배열: 각 플레이어가 현재 도전 중인 스테이지 번호 (1~N+1, N+1은 전부 클리어)\n5. 출력: 실패율 내림차순, 같으면 스테이지 번호 오름차순\n\n입력: N (스테이지 수), stages (플레이어별 현재 스테이지)\n출력: 실패율 내림차순 스테이지 번호 배열",
+    "examples": [
+      {
+        "input": "N=5, stages=[2, 1, 2, 6, 2, 4, 3, 3]",
+        "output": "[3, 4, 2, 1, 5]",
+        "explanation": "스테이지1: 8명 도달, 1명 현재 → 0.125. 스테이지2: 7명 도달, 3명 현재 → 0.428. 스테이지3: 4명 도달, 2명 현재 → 0.5. 스테이지4: 2명 도달, 1명 현재 → 0.5. 스테이지5: 1명 도달, 0명 현재 → 0. 정렬: 3,4(0.5 동률→번호순), 2, 1, 5."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 500",
+      "1 <= stages.length <= 200000",
+      "1 <= stages[i] <= N+1",
+      "N+1은 전부 클리어한 플레이어"
+    ],
+    "hints": [
+      "각 스테이지에 현재 머무는 플레이어 수 카운팅",
+      "스테이지 1부터 순서대로 처리 시 도달자 = 총 플레이어 - 이전 스테이지들 완료자",
+      "실패율 동일 시 스테이지 번호 오름차순"
+    ],
+    "approach": "각 스테이지별 현재 인원 카운팅, 누적 도달자 수로 실패율 계산, 실패율 내림차순+번호 오름차순 정렬.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public int[] solution(int N, int[] stages) {\n        int[] stageCount = new int[N + 2];\n        for (int s : stages) stageCount[s]++;\n\n        double[] failRate = new double[N + 1];\n        int reached = stages.length;\n\n        for (int i = 1; i <= N; i++) {\n            if (reached == 0) {\n                failRate[i] = 0;\n            } else {\n                failRate[i] = (double) stageCount[i] / reached;\n            }\n            reached -= stageCount[i];\n        }\n\n        Integer[] stageOrder = new Integer[N];\n        for (int i = 0; i < N; i++) stageOrder[i] = i + 1;\n\n        Arrays.sort(stageOrder, (a, b) -> {\n            if (Double.compare(failRate[b], failRate[a]) != 0)\n                return Double.compare(failRate[b], failRate[a]);\n            return a - b;\n        });\n\n        int[] answer = new int[N];\n        for (int i = 0; i < N; i++) answer[i] = stageOrder[i];\n        return answer;\n    }\n}",
+    "complexity": {"time": "O(N log N + M) where M = stages.length", "space": "O(N)"},
+    "walkthrough": "각 스테이지 번호를 카운팅 배열에 기록합니다. 스테이지 1부터 순서대로 처리하면서 현재 스테이지에 도달한 인원은 이전까지 누적 제거 인원을 빼면 구할 수 있습니다. 실패율 계산 후 내림차순 정렬, 동률이면 번호 오름차순입니다.",
+    "secret": "실수 Top 3: 1) 도달자 0명인 스테이지에서 0으로 나누기 예외 미처리 (reached==0 체크 필수). 2) N+1(전부 클리어) 스테이지를 실패율 계산에 포함하는 실수 (1~N만). 3) 실패율 비교를 == 연산자로 하면 부동소수점 정밀도 문제 (Double.compare 사용).",
+    "similar": ["cdm-011", "cdm-014"]
+  },
+  {
+    "id": "cdm-014",
+    "title": "Phone Book List",
+    "titleKo": "전화번호 목록",
+    "difficulty": "medium",
+    "patterns": ["simulation", "implementation", "trie", "hashing"],
+    "companies": ["카카오", "라인"],
+    "description": "전화번호 목록에서 어떤 번호가 다른 번호의 접두어인지 확인합니다. 규칙:\n1. 전화번호 목록에서 임의의 두 번호를 골랐을 때\n2. 한 번호가 다른 번호의 접두어가 되면 false 반환\n3. 어떤 번호도 다른 번호의 접두어가 아니면 true 반환\n4. 자기 자신도 접두어로 간주 (동일한 번호 두 개 존재 시 false)\n\n입력: phone_book (전화번호 문자열 배열)\n출력: boolean",
+    "examples": [
+      {
+        "input": "phone_book=[\"119\",\"97674223\",\"1195524421\"]",
+        "output": "false",
+        "explanation": "119가 1195524421의 접두어이므로 false."
+      },
+      {
+        "input": "phone_book=[\"123\",\"456\",\"789\"]",
+        "output": "true",
+        "explanation": "어떤 번호도 다른 번호의 접두어가 아님."
+      }
+    ],
+    "constraints": [
+      "1 <= phone_book.length <= 1000000",
+      "1 <= phone_book[i].length <= 20",
+      "전화번호는 숫자로만 구성"
+    ],
+    "hints": [
+      "정렬 후 인접한 번호끼리만 비교 (정렬 시 접두어 관계는 항상 인접 쌍에서 발생)",
+      "HashSet에 모든 번호 저장 후 각 번호의 모든 접두어가 Set에 있는지 확인",
+      "N=100만이므로 O(N^2) 이중 루프는 TLE"
+    ],
+    "approach": "정렬 후 인접 번호끼리만 startsWith 비교. 정렬하면 접두어 관계인 두 번호는 반드시 인접하게 됨.",
+    "code": "import java.util.*;\n\nclass Solution {\n    public boolean solution(String[] phone_book) {\n        Arrays.sort(phone_book);\n        for (int i = 0; i < phone_book.length - 1; i++) {\n            if (phone_book[i + 1].startsWith(phone_book[i])) {\n                return false;\n            }\n        }\n        return true;\n    }\n\n    // 방법2: HashSet 접두어 검사 (O(N * L^2))\n    public boolean solution2(String[] phone_book) {\n        Set<String> set = new HashSet<>(Arrays.asList(phone_book));\n        for (String phone : phone_book) {\n            for (int len = 1; len < phone.length(); len++) {\n                if (set.contains(phone.substring(0, len))) {\n                    return false;\n                }\n            }\n        }\n        return true;\n    }\n}",
+    "complexity": {"time": "O(N log N * L) where L = 최대 번호 길이", "space": "O(1)"},
+    "walkthrough": "정렬 방법: 번호를 사전순 정렬하면 접두어 관계에 있는 두 번호는 반드시 인접합니다. 따라서 인접한 두 번호 사이에서만 startsWith를 확인합니다. 정렬 후에는 phone_book[i]가 phone_book[i+1]의 접두어인지만 확인해도 충분합니다.",
+    "secret": "실수 Top 3: 1) 정렬 없이 O(N^2) 이중 루프로 모든 쌍 비교 시 N=100만에서 TLE. 2) 정렬 후 phone_book[i+1].startsWith(phone_book[i]) 방향만 확인하면 됨 (반대 방향은 정렬에 의해 항상 더 길어야 함). 3) 동일한 번호가 두 개 있는 경우 접두어로 처리해야 하는데, 정렬 후 인접하게 되어 startsWith가 true를 반환하므로 자동 처리됨.",
+    "similar": ["cdm-013", "cdm-001"]
+  },
+  {
+    "id": "cdm-015",
+    "title": "Music That Just Played",
+    "titleKo": "방금그곡",
+    "difficulty": "medium",
+    "patterns": ["simulation", "implementation", "string-parsing"],
+    "companies": ["카카오"],
+    "description": "라디오에서 흘러나온 음악이 어떤 곡인지 찾습니다. 규칙:\n1. 음악 정보: '시작시각,종료시각,제목,악보' 형식\n2. 네오가 기억하는 멜로디(m)가 재생된 악보에 포함되어 있으면 후보\n3. 악보가 재생 시간(분)만큼 반복됨 (긴 경우 재생 시간에 맞게 잘림, 짧으면 반복)\n4. 후보가 여럿이면 재생 시간이 긴 곡, 같으면 입력에서 먼저 나온 곡 선택\n5. 후보 없으면 '(None)' 반환\n6. '#' 처리: 'C#', 'D#' 등은 하나의 음으로 처리\n\n입력: m (기억하는 멜로디), musicinfos (음악 정보 배열)\n출력: 곡 제목 또는 '(None)'",
+    "examples": [
+      {
+        "input": "m=\"ABCDEFG\", musicinfos=[\"12:00,13:00,Wanna One,ABCDEFG\",\"12:00,12:14,Wanna Two,ABCDEFGABCDEFG\"]",
+        "output": "\"Wanna One\"",
+        "explanation": "Wanna One: 60분 재생, ABCDEFG 반복 → 포함. Wanna Two: 14분 재생, 악보 14자로 잘림(ABCDEFGABCDEF) → ABCDEFG 포함. 재생시간 60>14 이므로 Wanna One 선택."
+      }
+    ],
+    "constraints": [
+      "1 <= m.length <= 1440",
+      "m은 A~G, # 조합",
+      "1 <= musicinfos.length <= 100",
+      "시각은 HH:MM 형식",
+      "악보는 A~G와 # 조합",
+      "제목에 쉼표 없음"
+    ],
+    "hints": [
+      "C#, D# 등 # 포함 음을 단일 소문자로 치환 (예: C#→c, D#→d, F#→f, G#→g, A#→a)",
+      "재생 시간(분) 계산 후 악보를 반복해 그 길이만큼 자름",
+      "재생된 악보에 m(치환 후)이 포함되면 후보"
+    ],
+    "approach": "#을 소문자로 치환해 단일 문자로 만든 뒤, 재생 시간만큼 악보를 반복/자르고 m이 포함되는지 contains 확인. 재생시간 내림차순 + 먼저 나온 순으로 최적 후보 선택.",
+    "code": "class Solution {\n    public String solution(String m, String[] musicinfos) {\n        String normalizedM = normalize(m);\n        String answer = \"(None)\";\n        int maxTime = -1;\n\n        for (int i = 0; i < musicinfos.length; i++) {\n            String[] parts = musicinfos[i].split(\",\");\n            int startMin = toMinutes(parts[0]);\n            int endMin = toMinutes(parts[1]);\n            String title = parts[2];\n            String sheet = normalize(parts[3]);\n\n            int playTime = endMin - startMin;\n\n            // 재생 시간만큼 악보 생성\n            StringBuilder sb = new StringBuilder();\n            while (sb.length() < playTime) sb.append(sheet);\n            String played = sb.substring(0, playTime);\n\n            if (played.contains(normalizedM)) {\n                // 재생시간 더 길거나 같으면 먼저 나온 것 유지 (이미 maxTime과 같으면 갱신 안 함)\n                if (playTime > maxTime) {\n                    maxTime = playTime;\n                    answer = title;\n                }\n            }\n        }\n        return answer;\n    }\n\n    private String normalize(String s) {\n        return s.replace(\"C#\", \"c\")\n                .replace(\"D#\", \"d\")\n                .replace(\"F#\", \"f\")\n                .replace(\"G#\", \"g\")\n                .replace(\"A#\", \"a\");\n    }\n\n    private int toMinutes(String time) {\n        String[] hm = time.split(\":\");\n        return Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);\n    }\n}",
+    "complexity": {"time": "O(N * L) where L = max(playTime, m.length)", "space": "O(L)"},
+    "walkthrough": "C#, D# 등 두 문자 음을 소문자 하나로 치환해 음의 단위를 통일합니다. 재생 시간만큼 악보를 반복 후 자른 뒤, 기억하는 멜로디(정규화 완료)가 포함되는지 확인합니다. 재생 시간이 더 큰 경우만 갱신하므로 동률이면 먼저 나온 곡이 유지됩니다.",
+    "secret": "실수 Top 3: 1) # 처리 없이 문자열 매칭하면 C#의 C와 단독 C를 구분 못함 (치환 필수). 2) 악보 반복 후 자를 때 치환된 악보 길이(문자 수)로 잘라야 하는데 재생 분 수 = 치환 후 문자 수가 맞아야 함 (치환으로 2문자→1문자가 되어 길이가 줄어드는 것을 고려). 3) 재생 시간이 같을 때 먼저 나온 곡을 유지해야 하는데 >= 로 갱신 조건을 설정해 나중 것으로 덮어쓰는 실수.",
+    "similar": ["cdm-002", "cdm-012"]
+  }
+]

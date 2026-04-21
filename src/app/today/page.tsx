@@ -19,6 +19,8 @@ import {
   StreakData,
 } from "@/lib/storage";
 import { Question, Category, CATEGORY_LABELS, CATEGORY_COLORS } from "@/types/question";
+import { getDailyCodingProblem } from "@/lib/coding";
+import { CodingProblem, DIFFICULTY_COLORS, DIFFICULTY_LABELS_CODING, PATTERN_LABELS } from "@/types/coding";
 
 type Tab = "summary" | "study";
 
@@ -34,8 +36,10 @@ export default function TodayPage() {
   const [depth, setDepth] = useState<"light" | "deep" | "senior">("light");
   const [bookmarked, setBookmarked] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [todayCoding, setTodayCoding] = useState<CodingProblem | undefined>();
 
   useEffect(() => {
+    setTodayCoding(getDailyCodingProblem());
     setStreak(getStreak());
     const due = getDueCards()
       .map((id) => getQuestionById(id))
@@ -272,6 +276,40 @@ export default function TodayPage() {
           {totalToday > 0 ? `▶ ${totalToday}개 학습 시작` : "학습할 카드가 없어요"}
         </button>
       </div>
+
+      {/* Today's Coding Problem */}
+      {todayCoding && (
+        <section>
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+            오늘의 코테
+          </h2>
+          <Link href={`/coding/${todayCoding.id}`} className="card block">
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                style={{ background: DIFFICULTY_COLORS[todayCoding.difficulty] + "20", color: DIFFICULTY_COLORS[todayCoding.difficulty] }}
+              >
+                {DIFFICULTY_LABELS_CODING[todayCoding.difficulty]}
+              </span>
+              <span className="text-[10px] text-[var(--muted)]">{todayCoding.id}</span>
+              {todayCoding.companies.slice(0, 2).map((c) => (
+                <span key={c} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent)]15 text-[var(--accent)]">{c}</span>
+              ))}
+            </div>
+            <p className="text-sm font-semibold mb-0.5">{todayCoding.titleKo}</p>
+            <p className="text-[11px] text-[var(--muted)] mb-2">{todayCoding.title}</p>
+            <div className="flex gap-1 flex-wrap">
+              {todayCoding.patterns.slice(0, 3).map((pt) => (
+                <span key={pt} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]">
+                  {PATTERN_LABELS[pt] || pt}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10px] text-[var(--accent)] mt-2">풀러 가기 →</p>
+          </Link>
+        </section>
+      )}
 
       {/* Due cards preview */}
       {dueCards.length > 0 && (

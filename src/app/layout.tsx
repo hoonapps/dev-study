@@ -51,7 +51,7 @@ export default function RootLayout({
 
         {/* Bottom Tab Bar */}
         <nav className="fixed bottom-0 left-0 right-0 bg-[var(--bg)] border-t border-[var(--card-border)] z-50">
-          <div className="max-w-lg mx-auto grid grid-cols-7 py-2">
+          <div className="max-w-lg mx-auto grid grid-cols-8 py-2">
             <Link href="/" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
               <span className="text-[9px]">Home</span>
@@ -71,6 +71,10 @@ export default function RootLayout({
             <Link href="/quiz" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
               <span className="text-[9px]">Quiz</span>
+            </Link>
+            <Link href="/coding" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span className="text-[9px]">Code</span>
             </Link>
             <Link href="/browse" className="flex flex-col items-center gap-0.5 py-1 text-[var(--muted)] hover:text-[var(--accent)] transition">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>

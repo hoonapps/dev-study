@@ -310,3 +310,55 @@ export function getLastNotifDate(): string {
 export function setLastNotifDate(date: string) {
   localStorage.setItem(NOTIF_LAST_SHOWN, date);
 }
+
+// ========== Coding Problem Tracking ==========
+const CODING_KEY = "devsenior_coding";
+
+export type CodingStatus = "unsolved" | "attempted" | "solved";
+
+export interface CodingProgress {
+  status: CodingStatus;
+  attempts: number;
+  solvedAt?: number;
+  lastViewedAt: number;
+}
+
+export function getAllCoding(): Record<string, CodingProgress> {
+  if (typeof window === "undefined") return {};
+  const raw = localStorage.getItem(CODING_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
+export function getCodingProgress(id: string): CodingProgress {
+  return getAllCoding()[id] || { status: "unsolved", attempts: 0, lastViewedAt: 0 };
+}
+
+export function setCodingStatus(id: string, status: CodingStatus) {
+  const all = getAllCoding();
+  const cur = all[id] || { status: "unsolved", attempts: 0, lastViewedAt: 0 };
+  cur.status = status;
+  if (status === "attempted") cur.attempts += 1;
+  if (status === "solved" && !cur.solvedAt) cur.solvedAt = Date.now();
+  cur.lastViewedAt = Date.now();
+  all[id] = cur;
+  localStorage.setItem(CODING_KEY, JSON.stringify(all));
+  updateStreak();
+}
+
+export function markCodingViewed(id: string) {
+  const all = getAllCoding();
+  const cur = all[id] || { status: "unsolved", attempts: 0, lastViewedAt: 0 };
+  cur.lastViewedAt = Date.now();
+  all[id] = cur;
+  localStorage.setItem(CODING_KEY, JSON.stringify(all));
+}
+
+export function getCodingStats(): { solved: number; attempted: number; total: number } {
+  const all = getAllCoding();
+  let solved = 0, attempted = 0;
+  for (const p of Object.values(all)) {
+    if (p.status === "solved") solved++;
+    else if (p.status === "attempted") attempted++;
+  }
+  return { solved, attempted, total: Object.keys(all).length };
+}

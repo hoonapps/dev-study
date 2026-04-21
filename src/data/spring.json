@@ -1,1 +1,1082 @@
-[]
+[
+  {
+    "id": "spring-001",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring IoC 컨테이너에서 IoC(Inversion of Control)의 핵심 개념은?",
+    "answer": 2,
+    "options": [
+      "개발자가 직접 객체를 생성하고 관리한다",
+      "객체가 필요한 의존성을 스스로 조회한다",
+      "객체의 생성과 의존성 주입을 컨테이너가 담당한다",
+      "모든 객체는 싱글톤으로만 생성된다"
+    ],
+    "explanation": "IoC는 객체의 생성과 의존성 관리 제어권을 개발자에서 컨테이너로 역전시키는 원칙입니다. 개발자는 설정만 제공하고, 컨테이너가 객체를 생성·연결·관리합니다.",
+    "deepDive": "IoC 컨테이너는 BeanDefinition을 읽어 Bean을 생성하고 의존성을 주입합니다. DI(Dependency Injection)는 IoC를 구현하는 대표적 패턴으로, 생성자/세터/필드 주입 방식이 있습니다. 이를 통해 결합도를 낮추고 테스트 용이성을 높입니다.",
+    "seniorTip": "IoC는 단순히 Spring 기능이 아니라 설계 원칙입니다. DI 컨테이너 없이도 Factory 패턴 등으로 IoC를 구현할 수 있습니다.",
+    "tags": ["ioc", "di", "container"]
+  },
+  {
+    "id": "spring-002",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Bean의 생명주기 콜백 순서로 올바른 것은?",
+    "answer": 1,
+    "options": [
+      "객체 생성 → @PostConstruct → afterPropertiesSet() → destroy()",
+      "객체 생성 → 의존성 주입 → @PostConstruct → afterPropertiesSet() → 사용 → @PreDestroy → destroy()",
+      "객체 생성 → afterPropertiesSet() → @PostConstruct → 사용 → destroy() → @PreDestroy",
+      "객체 생성 → @PostConstruct → 의존성 주입 → afterPropertiesSet()"
+    ],
+    "explanation": "Bean 생명주기는 객체 생성 → 의존성 주입 → @PostConstruct → InitializingBean.afterPropertiesSet() → 사용 → @PreDestroy → DisposableBean.destroy() 순서입니다.",
+    "deepDive": "BeanPostProcessor의 postProcessBeforeInitialization이 @PostConstruct 전에, postProcessAfterInitialization이 afterPropertiesSet 후에 실행됩니다. JSR-250 기반 @PostConstruct/@PreDestroy가 Spring 전용 인터페이스보다 우선 권장됩니다.",
+    "seniorTip": "생명주기 초기화 순서 충돌 시 SmartInitializingSingleton을 활용해 모든 싱글톤 Bean 초기화 후 실행할 로직을 분리할 수 있습니다.",
+    "tags": ["bean-lifecycle", "postconstruct", "predestroy"]
+  },
+  {
+    "id": "spring-003",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "BeanFactory와 ApplicationContext의 차이로 올바른 것은?",
+    "answer": 3,
+    "options": [
+      "BeanFactory는 AOP를 지원하지만 ApplicationContext는 지원하지 않는다",
+      "ApplicationContext는 Lazy Loading만 지원한다",
+      "BeanFactory는 이벤트 발행 기능을 제공한다",
+      "ApplicationContext는 BeanFactory를 상속하며 이벤트, 메시지, AOP 등 엔터프라이즈 기능을 추가로 제공한다"
+    ],
+    "explanation": "ApplicationContext는 BeanFactory를 확장하며 MessageSource(국제화), ApplicationEventPublisher(이벤트), ResourceLoader, AOP 자동 적용 등 엔터프라이즈 기능을 포함합니다.",
+    "deepDive": "BeanFactory는 getBean() 호출 시 지연 초기화(Lazy)가 기본이고, ApplicationContext는 컨텍스트 로딩 시 싱글톤 Bean을 미리 초기화합니다. 실제 운영 환경에서는 거의 항상 ApplicationContext를 사용합니다.",
+    "seniorTip": "GenericApplicationContext, AnnotationConfigApplicationContext 등 구현체 선택은 설정 소스(XML, 어노테이션, Groovy)에 따라 달라집니다.",
+    "tags": ["beanfactory", "applicationcontext", "container"]
+  },
+  {
+    "id": "spring-004",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Scope('prototype')으로 선언된 Bean을 싱글톤 Bean에 주입할 때 발생하는 문제는?",
+    "answer": 2,
+    "options": [
+      "컴파일 오류가 발생한다",
+      "매번 새 인스턴스가 생성되지 않고 최초 주입된 인스턴스가 계속 사용된다",
+      "애플리케이션 시작 시 예외가 발생한다",
+      "prototype Bean이 자동으로 싱글톤으로 변경된다"
+    ],
+    "explanation": "싱글톤 Bean은 한 번만 생성되므로, 생성 시점에 주입된 prototype Bean 인스턴스를 계속 참조합니다. 매 요청마다 새 인스턴스가 필요하다면 ObjectProvider나 ApplicationContext.getBean()을 사용해야 합니다.",
+    "deepDive": "해결책으로 ObjectProvider<MyPrototype>, @Lookup 메서드 주입, 또는 Scoped Proxy(@Scope(proxyMode=ScopedProxyMode.TARGET_CLASS))를 사용합니다. Scoped Proxy는 AOP 프록시를 통해 매 호출 시 실제 Bean을 위임합니다.",
+    "seniorTip": "request/session 스코프 Bean을 싱글톤 컨트롤러에 주입할 때도 같은 문제가 발생하므로 @Scope(proxyMode) 설정이 필수입니다.",
+    "tags": ["scope", "prototype", "singleton", "scoped-proxy"]
+  },
+  {
+    "id": "spring-005",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Autowired 필드 주입 대비 생성자 주입이 권장되는 주된 이유는?",
+    "answer": 1,
+    "options": [
+      "생성자 주입이 코드량이 적어 편리하다",
+      "불변성 보장, 필수 의존성 명시, 테스트 용이성, 순환 의존성 조기 감지가 가능하다",
+      "필드 주입은 Spring 5부터 deprecated되었다",
+      "생성자 주입만 @Qualifier를 사용할 수 있다"
+    ],
+    "explanation": "생성자 주입은 final 필드를 통한 불변성 보장, 의존성 누락 시 컴파일/런타임 즉시 오류, Spring 컨테이너 없이도 테스트 가능, 순환 의존성 감지 등의 장점이 있습니다.",
+    "deepDive": "Spring 4.3부터 생성자가 하나면 @Autowired 생략 가능합니다. Lombok @RequiredArgsConstructor와 조합하면 코드량도 줄일 수 있습니다. 순환 의존성은 생성자 주입 시 애플리케이션 시작 시점에 BeanCurrentlyInCreationException으로 즉시 감지됩니다.",
+    "seniorTip": "필드 주입은 리플렉션으로 동작해 Spring 없이 테스트할 때 의존성을 직접 설정할 방법이 없습니다. 단위 테스트 작성 시 생성자 주입이 훨씬 유리합니다.",
+    "tags": ["autowired", "constructor-injection", "di"]
+  },
+  {
+    "id": "spring-006",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring에서 순환 의존성(Circular Dependency)이 발생했을 때의 동작으로 올바른 것은?",
+    "answer": 2,
+    "options": [
+      "Spring이 자동으로 순환 의존성을 해결해준다",
+      "생성자 주입 시 BeanCurrentlyInCreationException, 필드/세터 주입 시 3단계 캐시로 해결 가능하다",
+      "항상 애플리케이션이 시작되지 않는다",
+      "순환 의존성은 Spring에서 허용되지 않는다"
+    ],
+    "explanation": "생성자 주입의 순환 의존성은 즉시 예외를 던집니다. 세터/필드 주입은 Spring의 3-level cache(singletonObjects, earlySingletonObjects, singletonFactories)로 해결되지만, Spring Boot 2.6부터 기본적으로 금지됩니다.",
+    "deepDive": "3단계 캐시에서 singletonFactories는 완전히 초기화되지 않은 early Bean reference를 제공합니다. 순환 의존성은 설계 문제를 나타내므로 리팩터링(이벤트, 중간 서비스 분리)으로 해결하는 것이 바람직합니다.",
+    "seniorTip": "spring.main.allow-circular-references=true로 허용할 수 있지만 권장하지 않습니다. 순환 의존성은 단일 책임 원칙 위반 신호일 가능성이 높습니다.",
+    "tags": ["circular-dependency", "3-level-cache", "bean"]
+  },
+  {
+    "id": "spring-007",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Primary와 @Qualifier의 차이로 올바른 것은?",
+    "answer": 0,
+    "options": [
+      "@Primary는 기본 Bean을 전역으로 지정하고, @Qualifier는 주입 시점에 특정 Bean을 명시적으로 선택한다",
+      "@Qualifier는 같은 타입 Bean이 하나일 때만 사용할 수 있다",
+      "@Primary는 @Qualifier보다 항상 우선순위가 높다",
+      "둘 다 동일한 기능을 하므로 혼용하면 안 된다"
+    ],
+    "explanation": "@Primary는 같은 타입 Bean이 여러 개일 때 기본 선택 Bean을 지정합니다. @Qualifier는 주입 지점에서 Bean 이름이나 커스텀 한정자로 특정 Bean을 명시적으로 지정합니다. @Qualifier가 @Primary보다 우선합니다.",
+    "deepDive": "커스텀 @Qualifier 어노테이션을 만들어 타입 안전한 Bean 선택이 가능합니다. @Primary는 하나만 지정 가능하지만 @Qualifier는 여러 Bean에 각각 다른 한정자를 부여할 수 있습니다.",
+    "seniorTip": "테스트 환경에서 Mock Bean을 @Primary로 등록하면 실제 Bean을 교체할 수 있어 유용합니다. 단, 운영 코드에 @Primary 남용은 의도치 않은 Bean 선택을 유발합니다.",
+    "tags": ["primary", "qualifier", "autowired"]
+  },
+  {
+    "id": "spring-008",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "BeanPostProcessor의 역할로 올바른 것은?",
+    "answer": 3,
+    "options": [
+      "Bean의 스코프를 동적으로 변경한다",
+      "BeanDefinition을 수정하여 Bean 생성 방식을 바꾼다",
+      "컨테이너 초기화 완료 후 한 번만 실행된다",
+      "Bean 초기화 전후에 개입하여 프록시 생성, 검증 등 커스텀 로직을 실행한다"
+    ],
+    "explanation": "BeanPostProcessor는 postProcessBeforeInitialization(초기화 전)과 postProcessAfterInitialization(초기화 후)를 통해 모든 Bean에 개입할 수 있습니다. Spring AOP 프록시, @Autowired 처리, @Value 처리 등이 모두 BeanPostProcessor로 구현됩니다.",
+    "deepDive": "BeanFactoryPostProcessor는 BeanDefinition 수정(Bean 생성 전), BeanPostProcessor는 Bean 인스턴스 수정(Bean 생성 후)에 사용됩니다. InstantiationAwareBeanPostProcessor는 Bean 인스턴스화 자체에도 개입 가능합니다.",
+    "seniorTip": "커스텀 어노테이션 처리, 분산 락 자동 적용 등 인프라 관심사를 BeanPostProcessor로 구현하면 비즈니스 코드에서 완전히 분리할 수 있습니다.",
+    "tags": ["beanpostprocessor", "proxy", "lifecycle"]
+  },
+  {
+    "id": "spring-009",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Boot Auto-configuration이 동작하는 핵심 메커니즘은?",
+    "answer": 1,
+    "options": [
+      "컴파일 시점에 클래스패스를 분석하여 설정을 생성한다",
+      "spring.factories 또는 AutoConfiguration.imports 파일에 등록된 설정 클래스를 @ConditionalOn* 조건에 따라 선택적으로 활성화한다",
+      "모든 의존성의 설정 클래스를 무조건 로드한다",
+      "@SpringBootApplication 어노테이션이 직접 설정 클래스를 생성한다"
+    ],
+    "explanation": "Auto-configuration은 META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports(Boot 2.7+) 또는 spring.factories에 등록된 클래스를 @ConditionalOnClass, @ConditionalOnMissingBean 등의 조건으로 필요한 것만 활성화합니다.",
+    "deepDive": "Spring Boot 2.7부터 spring.factories 대신 AutoConfiguration.imports 파일을 사용합니다. --debug 옵션이나 ConditionEvaluationReport로 어떤 자동 설정이 적용/제외되었는지 확인할 수 있습니다.",
+    "seniorTip": "자체 스타터 라이브러리 제작 시 AutoConfiguration.imports에 설정 클래스를 등록하고 @AutoConfiguration 어노테이션을 사용하면 됩니다.",
+    "tags": ["auto-configuration", "spring-boot", "conditional"]
+  },
+  {
+    "id": "spring-010",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@ConditionalOnMissingBean의 동작으로 올바른 것은?",
+    "answer": 2,
+    "options": [
+      "클래스패스에 특정 클래스가 없을 때 Bean을 등록한다",
+      "애플리케이션 프로퍼티가 없을 때 Bean을 등록한다",
+      "동일 타입의 Bean이 이미 등록되어 있지 않을 때만 Bean을 등록한다",
+      "특정 Bean이 존재할 때 Bean을 등록한다"
+    ],
+    "explanation": "@ConditionalOnMissingBean은 해당 타입의 Bean이 컨텍스트에 없을 때만 Bean을 등록합니다. 자동 설정에서 사용자가 직접 정의한 Bean이 없을 때 기본 Bean을 제공하는 패턴에 사용됩니다.",
+    "deepDive": "@ConditionalOnClass는 클래스패스에 클래스가 있을 때, @ConditionalOnProperty는 특정 프로퍼티 값일 때 활성화됩니다. 자동 설정 클래스는 사용자 설정(@Configuration)보다 나중에 처리되어 @ConditionalOnMissingBean이 올바르게 동작합니다.",
+    "seniorTip": "자동 설정 순서는 @AutoConfigureAfter, @AutoConfigureBefore, @AutoConfigureOrder로 제어합니다. 순서 문제로 @ConditionalOnMissingBean이 의도대로 동작하지 않는 경우가 있으니 주의가 필요합니다.",
+    "tags": ["conditional", "auto-configuration", "missing-bean"]
+  },
+  {
+    "id": "spring-011",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring Boot Starter의 핵심 역할은?",
+    "answer": 3,
+    "options": [
+      "애플리케이션 시작 속도를 빠르게 한다",
+      "Spring 버전을 자동으로 업그레이드한다",
+      "불필요한 Bean을 자동으로 제거한다",
+      "관련 의존성들을 하나의 묶음으로 제공하고 자동 설정을 포함한다"
+    ],
+    "explanation": "Starter는 특정 기능(web, data-jpa 등)에 필요한 의존성 묶음과 자동 설정을 함께 제공합니다. spring-boot-starter-web 하나만 추가하면 Spring MVC, Tomcat, Jackson 등이 함께 설정됩니다.",
+    "deepDive": "Starter는 실제로 코드가 거의 없고 의존성 선언과 자동 설정 참조만 포함합니다. spring-boot-starter-parent의 BOM(Bill of Materials)이 버전 호환성을 관리합니다.",
+    "seniorTip": "사내 공통 라이브러리를 커스텀 스타터로 만들면 의존성 버전 통일과 자동 설정을 팀 전체에 배포할 수 있습니다.",
+    "tags": ["starter", "spring-boot", "dependency"]
+  },
+  {
+    "id": "spring-012",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Value와 @ConfigurationProperties의 주요 차이는?",
+    "answer": 1,
+    "options": [
+      "@Value는 타입 안전하고 @ConfigurationProperties는 타입 안전하지 않다",
+      "@ConfigurationProperties는 관련 프로퍼티를 그룹으로 바인딩하고 타입 안전하며 유효성 검사를 지원한다",
+      "@Value는 YAML 파일을 지원하지 않는다",
+      "둘 다 동일한 기능이므로 선호도에 따라 선택한다"
+    ],
+    "explanation": "@Value는 단일 값을 SpEL로 주입하고, @ConfigurationProperties는 prefix 기반으로 관련 프로퍼티 그룹을 POJO에 바인딩합니다. @ConfigurationProperties는 @Validated와 조합해 Bean Validation을 적용할 수 있습니다.",
+    "deepDive": "@ConfigurationProperties는 Relaxed Binding(camelCase, kebab-case, UPPER_CASE 모두 허용)을 지원합니다. Spring Boot 2.2부터 @ConfigurationPropertiesScan으로 자동 스캔이 가능합니다.",
+    "seniorTip": "복잡한 설정 구조(중첩 객체, 리스트)는 @ConfigurationProperties가 훨씬 관리하기 좋습니다. @Value는 단순 단일 값이나 SpEL 표현식이 필요한 경우에만 사용하세요.",
+    "tags": ["value", "configuration-properties", "properties"]
+  },
+  {
+    "id": "spring-013",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Boot Actuator의 주요 기능은?",
+    "answer": 2,
+    "options": [
+      "애플리케이션 배포를 자동화한다",
+      "데이터베이스 마이그레이션을 수행한다",
+      "운영 중인 애플리케이션의 상태, 메트릭, 환경 정보를 HTTP 또는 JMX로 노출한다",
+      "로그 파일을 자동으로 압축하고 아카이빙한다"
+    ],
+    "explanation": "Actuator는 /health, /metrics, /env, /beans, /mappings 등의 엔드포인트로 애플리케이션 운영 정보를 제공합니다. Micrometer와 통합하여 Prometheus, Grafana 등 모니터링 시스템에 메트릭을 전송할 수 있습니다.",
+    "deepDive": "management.endpoints.web.exposure.include로 노출할 엔드포인트를 제어해야 합니다. /actuator/health는 DB, 디스크, 커스텀 HealthIndicator 상태를 통합 확인합니다. 보안상 actuator 엔드포인트는 별도 포트나 인증 보호가 필요합니다.",
+    "seniorTip": "커스텀 @Endpoint나 HealthIndicator를 구현하면 비즈니스 상태(외부 API 연결 등)를 헬스체크에 포함할 수 있습니다.",
+    "tags": ["actuator", "monitoring", "health"]
+  },
+  {
+    "id": "spring-014",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Boot Failure Analyzer의 역할은?",
+    "answer": 0,
+    "options": [
+      "애플리케이션 시작 실패 시 원인을 분석하여 명확한 오류 메시지와 해결 방안을 제공한다",
+      "런타임 예외를 자동으로 재시도한다",
+      "실패한 Bean을 건너뛰고 나머지를 계속 초기화한다",
+      "스택 트레이스를 압축하여 로그 용량을 줄인다"
+    ],
+    "explanation": "FailureAnalyzer는 시작 실패 예외를 분석하여 사용자 친화적인 메시지와 Action(해결 방법)을 출력합니다. 예를 들어 포트 충돌, 의존성 오류, 설정 오류 등을 명확히 설명합니다.",
+    "deepDive": "FailureAnalyzer 인터페이스를 구현하고 spring.factories에 등록하면 커스텀 분석기를 만들 수 있습니다. AbstractFailureAnalyzer<T extends Throwable>를 상속하면 특정 예외 타입에 특화된 분석기를 쉽게 구현할 수 있습니다.",
+    "seniorTip": "사내 공통 설정 오류나 인프라 연결 실패에 대한 커스텀 Failure Analyzer를 만들면 개발팀의 디버깅 시간을 크게 줄일 수 있습니다.",
+    "tags": ["failure-analyzer", "spring-boot", "startup"]
+  },
+  {
+    "id": "spring-015",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring Boot에서 @EnableAutoConfiguration의 역할은?",
+    "answer": 1,
+    "options": [
+      "모든 Spring 어노테이션을 활성화한다",
+      "클래스패스와 정의된 Bean을 기반으로 자동 설정을 활성화한다",
+      "컴포넌트 스캔을 활성화한다",
+      "트랜잭션 관리를 활성화한다"
+    ],
+    "explanation": "@EnableAutoConfiguration은 Auto-configuration 메커니즘을 활성화합니다. @SpringBootApplication은 @EnableAutoConfiguration + @ComponentScan + @Configuration을 포함합니다.",
+    "deepDive": "특정 자동 설정을 제외하려면 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})를 사용합니다. 테스트 시 불필요한 자동 설정 제외로 컨텍스트 로딩 속도를 개선할 수 있습니다.",
+    "seniorTip": "자동 설정 디버깅은 애플리케이션 실행 시 --debug 플래그를 추가하거나 logging.level.org.springframework.boot.autoconfigure=DEBUG를 설정하면 됩니다.",
+    "tags": ["enable-auto-configuration", "spring-boot", "annotation"]
+  },
+  {
+    "id": "spring-016",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring MVC에서 DispatcherServlet의 역할은?",
+    "answer": 3,
+    "options": [
+      "데이터베이스 연결을 관리한다",
+      "보안 필터를 적용한다",
+      "Bean을 생성하고 의존성을 주입한다",
+      "Front Controller 패턴으로 모든 HTTP 요청을 받아 적절한 핸들러로 위임한다"
+    ],
+    "explanation": "DispatcherServlet은 Front Controller 패턴 구현체로, 요청을 HandlerMapping으로 핸들러를 찾고, HandlerAdapter로 실행하고, ViewResolver로 응답을 렌더링하는 전체 흐름을 조율합니다.",
+    "deepDive": "DispatcherServlet은 자체 WebApplicationContext를 가지며, 루트 ApplicationContext를 부모로 참조합니다. 요청 처리 흐름: DispatcherServlet → HandlerMapping → HandlerAdapter → Handler → ModelAndView → ViewResolver → View.",
+    "seniorTip": "DispatcherServlet이 초기화되면서 전략 컴포넌트(HandlerMapping, HandlerAdapter 등)를 자동 감지합니다. DispatcherServlet.properties에 기본 전략이 정의되어 있습니다.",
+    "tags": ["dispatcherservlet", "mvc", "front-controller"]
+  },
+  {
+    "id": "spring-017",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "HandlerMapping과 HandlerAdapter의 역할 구분으로 올바른 것은?",
+    "answer": 0,
+    "options": [
+      "HandlerMapping은 요청에 맞는 핸들러를 찾고, HandlerAdapter는 찾은 핸들러를 실제로 실행한다",
+      "HandlerAdapter가 핸들러를 찾고 HandlerMapping이 실행한다",
+      "둘 다 핸들러를 찾는 역할을 한다",
+      "HandlerMapping은 응답을 처리하고 HandlerAdapter는 요청을 처리한다"
+    ],
+    "explanation": "HandlerMapping(예: RequestMappingHandlerMapping)은 URL과 핸들러 메서드를 매핑합니다. HandlerAdapter(예: RequestMappingHandlerAdapter)는 핸들러의 종류에 관계없이 통일된 방식으로 실행합니다.",
+    "deepDive": "HandlerAdapter 패턴 덕분에 @Controller, HttpRequestHandler, WebMvcConfigurer 등 다양한 타입의 핸들러를 DispatcherServlet이 동일하게 처리할 수 있습니다. HandlerInterceptor는 HandlerExecutionChain에 포함되어 pre/postHandle을 제공합니다.",
+    "seniorTip": "커스텀 HandlerMethodArgumentResolver를 HandlerAdapter에 등록하면 메서드 파라미터에 커스텀 객체를 자동 주입할 수 있습니다.",
+    "tags": ["handlermapping", "handleradapter", "mvc"]
+  },
+  {
+    "id": "spring-018",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "@RestController와 @Controller의 차이는?",
+    "answer": 2,
+    "options": [
+      "@RestController는 GET 요청만 처리할 수 있다",
+      "@Controller는 JSON을 반환할 수 없다",
+      "@RestController는 @Controller + @ResponseBody로 모든 메서드 반환값을 HTTP 응답 본문으로 직렬화한다",
+      "@RestController는 예외 처리를 자동으로 해준다"
+    ],
+    "explanation": "@RestController는 @Controller와 @ResponseBody를 합친 메타 어노테이션입니다. 반환값이 뷰 이름이 아닌 HTTP 응답 본문(주로 JSON)으로 변환되어 전송됩니다.",
+    "deepDive": "응답 변환은 HttpMessageConverter가 담당합니다. Jackson이 클래스패스에 있으면 MappingJackson2HttpMessageConverter가 자동 등록되어 객체를 JSON으로 변환합니다. Content-Type 협상은 Accept 헤더 기반으로 이루어집니다.",
+    "seniorTip": "@Controller에서 특정 메서드만 JSON으로 응답하려면 해당 메서드에만 @ResponseBody를 붙이면 됩니다. 뷰와 API를 함께 제공하는 경우 유용합니다.",
+    "tags": ["restcontroller", "controller", "responsebody"]
+  },
+  {
+    "id": "spring-019",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "ResponseEntity를 사용하는 주된 이유는?",
+    "answer": 1,
+    "options": [
+      "성능이 더 빠르기 때문이다",
+      "HTTP 상태 코드, 헤더, 본문을 모두 프로그래밍적으로 제어할 수 있기 때문이다",
+      "JSON 직렬화가 자동으로 처리되기 때문이다",
+      "예외를 자동으로 처리해주기 때문이다"
+    ],
+    "explanation": "ResponseEntity<T>는 HTTP 응답의 상태 코드, 헤더, 본문을 타입 안전하게 구성할 수 있습니다. 단순히 객체를 반환할 때는 자동으로 200 OK가 설정되지만, 생성(201), 리다이렉트(3xx), 오류(4xx/5xx) 응답을 명시적으로 설정할 때 유용합니다.",
+    "deepDive": "ResponseEntity.ok().headers(headers).body(data) 빌더 패턴으로 체이닝할 수 있습니다. @ResponseStatus 어노테이션으로도 상태 코드를 지정할 수 있지만 동적 상태 코드가 필요하면 ResponseEntity를 사용해야 합니다.",
+    "seniorTip": "REST API 설계 시 생성은 201 Created + Location 헤더, 삭제는 204 No Content, 부분 성공은 207 Multi-Status를 ResponseEntity로 반환하는 것이 표준입니다.",
+    "tags": ["responseentity", "http-status", "mvc"]
+  },
+  {
+    "id": "spring-020",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@ExceptionHandler와 @ControllerAdvice의 관계로 올바른 것은?",
+    "answer": 3,
+    "options": [
+      "@ControllerAdvice 없이 @ExceptionHandler를 사용할 수 없다",
+      "@ExceptionHandler는 전역 예외만 처리할 수 있다",
+      "@ControllerAdvice는 특정 컨트롤러에만 적용된다",
+      "@ExceptionHandler는 특정 컨트롤러 내 예외를 처리하고, @ControllerAdvice는 전역 예외 처리를 위한 공유 @ExceptionHandler를 제공한다"
+    ],
+    "explanation": "@ExceptionHandler를 컨트롤러 내에 정의하면 해당 컨트롤러에서만 동작합니다. @ControllerAdvice 클래스에 정의하면 모든 컨트롤러에 전역 적용됩니다. @RestControllerAdvice는 @ControllerAdvice + @ResponseBody입니다.",
+    "deepDive": "@ControllerAdvice는 basePackages, assignableTypes, annotations 속성으로 적용 범위를 제한할 수 있습니다. 예외 처리 우선순위는 컨트롤러 내 @ExceptionHandler > @ControllerAdvice 순입니다.",
+    "seniorTip": "전역 예외 처리에서 ErrorResponse DTO와 에러 코드 체계를 통일하면 클라이언트가 일관된 에러 응답을 받을 수 있습니다. ProblemDetail(RFC 7807) 표준 포맷도 고려해보세요.",
+    "tags": ["exceptionhandler", "controlleradvice", "exception"]
+  },
+  {
+    "id": "spring-021",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring MVC Interceptor와 Servlet Filter의 차이로 올바른 것은?",
+    "answer": 2,
+    "options": [
+      "Filter는 Spring Bean을 주입받을 수 없다",
+      "Interceptor는 모든 서블릿에 적용되고 Filter는 Spring MVC에만 적용된다",
+      "Interceptor는 Spring MVC 컨텍스트에 속하여 핸들러 정보에 접근 가능하고, Filter는 서블릿 컨테이너 레벨에서 동작한다",
+      "Filter는 응답을 수정할 수 없다"
+    ],
+    "explanation": "Filter는 DispatcherServlet 이전 서블릿 컨테이너 레벨에서 동작하고, Interceptor는 DispatcherServlet 이후 Spring MVC 레벨에서 동작합니다. Interceptor는 HandlerMethod 정보에 접근할 수 있어 컨트롤러 레벨 어노테이션 처리가 가능합니다.",
+    "deepDive": "인증/인가의 경우 Spring Security는 Filter 체인으로 구현됩니다. 로깅, 인증 체크 등 Spring Bean이 필요한 기능은 DelegatingFilterProxy를 통해 Filter에서도 Bean 사용이 가능합니다.",
+    "seniorTip": "JWT 인증 필터는 Filter로, 권한 체크나 감사 로그는 Interceptor로 구현하는 것이 일반적입니다. postHandle은 예외 발생 시 호출되지 않으니 afterCompletion을 활용하세요.",
+    "tags": ["interceptor", "filter", "mvc"]
+  },
+  {
+    "id": "spring-022",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring MVC에서 @RequestMapping의 produces 속성 역할은?",
+    "answer": 1,
+    "options": [
+      "요청의 Content-Type을 제한한다",
+      "응답의 Content-Type을 지정하고 Accept 헤더와 매칭하여 핸들러를 선택한다",
+      "요청 파라미터를 제한한다",
+      "HTTP 메서드를 지정한다"
+    ],
+    "explanation": "produces는 핸들러가 생성하는 응답 MediaType을 지정합니다. 클라이언트의 Accept 헤더와 비교하여 매칭되는 핸들러를 선택합니다. consumes는 반대로 요청 Content-Type을 제한합니다.",
+    "deepDive": "ContentNegotiationManager가 Accept 헤더, URL 확장자, 요청 파라미터를 분석하여 최적의 응답 포맷을 결정합니다. 하나의 API가 JSON과 XML을 모두 지원할 때 produces를 활용할 수 있습니다.",
+    "seniorTip": "API 버전 관리를 Accept 헤더(Accept: application/vnd.company.v2+json)로 구현할 때 produces와 커스텀 MediaType을 조합하는 패턴이 있습니다.",
+    "tags": ["requestmapping", "produces", "content-negotiation"]
+  },
+  {
+    "id": "spring-023",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring Data JPA에서 Repository 인터페이스를 확장할 때 CrudRepository와 JpaRepository의 차이는?",
+    "answer": 3,
+    "options": [
+      "JpaRepository는 JPQL을 지원하지 않는다",
+      "CrudRepository는 페이징을 지원하지 않는다",
+      "JpaRepository는 단방향 관계만 지원한다",
+      "JpaRepository는 CrudRepository를 포함하며 페이징, 정렬, 배치 처리, flush 등 JPA 특화 기능을 추가로 제공한다"
+    ],
+    "explanation": "JpaRepository는 PagingAndSortingRepository와 CrudRepository를 모두 상속합니다. 추가로 saveAll, deleteAllInBatch, findAll(Sort), flush 등 JPA에 특화된 메서드를 제공합니다.",
+    "deepDive": "SimpleJpaRepository가 JpaRepository의 기본 구현체이며 @Repository와 @Transactional이 적용되어 있습니다. Repository 메서드에서 쿼리 메서드 명명 규칙(findBy, countBy, existsBy 등)으로 JPQL을 자동 생성합니다.",
+    "seniorTip": "도메인 레이어를 Spring Data에 의존시키지 않으려면 Repository 인터페이스를 도메인에 두고 Spring Data 구현체는 인프라 레이어에 위치시키는 헥사고날 아키텍처 패턴을 고려하세요.",
+    "tags": ["repository", "jpa", "spring-data"]
+  },
+  {
+    "id": "spring-024",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "JPA 영속성 컨텍스트의 1차 캐시(First Level Cache) 동작으로 올바른 것은?",
+    "answer": 0,
+    "options": [
+      "같은 트랜잭션 내에서 동일 ID로 엔티티를 조회하면 DB를 다시 조회하지 않고 캐시에서 반환한다",
+      "1차 캐시는 애플리케이션 전체에서 공유된다",
+      "1차 캐시는 영구적으로 유지된다",
+      "1차 캐시에 있는 엔티티는 변경 감지(Dirty Checking)가 동작하지 않는다"
+    ],
+    "explanation": "1차 캐시는 EntityManager(영속성 컨텍스트) 범위로, 보통 한 트랜잭션 내에서 유효합니다. 동일 ID 조회 시 DB 재조회 없이 캐시에서 반환되며, 캐시 내 엔티티에 변경 감지가 적용됩니다.",
+    "deepDive": "1차 캐시의 스냅샷과 현재 엔티티 상태를 트랜잭션 커밋/flush 시 비교하여 UPDATE 쿼리를 자동 생성합니다(Dirty Checking). 2차 캐시는 애플리케이션 전체에서 공유되며 Ehcache, Redis 등으로 구성합니다.",
+    "seniorTip": "배치 처리 시 영속성 컨텍스트가 커지면 메모리 문제가 발생합니다. 주기적으로 em.flush()와 em.clear()를 호출하거나 JPQL의 벌크 연산을 사용하세요.",
+    "tags": ["persistence-context", "first-level-cache", "jpa"]
+  },
+  {
+    "id": "spring-025",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "JPA N+1 문제가 발생하는 원인과 해결책으로 올바른 것은?",
+    "answer": 2,
+    "options": [
+      "N+1 문제는 EAGER 로딩에서만 발생한다",
+      "JOIN FETCH를 사용하면 페이징이 정상적으로 동작한다",
+      "LAZY 로딩 연관관계를 반복 접근 시 N번 추가 쿼리가 발생하며, @EntityGraph나 FETCH JOIN, BatchSize로 해결한다",
+      "N+1 문제는 단방향 관계에서만 발생한다"
+    ],
+    "explanation": "LAZY 로딩된 컬렉션을 N개 엔티티에서 각각 접근하면 N번의 추가 쿼리가 발생합니다. 해결책은 JOIN FETCH, @EntityGraph(즉시 로딩), @BatchSize(IN 쿼리로 배치 로딩), DTO 프로젝션입니다.",
+    "deepDive": "컬렉션 JOIN FETCH와 페이징을 함께 사용하면 HibernateJpaDialect가 경고를 내고 메모리에서 페이징합니다. 컬렉션은 @BatchSize + 페이징, 단일 연관관계는 JOIN FETCH를 사용하는 것이 권장됩니다.",
+    "seniorTip": "Hibernate의 hibernate.default_batch_fetch_size를 전역 설정하면 LAZY 로딩 시 자동으로 배치 쿼리를 생성합니다. Spring Boot에서는 spring.jpa.properties.hibernate.default_batch_fetch_size로 설정합니다.",
+    "tags": ["n+1", "fetch-join", "entitygraph", "jpa"]
+  },
+  {
+    "id": "spring-026",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "@EntityGraph를 사용하는 주된 목적은?",
+    "answer": 1,
+    "options": [
+      "엔티티의 그래프 구조를 시각화한다",
+      "특정 쿼리에서 연관관계 로딩 전략을 오버라이드하여 N+1을 해결한다",
+      "엔티티 간 순환 참조를 방지한다",
+      "인덱스를 자동으로 생성한다"
+    ],
+    "explanation": "@EntityGraph는 특정 메서드나 쿼리에서 연관관계를 EAGER 로딩하도록 오버라이드합니다. @NamedEntityGraph로 재사용 가능한 그래프를 정의하거나, attributePaths로 인라인 지정이 가능합니다.",
+    "deepDive": "@EntityGraph(attributePaths = {\"orders\", \"orders.items\"})처럼 중첩 경로도 지정 가능합니다. JOIN FETCH와 달리 @EntityGraph는 메서드 선언만으로 적용되어 JPQL을 직접 수정하지 않아도 됩니다.",
+    "seniorTip": "@EntityGraph는 내부적으로 LEFT OUTER JOIN을 사용하므로 카테시안 곱 주의가 필요합니다. 컬렉션이 여러 개면 각각 별도 쿼리(BatchSize)가 더 효율적일 수 있습니다.",
+    "tags": ["entitygraph", "n+1", "fetch-strategy"]
+  },
+  {
+    "id": "spring-027",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Data JPA Specification의 역할과 사용 시점은?",
+    "answer": 3,
+    "options": [
+      "JPQL 쿼리 문자열을 검증한다",
+      "엔티티 클래스의 필드를 검증한다",
+      "정적인 쿼리에만 사용할 수 있다",
+      "JPA Criteria API를 추상화하여 동적 쿼리를 타입 안전하게 조합할 수 있다"
+    ],
+    "explanation": "Specification은 JPA Criteria API를 래핑하여 동적 쿼리 조건을 재사용 가능한 조각으로 만들고 and(), or()로 조합합니다. JpaSpecificationExecutor를 Repository에 추가하면 사용할 수 있습니다.",
+    "deepDive": "복잡한 동적 쿼리는 QueryDSL이 더 가독성이 높습니다. Specification은 Spring Data 표준 방식이라 의존성이 적다는 장점이 있습니다. Metamodel 클래스(JPA Static Metamodel)를 함께 사용하면 타입 안전성이 높아집니다.",
+    "seniorTip": "검색 조건이 런타임에 동적으로 결정되는 관리자 화면이나 목록 API에 Specification 또는 QueryDSL을 활용하면 쿼리 메서드 폭발 문제를 해결할 수 있습니다.",
+    "tags": ["specification", "dynamic-query", "criteria-api"]
+  },
+  {
+    "id": "spring-028",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Data JPA에서 Projection을 사용하는 이유는?",
+    "answer": 0,
+    "options": [
+      "엔티티의 일부 필드만 조회하여 불필요한 데이터 전송을 줄이고 성능을 개선한다",
+      "엔티티를 다른 데이터베이스로 복사한다",
+      "엔티티 간 관계를 정의한다",
+      "트랜잭션을 자동으로 관리한다"
+    ],
+    "explanation": "Projection은 인터페이스 기반(Interface Projection) 또는 클래스 기반(DTO Projection)으로 엔티티의 일부 필드만 SELECT합니다. 전체 엔티티를 로드하지 않아 메모리와 네트워크 사용이 줄어듭니다.",
+    "deepDive": "Interface Projection은 Spring Data가 프록시를 생성하고, Class Projection(DTO)은 JPQL의 new 키워드나 @Query와 함께 사용합니다. Closed Projection은 모든 필드가 매핑되고 Open Projection은 @Value SpEL을 사용합니다.",
+    "seniorTip": "Projection 인터페이스에 default 메서드를 추가하면 여러 필드를 조합한 계산 값도 반환할 수 있습니다. 단, SpEL Open Projection은 실제로 전체 엔티티를 로드할 수 있으니 주의가 필요합니다.",
+    "tags": ["projection", "dto", "spring-data"]
+  },
+  {
+    "id": "spring-029",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Transactional의 propagation REQUIRED와 REQUIRES_NEW의 차이는?",
+    "answer": 2,
+    "options": [
+      "REQUIRED는 새 트랜잭션을 항상 생성하고 REQUIRES_NEW는 기존 것을 재사용한다",
+      "두 옵션은 동일하게 동작한다",
+      "REQUIRED는 기존 트랜잭션에 참여하고, REQUIRES_NEW는 기존 트랜잭션을 일시 중단하고 새 트랜잭션을 시작한다",
+      "REQUIRES_NEW는 읽기 전용 트랜잭션을 생성한다"
+    ],
+    "explanation": "REQUIRED(기본값)는 트랜잭션이 있으면 참여하고 없으면 새로 생성합니다. REQUIRES_NEW는 항상 새 트랜잭션을 생성하며, 기존 트랜잭션은 완료될 때까지 중단됩니다. REQUIRES_NEW는 외부 트랜잭션 롤백 여부와 무관하게 독립적으로 커밋/롤백됩니다.",
+    "deepDive": "NESTED는 세이브포인트를 사용해 부분 롤백을 지원하지만 모든 DB가 지원하지는 않습니다. REQUIRES_NEW 사용 시 교착 상태에 주의해야 합니다. 감사 로그처럼 별도 트랜잭션으로 저장해야 할 때 REQUIRES_NEW가 유용합니다.",
+    "seniorTip": "REQUIRES_NEW 메서드를 같은 클래스에서 self-invocation으로 호출하면 AOP 프록시를 우회해 새 트랜잭션이 시작되지 않습니다. 이 경우 별도 빈으로 분리해야 합니다.",
+    "tags": ["transactional", "propagation", "required", "requires-new"]
+  },
+  {
+    "id": "spring-030",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "@Transactional isolation 레벨 중 REPEATABLE_READ가 방지하는 이상 현상은?",
+    "answer": 1,
+    "options": [
+      "Dirty Read와 Phantom Read",
+      "Dirty Read와 Non-Repeatable Read",
+      "Phantom Read만 방지한다",
+      "모든 동시성 이상 현상을 방지한다"
+    ],
+    "explanation": "REPEATABLE_READ는 한 트랜잭션에서 같은 데이터를 두 번 읽어도 결과가 같음을 보장합니다(Non-Repeatable Read 방지). Dirty Read도 방지하지만 Phantom Read(새 행 삽입)는 방지하지 못합니다.",
+    "deepDive": "MySQL InnoDB의 기본 격리 레벨은 REPEATABLE_READ이며 MVCC로 Phantom Read도 대부분 방지합니다. PostgreSQL은 기본이 READ_COMMITTED입니다. SERIALIZABLE은 모든 이상을 방지하지만 성능 비용이 큽니다.",
+    "seniorTip": "트랜잭션 격리 레벨은 DB 기본값과 다르게 설정할 때 실제로 적용되는지 확인이 필요합니다. JPA의 격리 레벨 설정은 실제 JDBC Connection의 격리 레벨을 변경합니다.",
+    "tags": ["isolation", "transactional", "repeatable-read"]
+  },
+  {
+    "id": "spring-031",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Transactional의 rollbackFor 속성이 필요한 경우는?",
+    "answer": 3,
+    "options": [
+      "RuntimeException이 발생했을 때 커밋하려는 경우",
+      "트랜잭션 타임아웃을 설정하는 경우",
+      "읽기 전용 트랜잭션을 사용하는 경우",
+      "Checked Exception이 발생했을 때도 롤백하려는 경우"
+    ],
+    "explanation": "@Transactional은 기본적으로 RuntimeException과 Error에서만 롤백합니다. Checked Exception(IOException 등)에서도 롤백하려면 rollbackFor = Exception.class 또는 rollbackFor = {IOException.class}를 지정해야 합니다.",
+    "deepDive": "noRollbackFor로 특정 RuntimeException은 롤백하지 않도록 설정할 수 있습니다. Spring과 EJB의 트랜잭션 설계 철학 차이에서 비롯된 것으로, EJB는 모든 예외에서 롤백합니다.",
+    "seniorTip": "Checked Exception을 사용하는 레거시 코드를 Spring으로 이관할 때 rollbackFor 설정을 빠트리면 데이터 불일치가 발생할 수 있습니다. 코드 리뷰 시 확인 포인트로 삼으세요.",
+    "tags": ["transactional", "rollback", "exception"]
+  },
+  {
+    "id": "spring-032",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring AOP 프록시에서 self-invocation 문제가 발생하는 이유는?",
+    "answer": 0,
+    "options": [
+      "같은 Bean 내에서 메서드를 직접 호출하면 AOP 프록시를 거치지 않아 @Transactional 등의 어노테이션이 동작하지 않는다",
+      "AOP 프록시는 public 메서드에만 적용된다",
+      "self-invocation은 컴파일 에러를 발생시킨다",
+      "Spring은 재귀 호출을 자동으로 감지하여 무한 루프를 방지한다"
+    ],
+    "explanation": "Spring AOP는 프록시 기반으로, 외부에서 Bean을 호출할 때 프록시를 거칩니다. 같은 클래스 내 this.method() 호출은 프록시를 우회하여 AOP 어드바이스가 적용되지 않습니다.",
+    "deepDive": "해결책: 1) 메서드를 별도 Bean으로 분리, 2) ApplicationContext.getBean()으로 자신을 조회, 3) AopContext.currentProxy() 사용(exposeProxy=true 필요), 4) AspectJ 위빙 사용. 별도 Bean 분리가 가장 권장됩니다.",
+    "seniorTip": "self-invocation은 @Transactional뿐 아니라 @Cacheable, @Async, @Retry 등 AOP 기반 모든 어노테이션에서 동일한 문제가 발생합니다.",
+    "tags": ["self-invocation", "aop-proxy", "transactional"]
+  },
+  {
+    "id": "spring-033",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@Transactional(readOnly = true)를 사용할 때의 이점은?",
+    "answer": 2,
+    "options": [
+      "조회 쿼리가 자동으로 캐시된다",
+      "여러 데이터소스에서 자동으로 복제본을 선택한다",
+      "Dirty Checking을 비활성화하여 스냅샷 저장 비용을 줄이고 DB 최적화 힌트를 제공한다",
+      "트랜잭션 없이 조회할 수 있게 한다"
+    ],
+    "explanation": "readOnly=true는 Hibernate의 Dirty Checking(스냅샷 비교)을 비활성화하여 메모리와 CPU를 절약합니다. DB에 읽기 전용 힌트를 전달하여 DB가 최적화(예: MySQL에서 갭 락 미설정)할 수 있습니다.",
+    "deepDive": "CQRS 패턴에서 읽기 모델 서비스에 @Transactional(readOnly=true)를 적용하는 것이 일반적입니다. AbstractRoutingDataSource와 조합하면 readOnly=true 시 읽기 전용 레플리카 DB로 라우팅할 수 있습니다.",
+    "seniorTip": "@Service 클래스 레벨에 @Transactional(readOnly=true)를 선언하고, 쓰기 메서드에만 @Transactional을 오버라이드하면 실수로 readOnly 설정을 빠트리는 것을 방지할 수 있습니다.",
+    "tags": ["transactional", "readonly", "dirty-checking"]
+  },
+  {
+    "id": "spring-034",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring의 트랜잭션 동기화 리소스(TransactionSynchronizationManager)의 역할은?",
+    "answer": 1,
+    "options": [
+      "트랜잭션의 격리 레벨을 동적으로 변경한다",
+      "현재 트랜잭션에 바인딩된 Connection/Session을 ThreadLocal로 관리하여 같은 트랜잭션 내에서 동일 리소스를 사용하게 한다",
+      "분산 트랜잭션을 조율한다",
+      "트랜잭션 로그를 기록한다"
+    ],
+    "explanation": "TransactionSynchronizationManager는 ThreadLocal을 사용해 현재 스레드의 트랜잭션에 바인딩된 JDBC Connection, Hibernate Session 등을 저장합니다. 같은 트랜잭션 내 여러 Repository 호출이 같은 Connection을 사용하도록 보장합니다.",
+    "deepDive": "TransactionSynchronization 콜백을 등록하면 트랜잭션 커밋/롤백 시 후처리 로직을 실행할 수 있습니다. 예를 들어 트랜잭션 커밋 후 이벤트 발행을 보장하려면 afterCommit() 콜백을 활용합니다.",
+    "seniorTip": "TransactionSynchronizationManager.registerSynchronization()으로 트랜잭션 완료 후 Kafka 메시지 발행이나 캐시 무효화를 처리하면 DB와 외부 시스템의 일관성을 높일 수 있습니다.",
+    "tags": ["transaction-synchronization", "threadlocal", "transaction"]
+  },
+  {
+    "id": "spring-035",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Security의 Security Filter Chain에서 필터 순서가 중요한 이유는?",
+    "answer": 3,
+    "options": [
+      "성능 최적화를 위해 빠른 필터를 먼저 실행해야 한다",
+      "특정 필터는 다른 필터보다 항상 먼저 실행되어야 한다는 Spring 규칙이 있다",
+      "필터 순서는 보안에 영향을 주지 않는다",
+      "필터 순서가 잘못되면 인증 전에 인가가 실행되거나 예외 처리가 올바르게 동작하지 않을 수 있다"
+    ],
+    "explanation": "Security Filter Chain은 SecurityContextPersistenceFilter → LogoutFilter → UsernamePasswordAuthenticationFilter → ExceptionTranslationFilter → FilterSecurityInterceptor 순으로 동작합니다. 순서가 바뀌면 인증되지 않은 요청이 인가를 통과하는 등 보안 취약점이 생길 수 있습니다.",
+    "deepDive": "커스텀 필터 추가 시 addFilterBefore(), addFilterAfter(), addFilterAt()으로 위치를 지정합니다. JWT 필터는 UsernamePasswordAuthenticationFilter 앞에 위치하는 것이 일반적입니다.",
+    "seniorTip": "Spring Security 6에서 SecurityFilterChain Bean으로 설정하는 방식으로 변경되었습니다. 여러 SecurityFilterChain을 @Order로 순서를 지정하여 URL 패턴별 다른 보안 규칙을 적용할 수 있습니다.",
+    "tags": ["security", "filter-chain", "spring-security"]
+  },
+  {
+    "id": "spring-036",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Security의 Authentication 객체에 포함되는 정보가 아닌 것은?",
+    "answer": 2,
+    "options": [
+      "Principal(사용자 정보)",
+      "GrantedAuthority(권한 목록)",
+      "요청 URL 경로",
+      "Credentials(자격증명)"
+    ],
+    "explanation": "Authentication은 Principal(사용자 식별자/UserDetails), Credentials(비밀번호 등), GrantedAuthority(권한 목록), isAuthenticated() 상태를 포함합니다. 요청 URL은 Authentication이 아닌 SecurityContext나 HttpServletRequest에서 얻습니다.",
+    "deepDive": "인증 성공 후 Credentials는 보안상 지워집니다(EraseCredentialsAfterAuthentication). Authentication은 SecurityContextHolder의 ThreadLocal에 저장되어 요청 처리 동안 접근 가능합니다.",
+    "seniorTip": "커스텀 Authentication에 추가 정보(tenantId, departmentId 등)를 포함하려면 AbstractAuthenticationToken을 상속하거나 UserDetails 구현체에 필드를 추가합니다.",
+    "tags": ["authentication", "security", "principal"]
+  },
+  {
+    "id": "spring-037",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "SecurityContext를 ThreadLocal에 저장하는 방식의 한계는?",
+    "answer": 1,
+    "options": [
+      "동기 요청에서 성능이 저하된다",
+      "비동기 처리(@Async, WebFlux)나 새 스레드에서 SecurityContext가 전파되지 않아 인증 정보를 잃을 수 있다",
+      "다중 요청을 동시에 처리할 수 없다",
+      "메모리 누수가 항상 발생한다"
+    ],
+    "explanation": "SecurityContextHolder의 기본 전략은 MODE_THREADLOCAL로, 같은 스레드에서만 SecurityContext에 접근 가능합니다. @Async나 새 스레드에서는 SecurityContext가 비어 있어 인증 정보를 잃습니다.",
+    "deepDive": "해결책: MODE_INHERITABLETHREADLOCAL(자식 스레드 전파), DelegatingSecurityContextExecutor(Executor 래핑), WebFlux에서는 ReactorContextHolder 사용. Spring Security 6+의 Reactive Security는 Reactor Context를 사용합니다.",
+    "seniorTip": "비동기 API에서 현재 사용자 ID를 로깅이나 감사에 사용해야 한다면 메서드 파라미터로 명시적으로 전달하거나 DelegatingSecurityContextRunnable을 사용하세요.",
+    "tags": ["security-context", "threadlocal", "async"]
+  },
+  {
+    "id": "spring-038",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "JWT 인증 필터를 Spring Security에 추가하는 올바른 방법은?",
+    "answer": 3,
+    "options": [
+      "UsernamePasswordAuthenticationFilter를 JWT 필터로 교체한다",
+      "JWT 필터를 FilterSecurityInterceptor 뒤에 추가한다",
+      "OncePerRequestFilter를 상속하여 SecurityFilterChain 외부에 등록한다",
+      "OncePerRequestFilter를 상속하여 UsernamePasswordAuthenticationFilter 앞에 addFilterBefore로 등록한다"
+    ],
+    "explanation": "JWT 필터는 OncePerRequestFilter를 상속하여 요청당 한 번만 실행되도록 구현하고, httpSecurity.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)로 등록합니다. JWT 검증 성공 시 SecurityContextHolder에 Authentication을 설정합니다.",
+    "deepDive": "Stateless JWT 환경에서는 SessionCreationPolicy.STATELESS 설정이 필요합니다. 토큰 만료, 서명 불일치 등 JWT 예외는 필터에서 처리하거나 AuthenticationEntryPoint로 위임할 수 있습니다.",
+    "seniorTip": "JWT 토큰 재발급 로직은 Refresh Token을 DB/Redis에 저장하고 토큰 탈취에 대비한 Rotation 정책을 구현해야 합니다. Access Token은 짧게(15분), Refresh Token은 길게(7일) 설정하는 것이 일반적입니다.",
+    "tags": ["jwt", "security", "filter"]
+  },
+  {
+    "id": "spring-039",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Security OAuth2 Resource Server 설정에서 JWT 검증 시 확인하는 항목이 아닌 것은?",
+    "answer": 2,
+    "options": [
+      "토큰 서명(Signature)",
+      "토큰 만료 시간(exp claim)",
+      "요청 IP 주소",
+      "발급자(iss claim)"
+    ],
+    "explanation": "JWT 검증은 서명 유효성, 만료 시간(exp), 발급자(iss), 대상(aud) 등의 클레임을 확인합니다. 요청 IP 주소는 기본 JWT 검증 항목이 아닙니다(커스텀 구현 가능).",
+    "deepDive": "spring.security.oauth2.resourceserver.jwt.issuer-uri 설정 시 JWK Set URI를 자동으로 발견합니다. 커스텀 클레임 검증은 JwtDecoder Bean에 OAuth2TokenValidator를 추가하면 됩니다.",
+    "seniorTip": "토큰 블랙리스트 구현이 필요한 경우 Redis에 취소된 JWT의 jti(JWT ID) 클레임을 저장하고 커스텀 JwtDecoder에서 검증하는 방법이 있습니다.",
+    "tags": ["oauth2", "jwt", "resource-server"]
+  },
+  {
+    "id": "spring-040",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring Security에서 CORS 설정을 올바르게 처리하는 방법은?",
+    "answer": 0,
+    "options": [
+      "Spring Security 필터 체인 내에 CorsConfigurationSource를 등록하여 CORS 요청을 처리한다",
+      "CORS는 클라이언트에서만 처리해야 한다",
+      "@CrossOrigin 어노테이션은 Spring Security와 함께 사용할 수 없다",
+      "CORS 설정은 HttpSecurity.csrf()로 처리한다"
+    ],
+    "explanation": "Spring Security에서 CORS를 처리하려면 CorsConfigurationSource Bean을 등록하고 httpSecurity.cors()에 적용해야 합니다. @CrossOrigin만 사용하면 Spring Security의 CORS 필터보다 늦게 처리되어 Preflight 요청이 차단될 수 있습니다.",
+    "deepDive": "CORS Preflight(OPTIONS) 요청은 인증 없이 통과해야 합니다. httpSecurity.cors().and().csrf().disable() 패턴은 REST API에서 자주 사용됩니다. Spring Security 6에서는 람다 DSL 방식으로 변경되었습니다.",
+    "seniorTip": "Production에서 allowedOrigins를 와일드카드(*)로 설정하면 CSRF 위험이 있습니다. 허용할 도메인을 명시적으로 설정하고 allowCredentials와 와일드카드 origins는 함께 사용할 수 없습니다.",
+    "tags": ["cors", "security", "filter"]
+  },
+  {
+    "id": "spring-041",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring AOP에서 Proxy-based AOP와 AspectJ의 주요 차이는?",
+    "answer": 1,
+    "options": [
+      "Spring AOP는 메서드 레벨만 지원하고 AspectJ는 필드에만 적용된다",
+      "Spring AOP는 런타임 프록시 기반으로 Spring Bean에만 적용되지만, AspectJ는 컴파일/로드 타임 위빙으로 모든 자바 객체에 적용 가능하다",
+      "AspectJ는 Spring Boot에서 사용할 수 없다",
+      "Spring AOP는 생성자 호출에도 적용된다"
+    ],
+    "explanation": "Spring AOP는 JDK Dynamic Proxy(인터페이스) 또는 CGLIB(클래스) 프록시를 런타임에 생성합니다. Spring Bean에만, 메서드 실행에만 적용됩니다. AspectJ는 위빙으로 바이트코드를 직접 수정하여 필드 접근, 생성자 등 모든 조인포인트를 지원합니다.",
+    "deepDive": "Spring에서 AspectJ를 사용하려면 Load-Time Weaving(LTW)이나 Compile-Time Weaving을 설정해야 합니다. self-invocation 한계를 극복하려면 AspectJ 위빙이 필요합니다.",
+    "seniorTip": "대부분의 엔터프라이즈 애플리케이션은 Spring Proxy AOP로 충분합니다. Domain 객체(Entity)에 AOP를 적용해야 할 경우에만 AspectJ 위빙을 고려하세요.",
+    "tags": ["aop", "proxy", "aspectj"]
+  },
+  {
+    "id": "spring-042",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "AOP에서 Pointcut 표현식 execution(* com.example.service.*.*(..))의 의미는?",
+    "answer": 3,
+    "options": [
+      "com.example.service 패키지의 모든 클래스의 void 메서드",
+      "com.example.service 패키지의 특정 클래스의 특정 메서드",
+      "com.example.service 패키지 내 인터페이스의 모든 메서드",
+      "com.example.service 패키지의 모든 클래스의 모든 메서드(반환 타입, 파라미터 무관)"
+    ],
+    "explanation": "execution(반환타입 패키지.클래스.메서드(파라미터)) 형식입니다. *는 임의 타입, ..는 임의 개수/타입의 파라미터를 의미합니다. 이 표현식은 com.example.service 패키지의 모든 클래스의 모든 메서드에 매칭됩니다.",
+    "deepDive": "within(com.example.service.*)은 특정 패키지 내 타입의 모든 메서드에 매칭됩니다. @annotation(org.springframework.transaction.annotation.Transactional)은 @Transactional이 붙은 메서드에 매칭됩니다.",
+    "seniorTip": "Pointcut 표현식은 성능에 영향을 줍니다. 너무 광범위한 표현식은 원하지 않는 메서드에도 어드바이스가 적용될 수 있습니다. 표현식 최적화와 명확한 범위 지정이 중요합니다.",
+    "tags": ["pointcut", "aop", "expression"]
+  },
+  {
+    "id": "spring-043",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "AOP의 5가지 Advice 타입 중 @Around의 특징은?",
+    "answer": 0,
+    "options": [
+      "@Around는 메서드 실행 전후를 모두 제어하며, proceed()를 호출하여 실제 메서드를 실행하고 반환값을 수정하거나 예외를 처리할 수 있다",
+      "@Around는 예외 발생 시에만 실행된다",
+      "@Around는 반환값을 수정할 수 없다",
+      "@Around는 void 메서드에만 적용된다"
+    ],
+    "explanation": "@Around는 ProceedingJoinPoint.proceed()로 실제 메서드 실행 여부를 제어합니다. @Before(실행 전), @After(finally), @AfterReturning(정상 반환 후), @AfterThrowing(예외 후)와 달리 가장 강력한 제어력을 가집니다.",
+    "deepDive": "@Around 사용 시 proceed() 반환값을 반드시 반환해야 합니다(void가 아닌 경우). 성능 측정, 캐싱, 재시도 로직 등에 @Around가 주로 사용됩니다.",
+    "seniorTip": "필요한 것보다 강력한 어드바이스를 사용하지 않는 것이 원칙입니다. 단순 로깅에 @Around 대신 @Before/@AfterReturning을 사용하면 코드 의도가 명확해집니다.",
+    "tags": ["around", "advice", "aop"]
+  },
+  {
+    "id": "spring-044",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "@Cacheable과 AOP 프록시를 함께 사용할 때의 self-invocation 문제 해결 방법으로 가장 적절한 것은?",
+    "answer": 2,
+    "options": [
+      "AopContext.currentProxy()를 모든 클래스에 전역 설정한다",
+      "@Cacheable을 @Transactional로 교체한다",
+      "@Cacheable 메서드를 별도 Spring Bean으로 분리하여 의존성 주입으로 호출한다",
+      "캐시 로직을 수동으로 구현하여 @Cacheable을 사용하지 않는다"
+    ],
+    "explanation": "self-invocation으로 @Cacheable이 동작하지 않을 때 가장 깔끔한 해결책은 캐시가 필요한 메서드를 별도 Bean(Service, Repository 등)으로 분리하고 @Autowired로 주입받아 호출하는 것입니다.",
+    "deepDive": "@EnableCaching의 proxyTargetClass=true는 인터페이스 없는 클래스에도 CGLIB 프록시를 생성합니다. @CacheEvict, @CachePut과의 조합 시 같은 self-invocation 문제가 발생합니다.",
+    "seniorTip": "AopContext.currentProxy() 방식은 동작하지만 Spring AOP에 강하게 결합됩니다. 코드를 자연스럽게 분리하는 관점에서도 별도 Bean 방식이 더 바람직합니다.",
+    "tags": ["cacheable", "self-invocation", "aop"]
+  },
+  {
+    "id": "spring-045",
+    "category": "spring",
+    "difficulty": "junior",
+    "type": "multiple-choice",
+    "question": "Spring AOP에서 JDK Dynamic Proxy와 CGLIB Proxy의 차이는?",
+    "answer": 1,
+    "options": [
+      "JDK 프록시는 클래스를 직접 상속하고 CGLIB은 인터페이스를 구현한다",
+      "JDK 프록시는 인터페이스를 구현한 Bean에 적용되고, CGLIB은 클래스를 서브클래싱하여 인터페이스 없는 Bean에도 적용된다",
+      "CGLIB 프록시는 Spring Boot에서 사용할 수 없다",
+      "JDK 프록시가 항상 CGLIB보다 성능이 좋다"
+    ],
+    "explanation": "JDK Dynamic Proxy는 인터페이스 기반으로 프록시를 생성합니다. CGLIB은 바이트코드 조작으로 클래스를 상속하여 프록시를 생성하므로 인터페이스가 없어도 됩니다. Spring Boot 2.x부터 CGLIB이 기본값입니다.",
+    "deepDive": "CGLIB 프록시는 final 클래스나 final 메서드에 적용할 수 없습니다. Spring Boot의 spring.aop.proxy-target-class=true(기본)가 CGLIB을 강제합니다. @Configuration 클래스에도 CGLIB이 적용되어 Bean 메서드 간 싱글톤이 보장됩니다.",
+    "seniorTip": "CGLIB 사용 시 기본 생성자가 있어야 합니다(Objenesis 라이브러리로 우회 가능). @Configuration(proxyBeanMethods=false)로 설정 클래스의 CGLIB 프록시를 비활성화하면 시작 성능이 개선됩니다.",
+    "tags": ["cglib", "jdk-proxy", "aop"]
+  },
+  {
+    "id": "spring-046",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Cloud Config Server의 역할과 동작 방식은?",
+    "answer": 2,
+    "options": [
+      "마이크로서비스의 코드를 중앙 저장소에서 관리한다",
+      "서비스 간 통신을 중계하는 게이트웨이 역할을 한다",
+      "Git 등 외부 저장소에서 설정을 읽어 마이크로서비스에 HTTP로 제공하는 중앙화된 설정 서버다",
+      "데이터베이스 연결 풀을 관리한다"
+    ],
+    "explanation": "Config Server는 application.properties/yml을 Git 저장소(또는 로컬 파일 시스템)에서 관리하고, 클라이언트 애플리케이션이 시작 시 Config Server에서 설정을 가져옵니다. 환경별(dev/staging/prod) 설정을 프로파일로 구분합니다.",
+    "deepDive": "설정 변경 시 /actuator/refresh 엔드포인트로 애플리케이션 재시작 없이 설정을 반영할 수 있습니다(@RefreshScope Bean에만 적용). Spring Cloud Bus와 통합하면 모든 인스턴스에 브로드캐스트가 가능합니다.",
+    "seniorTip": "Config Server의 설정 파일을 암호화하려면 encrypt.key 설정 또는 Vault 백엔드를 사용합니다. Config Server 자체의 가용성도 중요하므로 HA 구성이 필요합니다.",
+    "tags": ["config-server", "spring-cloud", "microservice"]
+  },
+  {
+    "id": "spring-047",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Netflix Eureka를 사용한 서비스 디스커버리에서 클라이언트 사이드 로드 밸런싱의 동작 방식은?",
+    "answer": 1,
+    "options": [
+      "Eureka 서버가 직접 요청을 라우팅한다",
+      "각 클라이언트가 Eureka에서 서비스 인스턴스 목록을 가져와 로컬에서 로드 밸런싱 알고리즘을 적용한다",
+      "DNS 기반으로 IP를 분산한다",
+      "Eureka 클라이언트는 등록만 하고 로드 밸런싱은 하지 않는다"
+    ],
+    "explanation": "클라이언트 사이드 로드 밸런싱에서 각 서비스는 Eureka에서 대상 서비스의 인스턴스 목록을 주기적으로 갱신하고, Spring Cloud LoadBalancer(또는 Ribbon)가 로컬에서 Round Robin 등으로 인스턴스를 선택합니다.",
+    "deepDive": "Eureka 클라이언트는 로컬 캐시에 레지스트리를 복제하므로 Eureka 서버가 잠시 다운되어도 기존 인스턴스로 요청 가능합니다. 헬스체크 주기(eureka.client.registry-fetch-interval-seconds)와 하트비트 주기를 적절히 설정해야 합니다.",
+    "seniorTip": "Kubernetes 환경에서는 Eureka 대신 Kubernetes 서비스 디스커버리(kube-dns)를 사용하는 것이 일반적입니다. Spring Cloud Kubernetes가 이를 지원합니다.",
+    "tags": ["eureka", "service-discovery", "load-balancing"]
+  },
+  {
+    "id": "spring-048",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Cloud Gateway에서 필터와 라우트의 역할은?",
+    "answer": 3,
+    "options": [
+      "라우트는 인증을 처리하고 필터는 라우팅만 한다",
+      "필터는 트래픽 분산만 담당한다",
+      "Spring Cloud Gateway는 Servlet 기반으로 동작한다",
+      "라우트는 요청 조건과 대상 URI를 정의하고, 필터는 요청/응답을 변환하거나 인증·속도 제한 등을 처리한다"
+    ],
+    "explanation": "Spring Cloud Gateway는 WebFlux(Netty) 기반으로 비동기 라우팅을 처리합니다. Route는 조건(Predicate)과 목적지 URI를 정의하고, Filter(GlobalFilter, GatewayFilter)는 요청 전처리와 응답 후처리를 담당합니다.",
+    "deepDive": "글로벌 필터는 모든 라우트에 적용되고, 라우트 필터는 특정 라우트에만 적용됩니다. CircuitBreaker, RateLimiter, Retry 필터를 내장하고 있어 Resilience4j와 통합하기 쉽습니다.",
+    "seniorTip": "API Gateway 패턴에서 인증/인가, 로깅, 속도 제한을 Gateway 레이어에서 처리하면 각 마이크로서비스에서 중복 구현을 피할 수 있습니다. JWT 검증을 Gateway에서 처리하는 것이 일반적입니다.",
+    "tags": ["gateway", "spring-cloud", "filter"]
+  },
+  {
+    "id": "spring-049",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Resilience4j Circuit Breaker의 상태 전이 순서는?",
+    "answer": 0,
+    "options": [
+      "CLOSED → OPEN → HALF_OPEN → CLOSED(또는 OPEN)",
+      "OPEN → CLOSED → HALF_OPEN",
+      "HALF_OPEN → CLOSED → OPEN",
+      "CLOSED → HALF_OPEN → OPEN"
+    ],
+    "explanation": "Circuit Breaker는 CLOSED(정상, 요청 통과) → 실패율 임계치 초과 → OPEN(요청 차단) → 대기 시간 후 → HALF_OPEN(일부 요청 허용) → 성공 시 CLOSED, 실패 시 OPEN으로 전이됩니다.",
+    "deepDive": "Resilience4j는 Count-based 또는 Time-based 슬라이딩 윈도우로 실패율을 측정합니다. fallback 메서드를 지정하면 OPEN 상태에서 대체 응답을 반환합니다. @CircuitBreaker와 @Retry를 조합하여 사용하는 것이 일반적입니다.",
+    "seniorTip": "Circuit Breaker 임계값(실패율, 슬로우 콜 비율)은 서비스 특성에 맞게 튜닝해야 합니다. Actuator 엔드포인트로 실시간 Circuit Breaker 상태를 모니터링할 수 있습니다.",
+    "tags": ["circuit-breaker", "resilience4j", "spring-cloud"]
+  },
+  {
+    "id": "spring-050",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Cloud Sleuth(Micrometer Tracing)의 분산 추적에서 Trace ID와 Span ID의 차이는?",
+    "answer": 2,
+    "options": [
+      "Trace ID는 단일 서비스 내 요청을 식별하고 Span ID는 전체 서비스 호출을 식별한다",
+      "둘 다 동일한 역할을 한다",
+      "Trace ID는 전체 요청 흐름을 식별하는 고유 ID이고, Span ID는 각 서비스에서의 개별 작업 단위를 식별한다",
+      "Span ID는 사용자 세션을 추적한다"
+    ],
+    "explanation": "Trace ID는 하나의 요청이 여러 마이크로서비스를 거치는 전체 흐름을 식별합니다. Span ID는 각 서비스 내 개별 작업 단위(HTTP 호출, DB 쿼리 등)를 식별합니다. 부모 Span ID로 계층 구조를 형성합니다.",
+    "deepDive": "Spring Boot 3에서 Sleuth는 Micrometer Tracing으로 대체되었습니다. Zipkin, Jaeger 등 추적 백엔드로 Span 데이터를 전송합니다. MDC에 traceId를 자동으로 추가하여 로그와 추적 정보를 연결할 수 있습니다.",
+    "seniorTip": "샘플링 비율(1%)을 설정하여 모든 요청을 추적하지 않도록 조정할 수 있습니다. 성능 이슈 디버깅 시 일시적으로 100% 샘플링을 활성화하는 것이 유용합니다.",
+    "tags": ["sleuth", "tracing", "distributed-tracing"]
+  },
+  {
+    "id": "spring-051",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring WebFlux에서 Mono와 Flux의 차이는?",
+    "answer": 1,
+    "options": [
+      "Mono는 비동기, Flux는 동기로 동작한다",
+      "Mono는 0~1개, Flux는 0~N개의 데이터를 비동기 스트림으로 표현한다",
+      "Mono는 HTTP, Flux는 WebSocket에만 사용된다",
+      "Flux는 에러 처리를 지원하지 않는다"
+    ],
+    "explanation": "Mono<T>는 0 또는 1개의 결과를 비동기로 제공하는 Publisher입니다. Flux<T>는 0부터 무한개까지의 데이터 스트림을 표현합니다. 둘 다 Project Reactor 기반의 Reactive Streams Publisher입니다.",
+    "deepDive": "Mono.just(), Mono.fromCallable(), Flux.fromIterable(), Flux.interval() 등 팩토리 메서드로 생성합니다. subscribe() 호출 전까지는 실제 실행이 되지 않는 Lazy 평가입니다.",
+    "seniorTip": "WebFlux에서 블로킹 I/O(JDBC, 동기 HTTP 클라이언트)를 직접 사용하면 Netty 이벤트 루프를 블로킹하여 전체 성능이 저하됩니다. R2DBC나 WebClient를 사용하세요.",
+    "tags": ["mono", "flux", "webflux"]
+  },
+  {
+    "id": "spring-052",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Reactive Streams의 Backpressure가 해결하는 문제는?",
+    "answer": 3,
+    "options": [
+      "네트워크 지연을 줄인다",
+      "CPU 사용률을 자동으로 최적화한다",
+      "메서드 호출 순서를 보장한다",
+      "데이터 생산 속도가 소비 속도보다 빠를 때 소비자가 처리 가능한 양만 요청하여 메모리 폭발을 방지한다"
+    ],
+    "explanation": "Backpressure는 구독자(Subscriber)가 request(n)으로 처리할 수 있는 데이터 양을 발행자(Publisher)에게 알립니다. 발행자는 요청받은 수만큼만 데이터를 전송하여 OOM을 방지합니다.",
+    "deepDive": "Flux의 onBackpressureBuffer(), onBackpressureDrop(), onBackpressureLatest() 전략으로 초과 데이터 처리 방식을 지정합니다. 실제로 Backpressure를 지원하지 않는 소스(클릭 이벤트 등)는 Hot Publisher로 분류됩니다.",
+    "seniorTip": "WebFlux + Spring Data R2DBC 조합에서 쿼리 결과가 Flux<T>로 반환되면 자동으로 Backpressure가 적용됩니다. 대용량 데이터 스트리밍 API 설계 시 핵심 개념입니다.",
+    "tags": ["backpressure", "reactive", "webflux"]
+  },
+  {
+    "id": "spring-053",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring Data R2DBC와 Spring Data JPA의 주요 차이는?",
+    "answer": 0,
+    "options": [
+      "R2DBC는 비동기/논블로킹 데이터베이스 접근을 지원하지만 JPA의 영속성 컨텍스트, Lazy Loading, 1차 캐시, 연관관계 자동 관리를 지원하지 않는다",
+      "R2DBC는 NoSQL만 지원한다",
+      "JPA는 비동기를 지원하고 R2DBC는 동기만 지원한다",
+      "R2DBC와 JPA는 완전히 동일한 기능을 제공한다"
+    ],
+    "explanation": "R2DBC는 리액티브 환경을 위한 비동기 DB 드라이버 스펙입니다. JPA의 영속성 컨텍스트(1차 캐시, Dirty Checking, Lazy Loading)를 지원하지 않아 연관관계 처리를 수동으로 해야 합니다.",
+    "deepDive": "R2DBC 환경에서 연관 엔티티를 로드하려면 별도 쿼리를 발행하고 flatMap으로 조합해야 합니다. 단순 CRUD나 단일 테이블 조작에는 R2DBC가 적합하지만 복잡한 연관관계가 있으면 개발 복잡도가 높아집니다.",
+    "seniorTip": "WebFlux + R2DBC 전환은 단순히 의존성 교체가 아닙니다. 전체 코드 스택이 리액티브여야 이점이 있으며, 일부만 리액티브로 전환하면 오히려 복잡도만 증가합니다.",
+    "tags": ["r2dbc", "webflux", "reactive"]
+  },
+  {
+    "id": "spring-054",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Spring WebClient와 RestTemplate의 차이는?",
+    "answer": 2,
+    "options": [
+      "RestTemplate이 더 최신 기술이다",
+      "WebClient는 Spring MVC에서 사용할 수 없다",
+      "WebClient는 비동기/논블로킹 방식을 지원하고 Spring 5에서 RestTemplate의 후속으로 권장된다",
+      "WebClient는 HTTP GET 요청만 지원한다"
+    ],
+    "explanation": "RestTemplate은 동기 블로킹 방식으로 Spring 5.0부터 유지보수 모드입니다. WebClient는 비동기/논블로킹을 지원하며 Spring MVC와 WebFlux 모두에서 사용 가능합니다.",
+    "deepDive": "WebClient.create() 또는 WebClient.builder()로 생성하며, Mono/Flux를 반환합니다. Spring MVC에서도 block()으로 동기 방식으로 사용할 수 있지만 WebFlux 환경에서는 block() 호출을 피해야 합니다.",
+    "seniorTip": "WebClient를 Bean으로 등록 시 ConnectionPool, 타임아웃, 코덱 설정 등을 빌더로 구성하는 것이 중요합니다. 서비스별 WebClient 인스턴스를 커스텀 빌더로 만드는 패턴이 유용합니다.",
+    "tags": ["webclient", "resttemplate", "http-client"]
+  },
+  {
+    "id": "spring-055",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Spring WebFlux를 선택해야 하는 상황으로 가장 적합한 것은?",
+    "answer": 1,
+    "options": [
+      "빠른 개발 속도가 최우선이고 팀이 리액티브 프로그래밍에 익숙하지 않을 때",
+      "높은 동시 접속(수천 개의 동시 연결)이 예상되거나, 외부 API 호출이 많은 I/O 바운드 서비스에서 스레드 자원을 효율적으로 사용해야 할 때",
+      "JPA와 복잡한 연관관계 처리가 필요할 때",
+      "배치 처리가 주요 기능일 때"
+    ],
+    "explanation": "WebFlux는 이벤트 루프 기반으로 적은 스레드로 많은 동시 연결을 처리합니다. 외부 API 호출이 많고 I/O 대기가 많은 API Gateway, 스트리밍 서비스에서 효과적입니다. CPU 바운드 작업이 많거나 팀 역량이 부족한 경우 Spring MVC가 더 적합합니다.",
+    "deepDive": "서블릿 스택(Spring MVC)은 스레드당 1 요청 모델로 스레드 수로 동시 처리량이 제한됩니다. 리액티브 스택은 논블로킹 I/O로 적은 스레드로 훨씬 많은 동시 연결을 처리합니다.",
+    "seniorTip": "WebFlux 도입 전 팀의 리액티브 학습 비용과 디버깅 난이도를 고려해야 합니다. 콜드 스타트 성능이 중요한 서버리스 환경에서도 WebFlux가 유리합니다.",
+    "tags": ["webflux", "reactive", "use-case"]
+  },
+  {
+    "id": "spring-056",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@SpringBootTest와 슬라이스 테스트(@WebMvcTest 등)의 차이는?",
+    "answer": 3,
+    "options": [
+      "@SpringBootTest는 빠르고 슬라이스 테스트는 느리다",
+      "슬라이스 테스트는 실제 DB를 사용한다",
+      "@SpringBootTest는 Mock 객체를 사용할 수 없다",
+      "@SpringBootTest는 전체 애플리케이션 컨텍스트를 로드하고, 슬라이스 테스트는 특정 레이어에 필요한 Bean만 로드하여 빠르다"
+    ],
+    "explanation": "@SpringBootTest는 실제 서버와 동일한 환경을 구성하지만 느립니다. @WebMvcTest는 웹 레이어만, @DataJpaTest는 JPA 레이어만, @JsonTest는 JSON 직렬화만 로드하여 빠른 테스트를 제공합니다.",
+    "deepDive": "@SpringBootTest(webEnvironment = RANDOM_PORT)는 실제 서블릿 환경으로 통합 테스트에 적합합니다. 슬라이스 테스트는 해당 레이어 외의 Bean을 @MockBean으로 대체해야 합니다.",
+    "seniorTip": "테스트 컨텍스트 캐싱을 활용하면 같은 설정의 컨텍스트를 재사용하여 전체 테스트 속도를 개선할 수 있습니다. @DirtiesContext는 컨텍스트를 재생성하므로 꼭 필요한 경우에만 사용하세요.",
+    "tags": ["springboottest", "slice-test", "testing"]
+  },
+  {
+    "id": "spring-057",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@MockBean과 Mockito의 @Mock의 차이는?",
+    "answer": 0,
+    "options": [
+      "@MockBean은 Spring 컨텍스트에 Mock Bean을 등록하여 @Autowired로 주입되고, @Mock은 Spring 컨텍스트 없이 순수 Mockito Mock을 생성한다",
+      "@Mock이 @MockBean보다 더 정확한 Mock을 생성한다",
+      "둘 다 동일하게 동작한다",
+      "@MockBean은 @InjectMocks와 함께만 사용할 수 있다"
+    ],
+    "explanation": "@MockBean은 Spring Test에서 컨텍스트의 실제 Bean을 Mock으로 교체합니다. @Mock은 순수 Mockito 기능으로 Spring 컨텍스트와 무관하게 Mock 객체를 생성합니다. 단위 테스트에는 @Mock, 통합 테스트에는 @MockBean이 적합합니다.",
+    "deepDive": "@MockBean 사용 시 Spring 컨텍스트가 재생성될 수 있어 테스트 속도가 느려질 수 있습니다. 가능하면 @Mock + @InjectMocks를 사용하는 단위 테스트로 작성하는 것이 빠릅니다.",
+    "seniorTip": "@SpyBean은 실제 Bean의 일부 메서드만 스터빙하고 나머지는 실제 구현을 사용할 때 유용합니다. 레거시 코드 통합 테스트에서 특정 외부 의존성만 Mock하는 경우에 활용할 수 있습니다.",
+    "tags": ["mockbean", "mock", "testing"]
+  },
+  {
+    "id": "spring-058",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@WebMvcTest 사용 시 자동으로 로드되지 않아 @MockBean이 필요한 컴포넌트는?",
+    "answer": 2,
+    "options": [
+      "HandlerInterceptor",
+      "Jackson ObjectMapper",
+      "Service, Repository 등 웹 레이어가 아닌 컴포넌트",
+      "ControllerAdvice"
+    ],
+    "explanation": "@WebMvcTest는 @Controller, @ControllerAdvice, @JsonComponent, Filter, WebMvcConfigurer, HandlerMethodArgumentResolver만 로드합니다. @Service, @Repository, @Component는 로드되지 않아 @MockBean으로 대체해야 합니다.",
+    "deepDive": "Security 설정도 로드되므로 보안 테스트를 원하지 않으면 @WebMvcTest(excludeAutoConfiguration = SecurityAutoConfiguration.class)나 @WithMockUser를 사용합니다.",
+    "seniorTip": "컨트롤러 단위 테스트 시 MockMvc를 활용하면 실제 HTTP 요청/응답을 시뮬레이션할 수 있습니다. ResultActions.andExpect()로 상태 코드, JSON 경로, 헤더 등을 검증하세요.",
+    "tags": ["webmvctest", "mockbean", "slice-test"]
+  },
+  {
+    "id": "spring-059",
+    "category": "spring",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "@DataJpaTest의 기본 동작으로 올바른 것은?",
+    "answer": 1,
+    "options": [
+      "실제 설정된 데이터베이스를 사용한다",
+      "인메모리 H2 데이터베이스를 사용하고 트랜잭션을 적용하여 각 테스트 후 롤백한다",
+      "전체 Spring 컨텍스트를 로드한다",
+      "@Service와 @Controller도 함께 로드한다"
+    ],
+    "explanation": "@DataJpaTest는 JPA 관련 컴포넌트(Entity, Repository)만 로드하고 인메모리 H2 DB를 기본으로 사용합니다. 각 테스트 메서드는 트랜잭션이 적용되어 기본적으로 롤백됩니다.",
+    "deepDive": "실제 DB로 테스트하려면 @AutoConfigureTestDatabase(replace = NONE) 설정이 필요합니다. TestContainers와 조합하면 실제 DB 환경(MySQL, PostgreSQL)으로 통합 테스트를 작성할 수 있습니다.",
+    "seniorTip": "QuerydslPredicateExecutor나 커스텀 Repository 구현체를 테스트할 때도 @DataJpaTest가 적합합니다. @DataJpaTest + TestContainers 조합은 CI 환경에서 실제 DB와 가장 유사한 테스트 환경을 제공합니다.",
+    "tags": ["datajpatest", "testing", "jpa"]
+  },
+  {
+    "id": "spring-060",
+    "category": "spring",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "TestContainers를 Spring Boot 테스트에서 사용하는 주된 목적은?",
+    "answer": 3,
+    "options": [
+      "테스트 실행 속도를 높이기 위해 컨테이너를 재사용한다",
+      "Docker 없이 컨테이너를 시뮬레이션한다",
+      "Kubernetes 환경을 로컬에서 테스트한다",
+      "실제 DB, 메시지 브로커 등 외부 의존성을 Docker 컨테이너로 격리하여 일관된 통합 테스트 환경을 제공한다"
+    ],
+    "explanation": "TestContainers는 테스트 실행 시 Docker 컨테이너로 실제 MySQL, Redis, Kafka 등을 실행합니다. H2 인메모리 DB와 달리 실제 DB 동작(방언, 기능 차이)을 검증할 수 있습니다.",
+    "deepDive": "Spring Boot 3.1부터 @ServiceConnection 어노테이션으로 TestContainers 연결 정보를 자동으로 Spring 설정에 바인딩합니다. @Testcontainers + @Container + static 필드로 컨테이너를 클래스 레벨에서 공유하면 테스트 속도를 개선할 수 있습니다.",
+    "seniorTip": "CI/CD 파이프라인에 TestContainers를 도입할 때 Docker-in-Docker 또는 Docker 소켓 마운트 설정이 필요합니다. Ryuk 컨테이너가 테스트 후 자동으로 컨테이너를 정리합니다.",
+    "tags": ["testcontainers", "integration-test", "docker"]
+  }
+]

@@ -1,0 +1,552 @@
+[
+  {
+    "id": "cdl-001",
+    "title": "Implement LRU Cache",
+    "titleKo": "LRU 캐시 구현",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "linked-list", "hash-map"],
+    "companies": ["구글", "메타", "카카오", "토스"],
+    "description": "면접관: '우리 서비스에서 DB 조회 비용을 줄이기 위해 최근에 사용된 데이터를 메모리에 캐시하려고 합니다. 용량이 꽉 차면 가장 오래 전에 사용된 항목을 제거하는 LRU Cache를 구현해 주세요. get과 put 모두 O(1)이어야 합니다.'",
+    "examples": [
+      {
+        "input": "LRUCache cache = new LRUCache(2);\ncache.put(1, 1);\ncache.put(2, 2);\ncache.get(1);    // 1 반환\ncache.put(3, 3); // 2가 LRU이므로 제거\ncache.get(2);    // -1 반환 (제거됨)\ncache.get(3);    // 3 반환",
+        "output": "1, -1, 3",
+        "explanation": "capacity=2인 캐시. get(1)으로 1이 최근 사용됨. put(3) 시 capacity 초과 → 가장 오래된 key=2 제거."
+      }
+    ],
+    "constraints": [
+      "모든 연산 O(1)이어야 함",
+      "1 <= capacity <= 3000",
+      "0 <= key, value <= 10^4",
+      "put/get 최대 2 * 10^5 회 호출"
+    ],
+    "hints": [
+      "HashMap만으로는 불가능. 왜? → 어떤 키가 '가장 오래됐는지' O(1)로 알 수 없음",
+      "DoublyLinkedList + HashMap 조합: 리스트로 순서 추적, 맵으로 O(1) 접근",
+      "Doubly Linked여야 하는 이유: 노드 삭제 시 prev 포인터가 필요, Singly로는 O(n)",
+      "Dummy head/tail 노드를 두면 경계 처리가 단순해짐"
+    ],
+    "approach": "DoublyLinkedList + HashMap 조합. HashMap<key, Node>로 O(1) 조회. DLL은 사용 순서를 유지 — head 쪽이 가장 최근, tail 쪽이 가장 오래됨. put/get 시 해당 노드를 head로 이동. capacity 초과 시 tail 바로 앞 노드 제거. Dummy head/tail 노드를 사용하면 null 체크 없이 간결하게 구현 가능.",
+    "code": "import java.util.HashMap;\n\npublic class LRUCache {\n    private final int capacity;\n    private final HashMap<Integer, Node> map;\n    private final Node head; // dummy head (most recent)\n    private final Node tail; // dummy tail (least recent)\n\n    private static class Node {\n        int key, val;\n        Node prev, next;\n        Node(int key, int val) {\n            this.key = key;\n            this.val = val;\n        }\n    }\n\n    public LRUCache(int capacity) {\n        this.capacity = capacity;\n        this.map = new HashMap<>();\n        head = new Node(0, 0);\n        tail = new Node(0, 0);\n        head.next = tail;\n        tail.prev = head;\n    }\n\n    public int get(int key) {\n        if (!map.containsKey(key)) return -1;\n        Node node = map.get(key);\n        moveToHead(node);\n        return node.val;\n    }\n\n    public void put(int key, int value) {\n        if (map.containsKey(key)) {\n            Node node = map.get(key);\n            node.val = value;\n            moveToHead(node);\n        } else {\n            Node node = new Node(key, value);\n            map.put(key, node);\n            addToHead(node);\n            if (map.size() > capacity) {\n                Node lru = removeTail();\n                map.remove(lru.key);\n            }\n        }\n    }\n\n    private void addToHead(Node node) {\n        node.prev = head;\n        node.next = head.next;\n        head.next.prev = node;\n        head.next = node;\n    }\n\n    private void removeNode(Node node) {\n        node.prev.next = node.next;\n        node.next.prev = node.prev;\n    }\n\n    private void moveToHead(Node node) {\n        removeNode(node);\n        addToHead(node);\n    }\n\n    private Node removeTail() {\n        Node lru = tail.prev;\n        removeNode(lru);\n        return lru;\n    }\n}",
+    "complexity": {
+      "time": "O(1) for both get and put",
+      "space": "O(capacity) for HashMap and DLL"
+    },
+    "walkthrough": "면접관: '왜 LinkedHashMap 안 쓰고 직접 구현했나요?' → '구현 원리를 보여드리기 위함입니다. 실제로는 LinkedHashMap(capacity, 0.75f, true)로 accessOrder=true 설정하면 동일 동작합니다.'\n면접관: '왜 Doubly Linked List인가요? Singly는요?' → 'tail 노드 삭제 시 O(1)로 prev 접근이 필요합니다. Singly면 tail.prev를 O(n) 탐색해야 합니다.'\n면접관: 'capacity=0이면?' → '현재 put 시 바로 제거됩니다. 요구사항에 따라 예외를 던지는 것도 방법입니다.'\n면접관: '같은 key로 put 두 번이면?' → '기존 노드의 값을 갱신하고 head로 이동합니다. 중복 node가 생기지 않습니다.'",
+    "secret": "라이브 코테 꿀팁: 시작 전 'put(key, value), get(key) 시그니처와 not found 시 -1 반환 맞죠?'라고 먼저 확인. capacity=0, 같은 key 중복 put 등 엣지 케이스를 직접 입으로 말하며 확인하면 면접관에게 좋은 인상. 구현 전 DLL + HashMap 그림 먼저 그리고 'addToHead, removeNode 헬퍼 먼저 만들겠습니다'라고 구조 설명 후 코딩 시작.",
+    "similar": ["cdl-002"]
+  },
+  {
+    "id": "cdl-002",
+    "title": "Implement LFU Cache",
+    "titleKo": "LFU 캐시 구현",
+    "difficulty": "hard",
+    "patterns": ["design", "implementation", "hash-map", "linked-list"],
+    "companies": ["구글", "메타"],
+    "description": "면접관: 'LRU는 최근 사용 기준인데, 우리는 사용 빈도 기준으로 캐시를 관리하고 싶습니다. 가장 적게 사용된 항목을 제거하는 LFU Cache를 구현해 주세요. 동일 빈도이면 가장 오래된 항목을 제거합니다. 모든 연산은 O(1)이어야 합니다.'",
+    "examples": [
+      {
+        "input": "LFUCache cache = new LFUCache(2);\ncache.put(1, 1);\ncache.put(2, 2);\ncache.get(1);    // freq[1]=2, freq[2]=1\ncache.put(3, 3); // freq 최솟값=1이고 가장 오래된 key=2 제거\ncache.get(2);    // -1\ncache.get(3);    // 3, freq[3]=2",
+        "output": "1, -1, 3",
+        "explanation": "각 키의 접근 빈도를 추적. 빈도가 같으면 LRU 정책 적용."
+      }
+    ],
+    "constraints": [
+      "모든 연산 O(1)이어야 함",
+      "0 <= capacity <= 10^4",
+      "capacity가 0이면 아무것도 캐시하지 않음"
+    ],
+    "hints": [
+      "keyToVal: key→value 맵, keyToFreq: key→freq 맵 필요",
+      "freqToKeys: freq→LinkedHashSet(키 집합, 삽입 순서 유지) 맵 필요",
+      "minFreq 변수로 현재 최솟값 빈도 추적",
+      "put 시 새 키는 freq=1, minFreq=1 리셋"
+    ],
+    "approach": "3개의 HashMap 사용: (1) keyToVal: 값 조회, (2) keyToFreq: 각 키의 현재 빈도, (3) freqToKeys: 각 빈도에 해당하는 키들을 LinkedHashSet으로 관리(삽입 순서 = LRU 정책). minFreq 변수로 제거 대상 빈도를 O(1)로 파악. get/put 시 해당 키의 빈도를 증가시키고 freqToKeys 갱신.",
+    "code": "import java.util.HashMap;\nimport java.util.LinkedHashSet;\n\npublic class LFUCache {\n    private final int capacity;\n    private int minFreq;\n    private final HashMap<Integer, Integer> keyToVal;\n    private final HashMap<Integer, Integer> keyToFreq;\n    private final HashMap<Integer, LinkedHashSet<Integer>> freqToKeys;\n\n    public LFUCache(int capacity) {\n        this.capacity = capacity;\n        this.minFreq = 0;\n        keyToVal = new HashMap<>();\n        keyToFreq = new HashMap<>();\n        freqToKeys = new HashMap<>();\n    }\n\n    public int get(int key) {\n        if (!keyToVal.containsKey(key)) return -1;\n        increaseFreq(key);\n        return keyToVal.get(key);\n    }\n\n    public void put(int key, int value) {\n        if (capacity <= 0) return;\n        if (keyToVal.containsKey(key)) {\n            keyToVal.put(key, value);\n            increaseFreq(key);\n        } else {\n            if (keyToVal.size() >= capacity) {\n                removeMinFreqKey();\n            }\n            keyToVal.put(key, value);\n            keyToFreq.put(key, 1);\n            freqToKeys.computeIfAbsent(1, k -> new LinkedHashSet<>()).add(key);\n            minFreq = 1;\n        }\n    }\n\n    private void increaseFreq(int key) {\n        int freq = keyToFreq.get(key);\n        keyToFreq.put(key, freq + 1);\n        freqToKeys.get(freq).remove(key);\n        if (freqToKeys.get(freq).isEmpty()) {\n            freqToKeys.remove(freq);\n            if (minFreq == freq) minFreq++;\n        }\n        freqToKeys.computeIfAbsent(freq + 1, k -> new LinkedHashSet<>()).add(key);\n    }\n\n    private void removeMinFreqKey() {\n        LinkedHashSet<Integer> keys = freqToKeys.get(minFreq);\n        int evictKey = keys.iterator().next();\n        keys.remove(evictKey);\n        if (keys.isEmpty()) freqToKeys.remove(minFreq);\n        keyToVal.remove(evictKey);\n        keyToFreq.remove(evictKey);\n    }\n}",
+    "complexity": {
+      "time": "O(1) for all operations",
+      "space": "O(capacity) for three HashMaps"
+    },
+    "walkthrough": "면접관: 'LRU와 LFU의 실제 사용 시나리오 차이가 뭔가요?' → 'LRU는 시간적 지역성(최근 참조 가능성 높음)이 중요할 때. LFU는 빈도 지역성(특정 데이터가 반복 참조)이 높을 때 유리합니다. LFU는 캐시 오염 문제에 더 강합니다.'\n면접관: 'LinkedHashSet을 쓴 이유는?' → '동일 빈도 키들 중 가장 오래된 것을 O(1)로 꺼내야 해서 삽입 순서를 기억하는 LinkedHashSet을 사용했습니다.'\n면접관: 'minFreq가 왜 필요한가요?' → '매번 freqToKeys에서 최솟값 빈도를 찾으면 O(n)입니다. minFreq 변수로 O(1) 관리합니다.'",
+    "secret": "라이브 코테 꿀팁: LFU는 LRU보다 복잡하므로 면접관에게 먼저 '3개의 맵을 쓰겠습니다'라고 설계 의도를 말하고 시작. capacity=0 처리와 same-key update 케이스를 명시적으로 언급. 막히면 'increaseFreq 헬퍼를 먼저 만들겠습니다'처럼 작은 단위로 나눠서 접근.",
+    "similar": ["cdl-001"]
+  },
+  {
+    "id": "cdl-003",
+    "title": "Implement Rate Limiter",
+    "titleKo": "Rate Limiter 구현",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "system-design"],
+    "companies": ["카카오", "토스", "구글", "메타"],
+    "description": "면접관: '우리 API 서버에 초당 100개 이상의 요청이 들어오면 429를 반환하는 Rate Limiter를 구현해 주세요. 먼저 Token Bucket으로 구현하고, 그 다음 Sliding Window Log 방식으로도 구현해 보세요. 각 방식의 트레이드오프를 설명해 주세요.'",
+    "examples": [
+      {
+        "input": "TokenBucket limiter = new TokenBucket(10, 1); // capacity=10, refill 1/sec\nlimiter.allowRequest(); // true (9 tokens left)\nlimiter.allowRequest(); // true (8 tokens left)\n// ... 8번 더\nlimiter.allowRequest(); // false (0 tokens left)",
+        "output": "true x 10, then false",
+        "explanation": "capacity=10 토큰, 초당 1개 채움. 10회 허용 후 refill 전까지 거부."
+      }
+    ],
+    "constraints": [
+      "Thread-safe 구현 필요",
+      "allowRequest() 한 번 호출로 허용/거부 판단",
+      "정확한 시간 기반 동작"
+    ],
+    "hints": [
+      "Token Bucket: 토큰 보충은 lastRefillTime과 현재 시간 차이로 계산",
+      "Sliding Window Log: 요청 시각 큐 유지, 1초 이내 요청만 카운트",
+      "Thread-safe를 위해 synchronized 또는 AtomicLong 고려",
+      "System.currentTimeMillis() vs System.nanoTime() 트레이드오프"
+    ],
+    "approach": "Token Bucket: capacity와 refillRate 관리. allowRequest() 시 경과 시간 기반으로 토큰을 보충하고, 토큰이 있으면 소비하여 허용. 간단하고 버스트 허용 가능.\nSliding Window Log: 요청 시각을 ArrayDeque에 기록. 허용 여부 결정 전 window 밖의 타임스탬프 제거 후 현재 크기로 판단. 정확하지만 메모리 사용량이 많음.",
+    "code": "import java.util.ArrayDeque;\nimport java.util.Deque;\n\n// === Token Bucket ===\npublic class TokenBucket {\n    private final int capacity;\n    private final double refillRatePerMs;\n    private double tokens;\n    private long lastRefillTime;\n\n    public TokenBucket(int capacity, double refillRatePerSec) {\n        this.capacity = capacity;\n        this.refillRatePerMs = refillRatePerSec / 1000.0;\n        this.tokens = capacity;\n        this.lastRefillTime = System.currentTimeMillis();\n    }\n\n    public synchronized boolean allowRequest() {\n        refill();\n        if (tokens >= 1) {\n            tokens--;\n            return true;\n        }\n        return false;\n    }\n\n    private void refill() {\n        long now = System.currentTimeMillis();\n        double elapsed = now - lastRefillTime;\n        tokens = Math.min(capacity, tokens + elapsed * refillRatePerMs);\n        lastRefillTime = now;\n    }\n}\n\n// === Sliding Window Log ===\npublic class SlidingWindowLog {\n    private final int maxRequests;\n    private final long windowMs;\n    private final Deque<Long> timestamps;\n\n    public SlidingWindowLog(int maxRequests, long windowMs) {\n        this.maxRequests = maxRequests;\n        this.windowMs = windowMs;\n        this.timestamps = new ArrayDeque<>();\n    }\n\n    public synchronized boolean allowRequest() {\n        long now = System.currentTimeMillis();\n        long windowStart = now - windowMs;\n        while (!timestamps.isEmpty() && timestamps.peekFirst() <= windowStart) {\n            timestamps.pollFirst();\n        }\n        if (timestamps.size() < maxRequests) {\n            timestamps.addLast(now);\n            return true;\n        }\n        return false;\n    }\n}",
+    "complexity": {
+      "time": "O(1) Token Bucket, O(n) worst case Sliding Window Log",
+      "space": "O(1) Token Bucket, O(maxRequests) Sliding Window Log"
+    },
+    "walkthrough": "면접관: '두 방식 중 어떤 걸 프로덕션에 쓰겠나요?' → 'Token Bucket은 구현이 단순하고 burst를 허용하므로 일반 API에 적합합니다. Sliding Window Log는 정확하지만 메모리 부담이 있어 정밀한 과금 시스템에 적합합니다.'\n면접관: 'synchronized 대신 다른 방법은?' → 'ReentrantLock을 쓰면 tryLock으로 타임아웃 제어가 가능합니다. 분산 환경에서는 Redis + Lua 스크립트로 atomic 처리해야 합니다.'\n면접관: '분산 서버 3대가 있으면?' → '각 서버의 로컬 카운터는 합산이 안 되므로 Redis 같은 중앙 저장소가 필요합니다. Redis INCR + EXPIRE 조합이 일반적입니다.'",
+    "secret": "라이브 코테 꿀팁: Rate Limiter는 설계 대화가 핵심. 먼저 'window 크기와 제한 횟수가 몇인가요? 단일 서버인가요 분산인가요?'를 물어보세요. 두 구현을 모두 보여주고 트레이드오프를 설명하면 시니어 레벨로 평가받습니다. synchronized를 먼저 쓰고 '개선하면 Redis 분산 락'을 언급하면 깊이가 드러납니다.",
+    "similar": ["cdl-004", "cdl-005"]
+  },
+  {
+    "id": "cdl-004",
+    "title": "Thread-safe Counter",
+    "titleKo": "Thread-safe 카운터 구현",
+    "difficulty": "medium",
+    "patterns": ["concurrency", "implementation"],
+    "companies": ["카카오", "토스", "구글"],
+    "description": "면접관: '멀티스레드 환경에서 안전하게 동작하는 카운터를 구현해 주세요. 단순 synchronized 버전, AtomicInteger 버전, 그리고 LongAdder 버전을 구현하고 각각의 트레이드오프를 설명해 주세요. 실제로 높은 동시성 상황에서 어떤 걸 선택하겠나요?'",
+    "examples": [
+      {
+        "input": "// 10개 스레드가 각각 1000번 increment\nCounter counter = new AtomicCounter();\n// 모든 스레드 완료 후\nSystem.out.println(counter.get()); // 반드시 10000",
+        "output": "10000",
+        "explanation": "race condition 없이 정확히 10000이어야 함. 순진한 int++ 구현은 데이터 경쟁으로 10000 미만이 나옴."
+      }
+    ],
+    "constraints": [
+      "increment(), decrement(), get(), reset() 메서드 필요",
+      "높은 동시성(수백 스레드) 환경에서도 정확해야 함",
+      "가능하면 성능도 고려"
+    ],
+    "hints": [
+      "int count++는 read-modify-write 3단계: thread-safe하지 않음",
+      "synchronized: 단순하지만 contention 시 병목",
+      "AtomicInteger: CAS(Compare-And-Swap) 기반, 락 없이 원자 연산",
+      "LongAdder: 쓰기 경합 높을 때 AtomicLong보다 빠름 (셀 분산)"
+    ],
+    "approach": "세 가지 구현을 비교: (1) synchronized - 명확하지만 모든 스레드가 하나의 락을 경쟁. (2) AtomicInteger - CAS 루프 기반, 락 없이 원자성 보장, 읽기 많은 경우 효율적. (3) LongAdder - 각 스레드가 별도 셀에 쓰고 get() 시 합산, 쓰기 경합 매우 높을 때 최적. get()의 일관성이 덜 중요하다면 LongAdder가 최선.",
+    "code": "import java.util.concurrent.atomic.AtomicInteger;\nimport java.util.concurrent.atomic.LongAdder;\n\n// 1. synchronized 버전\npublic class SynchronizedCounter {\n    private int count = 0;\n\n    public synchronized void increment() { count++; }\n    public synchronized void decrement() { count--; }\n    public synchronized int get() { return count; }\n    public synchronized void reset() { count = 0; }\n}\n\n// 2. AtomicInteger 버전\npublic class AtomicCounter {\n    private final AtomicInteger count = new AtomicInteger(0);\n\n    public void increment() { count.incrementAndGet(); }\n    public void decrement() { count.decrementAndGet(); }\n    public int get() { return count.get(); }\n    public void reset() { count.set(0); }\n\n    // CAS 기반 조건부 증가 예시\n    public boolean incrementIfLessThan(int limit) {\n        int current;\n        do {\n            current = count.get();\n            if (current >= limit) return false;\n        } while (!count.compareAndSet(current, current + 1));\n        return true;\n    }\n}\n\n// 3. LongAdder 버전 (고동시성 쓰기에 최적)\npublic class LongAdderCounter {\n    private final LongAdder adder = new LongAdder();\n\n    public void increment() { adder.increment(); }\n    public void decrement() { adder.decrement(); }\n    public long get() { return adder.sum(); }\n    public void reset() { adder.reset(); }\n}",
+    "complexity": {
+      "time": "O(1) amortized for all three implementations",
+      "space": "O(1) for Synchronized/Atomic, O(threads) for LongAdder"
+    },
+    "walkthrough": "면접관: 'CAS가 뭔가요? 왜 락보다 빠른가요?' → 'Compare-And-Swap은 CPU 수준 원자 명령어입니다. 예상 값과 현재 값이 같으면 새 값으로 교체합니다. 락은 OS 스케줄러를 거치지만 CAS는 CPU 명령 하나로 처리되어 컨텍스트 스위치 비용이 없습니다.'\n면접관: 'AtomicInteger의 단점은?' → '경합이 매우 심한 경우 CAS 루프가 반복 실패해 스핀락처럼 CPU를 낭비합니다. 이 때 LongAdder가 유리합니다.'\n면접관: 'LongAdder의 get()이 부정확할 수 있다고 했는데 언제 문제가 되나요?' → '정확한 현재 값이 필요한 결제 금액 카운터보다는 통계용 호출 횟수 집계 같은 near-realtime 모니터링에 적합합니다.'",
+    "secret": "라이브 코테 꿀팁: int count++ 버전을 먼저 보여주고 '이 코드가 왜 틀렸는지' 직접 설명하면 강한 인상을 줍니다. synchronized → AtomicInteger → LongAdder 순으로 발전시키는 스토리라인을 만드세요. 면접관이 'volatile만으로 충분하지 않나요?' 물으면 'volatile은 가시성만 보장, 복합 연산 원자성은 보장 안 함'으로 답하세요.",
+    "similar": ["cdl-005", "cdl-010"]
+  },
+  {
+    "id": "cdl-005",
+    "title": "Producer-Consumer BlockingQueue",
+    "titleKo": "Producer-Consumer BlockingQueue 직접 구현",
+    "difficulty": "hard",
+    "patterns": ["concurrency", "design", "implementation"],
+    "companies": ["구글", "메타", "카카오"],
+    "description": "면접관: 'java.util.concurrent.BlockingQueue를 직접 구현해 주세요. put()은 큐가 가득 차면 공간이 생길 때까지 블로킹, take()는 큐가 비면 아이템이 생길 때까지 블로킹해야 합니다. 이를 이용해 Producer-Consumer 패턴도 보여주세요.'",
+    "examples": [
+      {
+        "input": "BoundedBlockingQueue<Integer> queue = new BoundedBlockingQueue<>(5);\n// Producer 스레드: queue.put(1..10)\n// Consumer 스레드: queue.take() x 10",
+        "output": "1 2 3 4 5 6 7 8 9 10 (순서 보장)",
+        "explanation": "큐 용량 5. Producer가 6번째 put 시 Consumer가 take할 때까지 대기. 데드락 없이 동작."
+      }
+    ],
+    "constraints": [
+      "put(T item): blocking if full",
+      "take(): blocking if empty",
+      "offer(T item, long timeout): 타임아웃 버전",
+      "Thread-safe, 데드락 없음"
+    ],
+    "hints": [
+      "ReentrantLock + 두 개의 Condition 사용 (notFull, notEmpty)",
+      "wait/notify 대신 Condition.await()/signal()이 더 명확",
+      "ArrayDeque로 실제 저장, capacity로 경계 체크",
+      "put: full이면 notFull.await(), take: empty면 notEmpty.await()"
+    ],
+    "approach": "ReentrantLock 하나와 두 개의 Condition(notFull, notEmpty)을 사용. put() 시 큐가 가득 차면 notFull.await()로 대기, take() 후 notFull.signal(). take() 시 큐가 비면 notEmpty.await()로 대기, put() 후 notEmpty.signal(). 인터럽트 처리를 위해 await/signal을 try-catch로 감쌈.",
+    "code": "import java.util.ArrayDeque;\nimport java.util.Queue;\nimport java.util.concurrent.TimeUnit;\nimport java.util.concurrent.locks.Condition;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class BoundedBlockingQueue<T> {\n    private final Queue<T> queue;\n    private final int capacity;\n    private final ReentrantLock lock;\n    private final Condition notFull;\n    private final Condition notEmpty;\n\n    public BoundedBlockingQueue(int capacity) {\n        this.capacity = capacity;\n        this.queue = new ArrayDeque<>();\n        this.lock = new ReentrantLock();\n        this.notFull = lock.newCondition();\n        this.notEmpty = lock.newCondition();\n    }\n\n    public void put(T item) throws InterruptedException {\n        lock.lock();\n        try {\n            while (queue.size() == capacity) {\n                notFull.await();\n            }\n            queue.offer(item);\n            notEmpty.signal();\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public T take() throws InterruptedException {\n        lock.lock();\n        try {\n            while (queue.isEmpty()) {\n                notEmpty.await();\n            }\n            T item = queue.poll();\n            notFull.signal();\n            return item;\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public boolean offer(T item, long timeout, TimeUnit unit) throws InterruptedException {\n        long nanos = unit.toNanos(timeout);\n        lock.lock();\n        try {\n            while (queue.size() == capacity) {\n                if (nanos <= 0) return false;\n                nanos = notFull.awaitNanos(nanos);\n            }\n            queue.offer(item);\n            notEmpty.signal();\n            return true;\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public int size() {\n        lock.lock();\n        try { return queue.size(); }\n        finally { lock.unlock(); }\n    }\n}\n\nclass ProducerConsumerExample {\n    public static void main(String[] args) {\n        BoundedBlockingQueue<Integer> queue = new BoundedBlockingQueue<>(5);\n\n        Thread producer = new Thread(() -> {\n            for (int i = 0; i < 10; i++) {\n                try {\n                    queue.put(i);\n                    System.out.println(\"Produced: \" + i);\n                } catch (InterruptedException e) {\n                    Thread.currentThread().interrupt();\n                }\n            }\n        });\n\n        Thread consumer = new Thread(() -> {\n            for (int i = 0; i < 10; i++) {\n                try {\n                    int item = queue.take();\n                    System.out.println(\"Consumed: \" + item);\n                } catch (InterruptedException e) {\n                    Thread.currentThread().interrupt();\n                }\n            }\n        });\n\n        producer.start();\n        consumer.start();\n    }\n}",
+    "complexity": {
+      "time": "O(1) amortized for put and take",
+      "space": "O(capacity)"
+    },
+    "walkthrough": "면접관: 'if 대신 while을 쓴 이유가 뭔가요?' → 'Spurious wakeup(허위 깨어남) 때문입니다. await()는 signal 없이 OS에 의해 깨어날 수 있으므로 조건을 while로 재확인해야 합니다.'\n면접관: 'wait/notify와 Condition의 차이는?' → 'wait/notify는 하나의 객체에 하나의 조건만 지원. Condition을 쓰면 notFull, notEmpty 두 조건을 분리해 불필요한 wakeup을 줄일 수 있습니다.'\n면접관: '데드락이 발생할 수 있는 시나리오는?' → 'signal 대신 signalAll이면 성능 저하는 있지만 데드락 없습니다. 현재 구현도 signal을 put/take에서 각각 올바른 Condition에 보내므로 데드락이 없습니다.'",
+    "secret": "라이브 코테 꿀팁: 'wait/notify로 먼저 구현할까요, Condition으로 할까요?'라고 물어서 면접관의 의도를 파악. while(조건)을 쓰는 이유(spurious wakeup)를 먼저 말하면 동시성 이해도가 높아 보입니다. finally 블록에서 lock.unlock() 하는 패턴을 반드시 지켜야 함을 강조.",
+    "similar": ["cdl-004", "cdl-006"]
+  },
+  {
+    "id": "cdl-006",
+    "title": "Event Bus / Publisher-Subscriber",
+    "titleKo": "Event Bus / Publisher-Subscriber 구현",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "observer"],
+    "companies": ["카카오", "토스", "메타"],
+    "description": "면접관: 'Spring의 ApplicationEventPublisher 같은 간단한 Event Bus를 직접 구현해 주세요. 이벤트 타입별로 subscriber를 등록하고, 이벤트가 발행되면 해당 subscriber들이 모두 호출되어야 합니다. 타입 안전성도 고려해 주세요.'",
+    "examples": [
+      {
+        "input": "EventBus bus = new EventBus();\nbus.subscribe(OrderEvent.class, e -> System.out.println(\"Order: \" + e.orderId));\nbus.subscribe(PaymentEvent.class, e -> System.out.println(\"Payment: \" + e.amount));\nbus.publish(new OrderEvent(\"order-123\"));\nbus.publish(new PaymentEvent(5000));",
+        "output": "Order: order-123\nPayment: 5000",
+        "explanation": "각 이벤트 타입에 등록된 subscriber만 호출됨. 다른 타입 subscriber는 영향받지 않음."
+      }
+    ],
+    "constraints": [
+      "제네릭으로 타입 안전성 보장",
+      "하나의 이벤트 타입에 여러 subscriber 가능",
+      "Thread-safe 구현 (동시 subscribe/publish 가능)",
+      "subscriber 등록 해제(unsubscribe) 기능"
+    ],
+    "hints": [
+      "Map<Class<?>, List<Consumer<?>>> 구조로 타입별 핸들러 관리",
+      "publish 시 unchecked cast 필요 — 왜 안전한지 설명 준비",
+      "CopyOnWriteArrayList로 subscribe/publish 동시성 처리",
+      "unsubscribe를 위해 Consumer 참조 또는 subscription ID 관리"
+    ],
+    "approach": "HashMap<Class<?>, CopyOnWriteArrayList<Consumer<?>>>로 타입별 핸들러 관리. publish 시 이벤트 클래스로 핸들러 리스트 조회 후 각 핸들러 호출. 타입 파라미터 소거로 인해 내부에서 unchecked cast 발생하지만 subscribe 시 타입을 명시적으로 등록하므로 실제로는 안전함. CopyOnWriteArrayList로 iterate 중 subscribe/unsubscribe에 안전.",
+    "code": "import java.util.List;\nimport java.util.Map;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.CopyOnWriteArrayList;\nimport java.util.function.Consumer;\n\npublic class EventBus {\n    private final Map<Class<?>, List<Consumer<Object>>> handlers = new ConcurrentHashMap<>();\n\n    @SuppressWarnings(\"unchecked\")\n    public <T> void subscribe(Class<T> eventType, Consumer<T> handler) {\n        handlers.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>())\n                .add((Consumer<Object>) handler);\n    }\n\n    @SuppressWarnings(\"unchecked\")\n    public <T> void unsubscribe(Class<T> eventType, Consumer<T> handler) {\n        List<Consumer<Object>> list = handlers.get(eventType);\n        if (list != null) {\n            list.remove((Consumer<Object>) handler);\n        }\n    }\n\n    public <T> void publish(T event) {\n        List<Consumer<Object>> list = handlers.get(event.getClass());\n        if (list != null) {\n            for (Consumer<Object> handler : list) {\n                try {\n                    handler.accept(event);\n                } catch (Exception e) {\n                    System.err.println(\"Handler error: \" + e.getMessage());\n                }\n            }\n        }\n    }\n}\n\nclass OrderEvent {\n    public final String orderId;\n    public OrderEvent(String orderId) { this.orderId = orderId; }\n}\n\nclass PaymentEvent {\n    public final int amount;\n    public PaymentEvent(int amount) { this.amount = amount; }\n}",
+    "complexity": {
+      "time": "O(n) publish where n = number of subscribers for that event type",
+      "space": "O(total subscribers)"
+    },
+    "walkthrough": "면접관: '@SuppressWarnings unchecked가 안전한 이유가 뭔가요?' → 'subscribe 시 Class<T>와 Consumer<T>를 같은 T로 묶어 등록합니다. 같은 Class를 키로 꺼내기 때문에 실제 타입이 일치하는 것이 보장됩니다. Java 타입 소거 때문에 컴파일러가 경고를 내지만 런타임 ClassCastException은 발생하지 않습니다.'\n면접관: 'CopyOnWriteArrayList를 쓴 이유는?' → 'iterate(publish) 중에 subscribe/unsubscribe가 발생해도 ConcurrentModificationException이 없습니다. 다만 쓰기 시 복사 비용이 있어 쓰기 빈도가 낮고 읽기가 많은 패턴에 적합합니다.'\n면접관: '비동기 이벤트 처리로 확장하려면?' → 'ExecutorService를 주입받아 handler.accept()를 executor.submit()으로 감싸면 됩니다.'",
+    "secret": "라이브 코테 꿀팁: Observer Pattern과의 관계를 먼저 말하면 설계 지식이 드러납니다. publish 시 handler 예외를 try-catch로 격리하는 코드를 추가하면 '프로덕션을 고려한다'는 인상을 줍니다. 'Guava EventBus나 Spring 이벤트와 어떻게 다른가요?'라는 질문에 미리 답을 준비하세요.",
+    "similar": ["cdl-005", "cdl-011"]
+  },
+  {
+    "id": "cdl-007",
+    "title": "Circular Buffer",
+    "titleKo": "Circular Buffer (고정 크기 큐, 덮어쓰기)",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "array"],
+    "companies": ["구글", "카카오", "토스"],
+    "description": "면접관: '로그 시스템에서 최근 N개의 로그만 메모리에 유지하고 싶습니다. 크기가 고정된 Circular Buffer를 구현해 주세요. 가득 차면 가장 오래된 데이터를 덮어씁니다. 읽기/쓰기 모두 O(1)이어야 합니다.'",
+    "examples": [
+      {
+        "input": "CircularBuffer<String> buf = new CircularBuffer<>(3);\nbuf.write(\"a\"); buf.write(\"b\"); buf.write(\"c\");\nbuf.write(\"d\"); // 'a' 덮어씀\nSystem.out.println(buf.readAll()); // [b, c, d]",
+        "output": "[b, c, d]",
+        "explanation": "capacity=3. 'a'가 가장 오래되어 'd' 쓰기 시 덮어씀."
+      }
+    ],
+    "constraints": [
+      "고정 배열 크기, 동적 확장 없음",
+      "write: O(1), read: O(1), readAll: O(n)",
+      "가득 차면 oldest 데이터 자동 덮어쓰기"
+    ],
+    "hints": [
+      "writePos, readPos 두 포인터와 count 또는 isFull 플래그 관리",
+      "인덱스 증가는 (index + 1) % capacity로 wrap-around",
+      "count로 full/empty 구분 — 포인터만으로는 구분 불가",
+      "readAll은 readPos부터 count개 순서대로 읽기"
+    ],
+    "approach": "고정 배열 + writePos + readPos + count 변수로 구현. write 시 writePos에 쓰고 (writePos+1)%capacity. full이면 readPos도 함께 이동(덮어쓰기). read 시 readPos에서 읽고 이동. count로 현재 원소 수 추적.",
+    "code": "import java.util.ArrayList;\nimport java.util.List;\n\npublic class CircularBuffer<T> {\n    private final Object[] buffer;\n    private final int capacity;\n    private int writePos;\n    private int readPos;\n    private int count;\n\n    public CircularBuffer(int capacity) {\n        this.capacity = capacity;\n        this.buffer = new Object[capacity];\n        this.writePos = 0;\n        this.readPos = 0;\n        this.count = 0;\n    }\n\n    public void write(T item) {\n        buffer[writePos] = item;\n        if (count == capacity) {\n            readPos = (readPos + 1) % capacity;\n        } else {\n            count++;\n        }\n        writePos = (writePos + 1) % capacity;\n    }\n\n    @SuppressWarnings(\"unchecked\")\n    public T read() {\n        if (count == 0) throw new IllegalStateException(\"Buffer is empty\");\n        T item = (T) buffer[readPos];\n        readPos = (readPos + 1) % capacity;\n        count--;\n        return item;\n    }\n\n    @SuppressWarnings(\"unchecked\")\n    public List<T> readAll() {\n        List<T> result = new ArrayList<>(count);\n        int pos = readPos;\n        for (int i = 0; i < count; i++) {\n            result.add((T) buffer[pos]);\n            pos = (pos + 1) % capacity;\n        }\n        return result;\n    }\n\n    public boolean isEmpty() { return count == 0; }\n    public boolean isFull() { return count == capacity; }\n    public int size() { return count; }\n}",
+    "complexity": {
+      "time": "O(1) for write/read, O(n) for readAll",
+      "space": "O(capacity)"
+    },
+    "walkthrough": "면접관: 'writePos == readPos일 때 empty인지 full인지 어떻게 구분하나요?' → 'count 변수로 구분합니다. 포인터만 사용하면 ambiguity가 생겨 count나 isFull 플래그 중 하나가 필요합니다.'\n면접관: 'Thread-safe하게 만들려면?' → 'write/read/readAll에 synchronized 추가 또는 AtomicInteger로 count 관리. 단, 복합 연산이라 단순 atomic만으로는 부족하고 ReentrantLock이 더 안전합니다.'\n면접관: '실제로 이런 자료구조가 쓰이는 곳은?' → 'OS 커널의 pipe 버퍼, 오디오/비디오 스트리밍 버퍼, 로그 회전(log rotation) 시스템에 사용됩니다.'",
+    "secret": "라이브 코테 꿀팁: 먼저 그림을 그리며 writePos/readPos 이동을 시각화하면 훨씬 설명이 쉽습니다. capacity=1인 엣지 케이스와 연속 덮어쓰기 케이스를 직접 트레이싱해 보여주면 신뢰도가 올라갑니다. write 시 full/not-full 분기를 헷갈리기 쉬우니 주석으로 명시적으로 표현하세요.",
+    "similar": ["cdl-005"]
+  },
+  {
+    "id": "cdl-008",
+    "title": "Snake Game Logic",
+    "titleKo": "Snake Game 로직 구현",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "deque", "set"],
+    "companies": ["메타", "구글"],
+    "description": "면접관: '전통적인 Snake 게임의 핵심 로직을 구현해 주세요. m×n 격자에서 뱀이 방향키 입력에 따라 이동하고, 음식을 먹으면 길이가 늘어납니다. 벽 충돌 또는 자기 몸 충돌 시 게임 오버. move(direction) 함수가 결과를 반환해야 합니다.'",
+    "examples": [
+      {
+        "input": "SnakeGame game = new SnakeGame(3, 3, new int[][]{{1,2},{0,1}});\ngame.move(\"R\"); // 0\ngame.move(\"D\"); // 0\ngame.move(\"R\"); // 1 (food at [1,2] 먹음)\ngame.move(\"U\"); // 1\ngame.move(\"L\"); // 2 (food at [0,1] 먹음)",
+        "output": "0, 0, 1, 1, 2",
+        "explanation": "반환값은 현재 점수(먹은 음식 수). -1이면 게임 오버."
+      }
+    ],
+    "constraints": [
+      "1 <= m, n <= 10^4 (격자 크기)",
+      "방향: U/D/L/R",
+      "음식 좌표 배열 순서대로 등장",
+      "게임 오버 시 -1 반환, 이후 호출도 -1"
+    ],
+    "hints": [
+      "뱀 본체를 Deque<int[]>로 관리: head는 앞, tail은 뒤",
+      "HashSet<String>으로 현재 뱀 위치 집합 관리 → O(1) 충돌 체크",
+      "이동: 새 head 계산 → 음식인지 확인 → 음식이면 tail 제거 않음",
+      "자기 충돌 체크: 새 head가 현재 뱀 위치에 있는지 (단, 꼬리는 이동 후 제거되므로 고려 필요)"
+    ],
+    "approach": "Deque<int[]>로 뱀 위치 관리(앞=head, 뒤=tail). HashSet<String>으로 O(1) 충돌 체크. 매 move: (1) 새 head 좌표 계산, (2) 벽 충돌 체크, (3) 음식 여부 확인, (4) 음식이 아니면 꼬리 제거 후 자기 충돌 체크, (5) head 추가. 꼬리를 먼저 제거 후 자기 충돌을 체크해야 꼬리 자리로 이동하는 합법적 케이스를 허용.",
+    "code": "import java.util.ArrayDeque;\nimport java.util.Deque;\nimport java.util.HashSet;\nimport java.util.Set;\n\npublic class SnakeGame {\n    private final int width;\n    private final int height;\n    private final int[][] food;\n    private int foodIndex;\n    private int score;\n    private boolean gameOver;\n    private final Deque<int[]> snake;\n    private final Set<String> snakeSet;\n\n    public SnakeGame(int width, int height, int[][] food) {\n        this.width = width;\n        this.height = height;\n        this.food = food;\n        this.foodIndex = 0;\n        this.score = 0;\n        this.gameOver = false;\n        snake = new ArrayDeque<>();\n        snakeSet = new HashSet<>();\n        snake.addFirst(new int[]{0, 0});\n        snakeSet.add(\"0,0\");\n    }\n\n    public int move(String direction) {\n        if (gameOver) return -1;\n\n        int[] head = snake.peekFirst();\n        int newRow = head[0];\n        int newCol = head[1];\n\n        switch (direction) {\n            case \"U\": newRow--; break;\n            case \"D\": newRow++; break;\n            case \"L\": newCol--; break;\n            case \"R\": newCol++; break;\n        }\n\n        if (newRow < 0 || newRow >= height || newCol < 0 || newCol >= width) {\n            gameOver = true;\n            return -1;\n        }\n\n        boolean ateFood = foodIndex < food.length\n                && food[foodIndex][0] == newRow\n                && food[foodIndex][1] == newCol;\n\n        if (!ateFood) {\n            int[] tail = snake.pollLast();\n            snakeSet.remove(tail[0] + \",\" + tail[1]);\n        }\n\n        String newKey = newRow + \",\" + newCol;\n        if (snakeSet.contains(newKey)) {\n            gameOver = true;\n            return -1;\n        }\n\n        snake.addFirst(new int[]{newRow, newCol});\n        snakeSet.add(newKey);\n\n        if (ateFood) {\n            score++;\n            foodIndex++;\n        }\n\n        return score;\n    }\n}",
+    "complexity": {
+      "time": "O(1) per move",
+      "space": "O(n*m) worst case for snake length"
+    },
+    "walkthrough": "면접관: '자기 충돌 체크에서 꼬리를 먼저 제거하는 이유가 뭔가요?' → '뱀이 꼬리 자리로 이동하는 경우는 합법적인 이동입니다. 꼬리를 제거하기 전에 새 head를 체크하면 이 케이스를 잘못 게임오버 처리합니다.'\n면접관: '음식을 먹을 때는 꼬리를 제거하지 않는 이유는?' → '음식을 먹으면 뱀이 성장하므로 꼬리를 유지합니다. 먹지 않으면 기존 꼬리를 제거하고 새 head를 추가해 총 길이를 유지합니다.'\n면접관: 'HashSet에서 키를 String으로 쓰는 이유는?' → '배열은 참조 동일성으로 비교되어 HashSet에 사용할 수 없습니다. row*width+col 정수 인코딩으로도 가능합니다.'",
+    "secret": "라이브 코테 꿀팁: 뱀 게임은 꼬리 제거 순서가 핵심 트릭. '음식 여부 → 꼬리 제거 여부 → 자기 충돌 체크' 순서를 먼저 의사코드로 설명하면 로직 실수를 줄일 수 있습니다. HashSet 키 충돌 문제(row=1,col=23 vs row=12,col=3)를 방지하려면 쉼표 구분자를 쓰거나 정수 인코딩을 쓰세요.",
+    "similar": ["cdl-007"]
+  },
+  {
+    "id": "cdl-009",
+    "title": "URL Shortener Core Logic",
+    "titleKo": "URL Shortener 핵심 로직 (Base62 + 충돌 처리)",
+    "difficulty": "medium",
+    "patterns": ["design", "implementation", "encoding"],
+    "companies": ["카카오", "토스", "메타"],
+    "description": "면접관: 'bit.ly 같은 URL 단축 서비스의 핵심 로직을 구현해 주세요. 긴 URL을 6자리 단축 코드로 변환하고, 단축 코드로 원래 URL을 조회할 수 있어야 합니다. Base62 인코딩을 사용하고, 충돌 처리도 고려해 주세요.'",
+    "examples": [
+      {
+        "input": "UrlShortener shortener = new UrlShortener();\nString code = shortener.shorten(\"https://www.example.com/very/long/url\");\n// code = \"aB3xYz\" (6자리)\nString original = shortener.expand(code);\n// original = \"https://www.example.com/very/long/url\"",
+        "output": "\"aB3xYz\", \"https://www.example.com/very/long/url\"",
+        "explanation": "62^6 = 약 560억 개의 고유 코드 생성 가능."
+      }
+    ],
+    "constraints": [
+      "단축 코드 길이 6자 (a-z, A-Z, 0-9)",
+      "동일 URL 재입력 시 동일 코드 반환",
+      "충돌 발생 시 처리 로직 필요",
+      "Thread-safe"
+    ],
+    "hints": [
+      "Base62: 0-9, a-z, A-Z 총 62자 알파벳",
+      "ID → Base62 변환: 10진수를 62진수로 변환",
+      "충돌 처리: 이미 다른 URL에 사용된 코드면 재시도",
+      "URL → code 역방향 맵으로 same URL deduplication"
+    ],
+    "approach": "원자적 ID 카운터(AtomicLong)로 고유 ID 생성 → Base62 인코딩으로 6자리 코드. urlToCode 맵으로 동일 URL 중복 등록 방지. codeToUrl 맵으로 역방향 조회. 충돌 처리는 이미 다른 URL이 같은 코드를 쓰고 있으면 counter 증가 후 재시도.",
+    "code": "import java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.atomic.AtomicLong;\n\npublic class UrlShortener {\n    private static final String BASE62 = \"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\";\n    private static final int CODE_LENGTH = 6;\n    private static final long MAX_ID = (long) Math.pow(62, CODE_LENGTH);\n\n    private final ConcurrentHashMap<String, String> urlToCode = new ConcurrentHashMap<>();\n    private final ConcurrentHashMap<String, String> codeToUrl = new ConcurrentHashMap<>();\n    private final AtomicLong counter = new AtomicLong(0);\n\n    public String shorten(String longUrl) {\n        String existing = urlToCode.get(longUrl);\n        if (existing != null) return existing;\n\n        String code;\n        String finalCode;\n        do {\n            long id = counter.getAndIncrement();\n            if (id >= MAX_ID) throw new RuntimeException(\"URL space exhausted\");\n            code = toBase62(id);\n        } while (codeToUrl.putIfAbsent(code, longUrl) != null\n                && !longUrl.equals(codeToUrl.get(code)));\n\n        finalCode = code;\n        urlToCode.putIfAbsent(longUrl, finalCode);\n        return urlToCode.get(longUrl);\n    }\n\n    public String expand(String code) {\n        String url = codeToUrl.get(code);\n        if (url == null) throw new IllegalArgumentException(\"Code not found: \" + code);\n        return url;\n    }\n\n    private String toBase62(long id) {\n        StringBuilder sb = new StringBuilder();\n        for (int i = 0; i < CODE_LENGTH; i++) {\n            sb.append(BASE62.charAt((int)(id % 62)));\n            id /= 62;\n        }\n        return sb.reverse().toString();\n    }\n\n    public long fromBase62(String code) {\n        long result = 0;\n        for (char c : code.toCharArray()) {\n            result = result * 62 + BASE62.indexOf(c);\n        }\n        return result;\n    }\n}",
+    "complexity": {
+      "time": "O(k) where k = code length for encoding/decoding",
+      "space": "O(n) where n = number of stored URLs"
+    },
+    "walkthrough": "면접관: '분산 환경에서 counter가 겹치면 어떡하나요?' → '단일 서버에서는 AtomicLong으로 충분합니다. 분산 환경에서는 Redis INCR 또는 Snowflake ID 같은 분산 ID 생성기를 사용합니다.'\n면접관: 'URL 해시(MD5/SHA)를 쓰면 안 되나요?' → '해시는 충돌 가능성이 있고 앞 6자리만 사용하면 더 높아집니다. 카운터 방식이 유일성을 보장합니다. 단, 순차 코드 노출 문제가 있을 때는 shuffle 또는 암호화를 추가합니다.'\n면접관: '악의적인 사용자가 모든 URL을 스캔할 수 있지 않나요?' → '맞습니다. 랜덤 코드나 사용자 인증, private URL 설정으로 방어할 수 있습니다.'",
+    "secret": "라이브 코테 꿀팁: 'BASE62 문자열을 외웠나요?'라고 물어볼 수 있습니다. '0-9, 소문자, 대문자 순으로 외우면 됩니다'라고 답하고, 실제로는 코드에서 선언하면 됩니다. toBase62에서 길이가 6 미만일 때 패딩 처리를 언급하면 디테일이 보입니다.",
+    "similar": ["cdl-008"]
+  },
+  {
+    "id": "cdl-010",
+    "title": "Find and Fix Race Conditions",
+    "titleKo": "버그 찾기: Race Condition 3개 발견 및 수정",
+    "difficulty": "hard",
+    "patterns": ["debugging", "concurrency", "bug-fix"],
+    "companies": ["구글", "카카오", "토스"],
+    "description": "면접관: '아래 코드는 멀티스레드 환경에서 동작하는 간단한 은행 계좌 시스템입니다. 코드를 검토하고 race condition 버그 3개를 찾아서 수정해 주세요. 어떤 시나리오에서 문제가 발생하는지 설명해 주세요.'",
+    "examples": [
+      {
+        "input": "// 버그가 있는 코드 (면접관이 제시)\npublic class BankAccount {\n    private int balance = 1000;\n    public boolean withdraw(int amount) {\n        if (balance >= amount) {      // Bug 1\n            balance -= amount;         // Bug 2\n            return true;\n        }\n        return false;\n    }\n    public void deposit(int amount) {\n        balance += amount;             // Bug 3\n    }\n    public int getBalance() { return balance; }\n}",
+        "output": "3개의 race condition 발견 및 수정",
+        "explanation": "Bug1: check-then-act 비원자적. Bug2: -= 비원자적. Bug3: += 비원자적."
+      }
+    ],
+    "constraints": [
+      "최소 3개의 race condition 식별",
+      "각 버그가 어떤 시나리오에서 발생하는지 설명",
+      "수정된 코드는 thread-safe해야 함",
+      "성능 최적화도 고려 (가능하면)"
+    ],
+    "hints": [
+      "balance >= amount → balance -= amount: 두 스레드가 동시에 check 통과 가능",
+      "+= 와 -= 는 CPU 레벨에서 read-modify-write 3단계",
+      "check-then-act: 조건 확인 후 행동 사이에 다른 스레드가 끼어들 수 있음",
+      "synchronized vs AtomicInteger vs ReentrantLock 비교"
+    ],
+    "approach": "Bug 1+2: withdraw의 check-then-act + compound operation이 비원자적. 두 스레드가 동시에 if(balance>=amount) 통과 후 둘 다 차감 가능. Bug 3: deposit의 balance += amount는 read-modify-write 3단계로 중간 값 덮어씌움 가능. 수정: synchronized 메서드 or AtomicInteger.compareAndSet() 사용.",
+    "code": "import java.util.concurrent.atomic.AtomicInteger;\nimport java.util.concurrent.locks.ReentrantLock;\n\n// 수정 버전 1: synchronized\npublic class BankAccountSynchronized {\n    private int balance;\n\n    public BankAccountSynchronized(int initialBalance) {\n        this.balance = initialBalance;\n    }\n\n    public synchronized boolean withdraw(int amount) {\n        if (balance >= amount) {\n            balance -= amount;\n            return true;\n        }\n        return false;\n    }\n\n    public synchronized void deposit(int amount) {\n        balance += amount;\n    }\n\n    public synchronized int getBalance() { return balance; }\n}\n\n// 수정 버전 2: ReentrantLock\npublic class BankAccountLock {\n    private int balance;\n    private final ReentrantLock lock = new ReentrantLock();\n\n    public BankAccountLock(int initialBalance) {\n        this.balance = initialBalance;\n    }\n\n    public boolean withdraw(int amount) {\n        lock.lock();\n        try {\n            if (balance >= amount) {\n                balance -= amount;\n                return true;\n            }\n            return false;\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public void deposit(int amount) {\n        lock.lock();\n        try {\n            balance += amount;\n        } finally {\n            lock.unlock();\n        }\n    }\n\n    public int getBalance() {\n        lock.lock();\n        try { return balance; }\n        finally { lock.unlock(); }\n    }\n}\n\n// 수정 버전 3: AtomicInteger + CAS\npublic class BankAccountAtomic {\n    private final AtomicInteger balance;\n\n    public BankAccountAtomic(int initialBalance) {\n        this.balance = new AtomicInteger(initialBalance);\n    }\n\n    public boolean withdraw(int amount) {\n        while (true) {\n            int current = balance.get();\n            if (current < amount) return false;\n            if (balance.compareAndSet(current, current - amount)) return true;\n        }\n    }\n\n    public void deposit(int amount) {\n        balance.addAndGet(amount);\n    }\n\n    public int getBalance() { return balance.get(); }\n}",
+    "complexity": {
+      "time": "O(1) amortized for all versions",
+      "space": "O(1)"
+    },
+    "walkthrough": "면접관: '3개의 버그를 순서대로 설명해 주세요.' → 'Bug 1: if(balance>=amount) 통과 후 balance-=amount 전에 다른 스레드가 balance를 변경 가능. Bug 2: balance -= amount 자체가 원자 연산이 아님 — JVM이 load, subtract, store 세 명령어로 실행. Bug 3: deposit의 balance += amount도 동일 문제.'\n면접관: 'synchronized와 ReentrantLock 중 뭘 선택하나요?' → '단순 동기화는 synchronized가 더 가독성 있습니다. tryLock(timeout), 공정성(fairness) 제어, 여러 Condition이 필요하면 ReentrantLock을 선택합니다.'\n면접관: 'CAS 버전의 단점은?' → '경합이 심하면 CAS 루프가 오래 돌 수 있어 CPU를 낭비합니다. 경합이 낮을 때 lock보다 빠릅니다.'",
+    "secret": "라이브 코테 꿀팁: 버그 찾기 문제는 '이 코드를 1분 동안 읽어도 될까요?'라고 양해를 구하고 침착하게 분석. 발견한 버그를 1, 2, 3 번호로 명시적으로 레이블링하면 면접관이 따라가기 쉽습니다. 세 가지 수정 방법을 모두 알고 있음을 보여주되, 실제로는 상황에 맞는 선택을 설명하세요.",
+    "similar": ["cdl-004", "cdl-005"]
+  },
+  {
+    "id": "cdl-011",
+    "title": "Refactoring: Strategy Pattern",
+    "titleKo": "리팩토링: if-else 스파게티 → Strategy Pattern",
+    "difficulty": "medium",
+    "patterns": ["refactoring", "design-pattern", "implementation"],
+    "companies": ["카카오", "토스", "구글"],
+    "description": "면접관: '아래 코드는 결제 방법에 따라 분기하는 PaymentService입니다. 현재 if-else 체인이 문제가 있습니다. 새로운 결제 방법 추가 시 어떤 문제가 있나요? Strategy Pattern을 사용해 리팩토링해 주세요. OCP(Open/Closed Principle)를 지키도록 해주세요.'",
+    "examples": [
+      {
+        "input": "// 리팩토링 전 (면접관이 제시)\npublic class PaymentService {\n    public void pay(String method, int amount) {\n        if (method.equals(\"CARD\")) { /* 카드 처리 */ }\n        else if (method.equals(\"KAKAO_PAY\")) { /* 카카오페이 */ }\n        else if (method.equals(\"TOSS\")) { /* 토스 */ }\n        // 새 결제 추가 시 여기에 else if 추가...\n    }\n}",
+        "output": "Strategy Pattern으로 리팩토링된 PaymentService",
+        "explanation": "새 결제 추가 시 기존 코드 수정 없이 새 Strategy 클래스만 추가하면 됨."
+      }
+    ],
+    "constraints": [
+      "OCP: 기존 코드 수정 없이 새 결제 방법 추가 가능",
+      "새 결제 방법은 PaymentStrategy 구현만으로 등록 가능",
+      "null/unknown 결제 방법 처리",
+      "Java 8+ Map 기반 등록 방식"
+    ],
+    "hints": [
+      "PaymentStrategy 인터페이스: pay(int amount) 메서드",
+      "각 결제 방법을 별도 클래스로 구현",
+      "PaymentService에 Map<String, PaymentStrategy> 주입",
+      "전략 등록을 List<PaymentStrategy> DI로 자동화 가능"
+    ],
+    "approach": "PaymentStrategy 인터페이스 정의. 각 결제 방법(CardPayment, KakaoPayment, TossPayment)을 별도 구현체로 작성. PaymentService는 Map<String, PaymentStrategy>를 생성자 주입으로 받아 분기 없이 map.get(method).pay(amount) 호출. 새 결제 추가 시 PaymentService 수정 불필요.",
+    "code": "import java.util.HashMap;\nimport java.util.List;\nimport java.util.Map;\n\n// Strategy 인터페이스\npublic interface PaymentStrategy {\n    void pay(int amount);\n    String getMethod();\n}\n\n// 각 결제 구현체\npublic class CardPayment implements PaymentStrategy {\n    @Override\n    public void pay(int amount) {\n        System.out.println(\"[CARD] \" + amount + \"원 결제 처리\");\n    }\n    @Override\n    public String getMethod() { return \"CARD\"; }\n}\n\npublic class KakaoPayment implements PaymentStrategy {\n    @Override\n    public void pay(int amount) {\n        System.out.println(\"[KAKAO_PAY] \" + amount + \"원 결제 처리\");\n    }\n    @Override\n    public String getMethod() { return \"KAKAO_PAY\"; }\n}\n\npublic class TossPayment implements PaymentStrategy {\n    @Override\n    public void pay(int amount) {\n        System.out.println(\"[TOSS] \" + amount + \"원 결제 처리\");\n    }\n    @Override\n    public String getMethod() { return \"TOSS\"; }\n}\n\n// 리팩토링된 PaymentService\npublic class PaymentService {\n    private final Map<String, PaymentStrategy> strategies;\n\n    public PaymentService(List<PaymentStrategy> strategyList) {\n        this.strategies = new HashMap<>();\n        for (PaymentStrategy s : strategyList) {\n            strategies.put(s.getMethod(), s);\n        }\n    }\n\n    public void pay(String method, int amount) {\n        PaymentStrategy strategy = strategies.get(method);\n        if (strategy == null) {\n            throw new IllegalArgumentException(\"지원하지 않는 결제 방법: \" + method);\n        }\n        strategy.pay(amount);\n    }\n\n    public void register(PaymentStrategy strategy) {\n        strategies.put(strategy.getMethod(), strategy);\n    }\n}\n\n// 사용 예시\nclass Main {\n    public static void main(String[] args) {\n        List<PaymentStrategy> strategies = List.of(\n            new CardPayment(), new KakaoPayment(), new TossPayment()\n        );\n        PaymentService service = new PaymentService(strategies);\n        service.pay(\"CARD\", 10000);\n        service.pay(\"TOSS\", 5000);\n    }\n}",
+    "complexity": {
+      "time": "O(1) for pay() dispatch",
+      "space": "O(n) where n = number of payment strategies"
+    },
+    "walkthrough": "면접관: 'if-else의 어떤 점이 OCP 위반인가요?' → '새 결제 방법을 추가할 때 기존 PaymentService 코드를 수정해야 합니다. OCP는 확장에는 열려있고 수정에는 닫혀있어야 합니다. Strategy Pattern을 쓰면 새 구현체 추가만으로 확장이 완료됩니다.'\n면접관: 'Map 대신 if-else를 쓰지 않은 이유가 뭔가요?' → 'Map은 O(1) 조회이고 동적 등록이 가능합니다. if-else는 컴파일 타임에 고정되고 가독성도 떨어집니다.'\n면접관: 'Spring에서는 어떻게 더 우아하게 할 수 있나요?' → 'List<PaymentStrategy>를 @Autowired로 주입받으면 ApplicationContext에 등록된 모든 구현체가 자동으로 리스트에 들어옵니다. @Component만 붙이면 코드 한 줄 추가 없이 새 결제가 등록됩니다.'",
+    "secret": "라이브 코테 꿀팁: 리팩토링 문제는 'Before/After 차이가 뭔지' 한 문장으로 먼저 설명하세요. OCP, SRP 같은 원칙 이름을 정확히 언급하면 설계 지식이 드러납니다. Spring DI와 연결하면 시니어 레벨로 평가됩니다.",
+    "similar": ["cdl-006"]
+  },
+  {
+    "id": "cdl-012",
+    "title": "Stream Median with Two Heaps",
+    "titleKo": "Stream Median: 두 Heap으로 실시간 중앙값",
+    "difficulty": "hard",
+    "patterns": ["heap", "design", "implementation"],
+    "companies": ["구글", "메타", "카카오"],
+    "description": "면접관: '실시간으로 숫자들이 스트림으로 들어옵니다. 언제든지 지금까지 입력된 숫자들의 중앙값(median)을 O(log n) 추가, O(1) 조회로 반환하는 시스템을 구현해 주세요. 데이터를 정렬 상태로 유지하지 않고 해결해 주세요.'",
+    "examples": [
+      {
+        "input": "MedianFinder mf = new MedianFinder();\nmf.addNum(1);  // [1]\nmf.addNum(2);  // [1,2]\nmf.findMedian(); // 1.5\nmf.addNum(3);  // [1,2,3]\nmf.findMedian(); // 2.0",
+        "output": "1.5, 2.0",
+        "explanation": "짝수 개면 중간 두 수의 평균, 홀수 개면 정확한 중앙값."
+      }
+    ],
+    "constraints": [
+      "addNum: O(log n)",
+      "findMedian: O(1)",
+      "-10^5 <= num <= 10^5",
+      "findMedian은 addNum 후 적어도 1번 호출됨"
+    ],
+    "hints": [
+      "두 Heap: maxHeap(작은 절반), minHeap(큰 절반)",
+      "항상 maxHeap.size() == minHeap.size() 또는 maxHeap.size() == minHeap.size()+1",
+      "addNum 후 두 힙의 크기 균형을 맞춰야 함",
+      "median: 홀수이면 maxHeap.peek(), 짝수이면 두 peek 평균"
+    ],
+    "approach": "최대힙(소수 절반)과 최소힙(대수 절반)을 유지. addNum: maxHeap에 추가 → maxHeap의 최댓값이 minHeap 최솟값보다 크면 균형 재조정. 두 힙 크기 차이가 2 이상이면 재균형. findMedian: 총 개수 홀수면 maxHeap.peek(), 짝수면 (maxHeap.peek() + minHeap.peek()) / 2.0.",
+    "code": "import java.util.Collections;\nimport java.util.PriorityQueue;\n\npublic class MedianFinder {\n    private final PriorityQueue<Integer> maxHeap; // 작은 절반\n    private final PriorityQueue<Integer> minHeap; // 큰 절반\n\n    public MedianFinder() {\n        maxHeap = new PriorityQueue<>(Collections.reverseOrder());\n        minHeap = new PriorityQueue<>();\n    }\n\n    public void addNum(int num) {\n        maxHeap.offer(num);\n\n        if (!minHeap.isEmpty() && maxHeap.peek() > minHeap.peek()) {\n            minHeap.offer(maxHeap.poll());\n        }\n\n        if (maxHeap.size() > minHeap.size() + 1) {\n            minHeap.offer(maxHeap.poll());\n        } else if (minHeap.size() > maxHeap.size()) {\n            maxHeap.offer(minHeap.poll());\n        }\n    }\n\n    public double findMedian() {\n        if (maxHeap.size() == minHeap.size()) {\n            return (maxHeap.peek() + minHeap.peek()) / 2.0;\n        } else {\n            return maxHeap.peek();\n        }\n    }\n}",
+    "complexity": {
+      "time": "O(log n) for addNum, O(1) for findMedian",
+      "space": "O(n)"
+    },
+    "walkthrough": "면접관: '왜 정렬 배열을 안 쓰고 두 Heap을 쓰나요?' → '정렬 배열은 삽입이 O(n)입니다. Heap은 삽입 O(log n)으로 더 효율적이고, 중앙값은 두 힙의 top만 보면 되어 O(1) 조회가 가능합니다.'\n면접관: 'maxHeap과 minHeap의 크기 불변식이 깨지는 경우는?' → 'addNum의 2, 3단계에서 순서가 중요합니다. 정렬 유지 먼저, 균형 조정 나중. 순서가 바뀌면 잘못된 원소가 잘못된 힙에 들어갈 수 있습니다.'\n면접관: '스트림이 굉장히 크면 메모리 문제는?' → '모든 원소를 저장하므로 O(n). 근사값 허용 시 Reservoir Sampling이나 Count-Min Sketch 같은 확률적 자료구조를 고려할 수 있습니다.'",
+    "secret": "라이브 코테 꿀팁: addNum의 3단계 로직(균형 맞추기)을 헷갈리기 쉬우므로 불변식을 먼저 말하세요: '항상 maxHeap.size() - minHeap.size() = 0 또는 1'. Collections.reverseOrder()가 기억 안 나면 (a, b) -> b - a 람다로 대체 가능.",
+    "similar": ["cdl-013"]
+  },
+  {
+    "id": "cdl-013",
+    "title": "Expression Evaluator",
+    "titleKo": "Expression Evaluator (Stack 기반 수식 평가)",
+    "difficulty": "hard",
+    "patterns": ["stack", "implementation", "parsing"],
+    "companies": ["구글", "메타", "카카오"],
+    "description": "면접관: '괄호와 사칙연산(+, -, *, /)을 포함한 문자열 수식을 평가하는 함수를 구현해 주세요. 예: \"3 + 5 * (2 - 8) / 2\" → -12. 연산자 우선순위와 괄호를 올바르게 처리해야 합니다.'",
+    "examples": [
+      {
+        "input": "evaluate(\"3 + 5\")              // 8\nevaluate(\"10 - 3 * 2\")         // 4 (우선순위: * 먼저)\nevaluate(\"(2 + 3) * 4\")        // 20 (괄호 우선)\nevaluate(\"3 + 5 * (2 - 8) / 2\") // -12",
+        "output": "8, 4, 20, -12",
+        "explanation": "연산자 우선순위: * / > + -. 괄호 내부 먼저 계산."
+      }
+    ],
+    "constraints": [
+      "입력은 유효한 수식 (음수 없음, 단 괄호 결과는 음수 가능)",
+      "+, -, *, / 연산자",
+      "공백 무시",
+      "정수 나눗셈 (소수점 버림)"
+    ],
+    "hints": [
+      "두 스택: 숫자 스택(nums)과 연산자 스택(ops)",
+      "연산자 우선순위: * / > + -",
+      "현재 연산자 우선순위 <= 스택 top 연산자 우선순위이면 스택에서 꺼내 계산",
+      "괄호: ( 만나면 ops에 push, ) 만나면 ( 나올 때까지 계산"
+    ],
+    "approach": "두 스택(nums, ops) 사용. 숫자이면 nums에 push. 연산자이면 ops 스택 top보다 우선순위가 낮거나 같으면 먼저 계산 후 현재 연산자 push. '('는 ops에 push. ')'는 '(' 나올 때까지 계산. 마지막으로 ops 남은 연산자 모두 처리.",
+    "code": "import java.util.ArrayDeque;\nimport java.util.Deque;\n\npublic class ExpressionEvaluator {\n\n    public int evaluate(String expression) {\n        Deque<Integer> nums = new ArrayDeque<>();\n        Deque<Character> ops = new ArrayDeque<>();\n        String s = expression.replaceAll(\" \", \"\");\n        int i = 0;\n\n        while (i < s.length()) {\n            char c = s.charAt(i);\n\n            if (Character.isDigit(c)) {\n                int num = 0;\n                while (i < s.length() && Character.isDigit(s.charAt(i))) {\n                    num = num * 10 + (s.charAt(i) - '0');\n                    i++;\n                }\n                nums.push(num);\n                continue;\n            } else if (c == '(') {\n                ops.push(c);\n            } else if (c == ')') {\n                while (ops.peek() != '(') {\n                    nums.push(applyOp(ops.pop(), nums.pop(), nums.pop()));\n                }\n                ops.pop();\n            } else if (isOperator(c)) {\n                while (!ops.isEmpty() && ops.peek() != '('\n                        && precedence(ops.peek()) >= precedence(c)) {\n                    nums.push(applyOp(ops.pop(), nums.pop(), nums.pop()));\n                }\n                ops.push(c);\n            }\n            i++;\n        }\n\n        while (!ops.isEmpty()) {\n            nums.push(applyOp(ops.pop(), nums.pop(), nums.pop()));\n        }\n\n        return nums.pop();\n    }\n\n    private int applyOp(char op, int b, int a) {\n        switch (op) {\n            case '+': return a + b;\n            case '-': return a - b;\n            case '*': return a * b;\n            case '/': return a / b;\n        }\n        throw new IllegalArgumentException(\"Unknown op: \" + op);\n    }\n\n    private int precedence(char op) {\n        if (op == '+' || op == '-') return 1;\n        if (op == '*' || op == '/') return 2;\n        return 0;\n    }\n\n    private boolean isOperator(char c) {\n        return c == '+' || c == '-' || c == '*' || c == '/';\n    }\n}",
+    "complexity": {
+      "time": "O(n) where n = expression length",
+      "space": "O(n) for two stacks"
+    },
+    "walkthrough": "면접관: 'applyOp에서 a와 b의 순서가 왜 중요한가요?' → '스택에서 pop하면 나중에 들어온 게 먼저 나옵니다. 5 - 3에서 3이 먼저 pop, 5가 나중 pop. 순서가 바뀌면 3 - 5 = -2가 됩니다.'\n면접관: '음수 처리는 어떻게 하나요?' → '현재 구현은 단항 음수를 처리하지 않습니다. 입력이 -3 같은 경우는 (0-3)으로 변환하거나 파서를 확장해야 합니다.'\n면접관: '더 간단한 방법은?' → '재귀적 하강 파서(Recursive Descent Parser) 또는 역폴란드 표기법(RPN)으로 변환 후 평가하는 방법도 있습니다.'",
+    "secret": "라이브 코테 꿀팁: applyOp의 피연산자 순서 버그가 가장 흔한 실수입니다. 면접관 앞에서 '5 - 3을 예로 들면 스택에서 3이 먼저 나오므로 a=5, b=3으로 받아야 합니다'라고 말하며 확인하세요. 테스트 케이스로 '3 * 2 + 1 = 7'을 단계별로 트레이싱하면 신뢰도가 높아집니다.",
+    "similar": ["cdl-012"]
+  },
+  {
+    "id": "cdl-014",
+    "title": "Autocomplete with Trie",
+    "titleKo": "Autocomplete 시스템 (Trie + Top-K 빈도)",
+    "difficulty": "hard",
+    "patterns": ["trie", "heap", "design", "implementation"],
+    "companies": ["구글", "메타", "카카오"],
+    "description": "면접관: '검색창 자동완성 시스템을 구현해 주세요. 단어와 그 검색 빈도를 입력받아 저장하고, prefix가 주어지면 해당 prefix로 시작하는 상위 3개 단어를 빈도순으로 반환해야 합니다. 실시간 검색 서비스를 위해 효율적이어야 합니다.'",
+    "examples": [
+      {
+        "input": "AutocompleteSystem ac = new AutocompleteSystem();\nac.insert(\"apple\", 10);\nac.insert(\"app\", 5);\nac.insert(\"application\", 8);\nac.insert(\"apt\", 3);\nac.search(\"app\"); // [\"apple\", \"application\", \"app\"]",
+        "output": "[\"apple\", \"application\", \"app\"]",
+        "explanation": "\"app\" prefix로 시작하는 단어를 빈도 내림차순 Top-3 반환."
+      }
+    ],
+    "constraints": [
+      "insert(word, frequency) 및 search(prefix) → List<String> (Top-3)",
+      "search 결과는 빈도 내림차순",
+      "빈도가 같으면 알파벳 오름차순",
+      "prefix가 존재하지 않으면 빈 리스트"
+    ],
+    "hints": [
+      "Trie 노드에 children Map<Character, TrieNode>와 word/frequency 저장",
+      "search: prefix로 Trie 탐색 후 해당 노드부터 DFS로 모든 단어 수집",
+      "수집된 단어들을 PriorityQueue로 Top-K 추출",
+      "각 노드에 Top-K 캐시를 저장하면 search 성능 향상 가능"
+    ],
+    "approach": "Trie 구조로 prefix 탐색. 각 TrieNode는 children + 단어 끝 여부 + 빈도 저장. search: prefix 탐색 후 DFS로 모든 단어 수집. PriorityQueue(minHeap, size 3 유지)로 Top-3 유지. 비교 기준: 빈도 내림차순, 동일 빈도이면 알파벳 오름차순.",
+    "code": "import java.util.*;\n\npublic class AutocompleteSystem {\n    private final TrieNode root;\n    private static final int TOP_K = 3;\n\n    private static class TrieNode {\n        Map<Character, TrieNode> children = new HashMap<>();\n        String word = null;\n        int frequency = 0;\n    }\n\n    public AutocompleteSystem() {\n        root = new TrieNode();\n    }\n\n    public void insert(String word, int frequency) {\n        TrieNode node = root;\n        for (char c : word.toCharArray()) {\n            node.children.putIfAbsent(c, new TrieNode());\n            node = node.children.get(c);\n        }\n        node.word = word;\n        node.frequency = frequency;\n    }\n\n    public List<String> search(String prefix) {\n        TrieNode node = root;\n        for (char c : prefix.toCharArray()) {\n            if (!node.children.containsKey(c)) return Collections.emptyList();\n            node = node.children.get(c);\n        }\n\n        // minHeap: 낮은 빈도가 top → 크기 K 유지하며 최솟값 제거\n        PriorityQueue<TrieNode> heap = new PriorityQueue<>((a, b) -> {\n            if (a.frequency != b.frequency) return a.frequency - b.frequency;\n            return b.word.compareTo(a.word); // 알파벳 역순 (min heap에서 제거 대상)\n        });\n\n        dfs(node, heap);\n\n        List<String> result = new ArrayList<>();\n        while (!heap.isEmpty()) result.add(0, heap.poll().word);\n        return result;\n    }\n\n    private void dfs(TrieNode node, PriorityQueue<TrieNode> heap) {\n        if (node.word != null) {\n            heap.offer(node);\n            if (heap.size() > TOP_K) heap.poll();\n        }\n        for (TrieNode child : node.children.values()) {\n            dfs(child, heap);\n        }\n    }\n}",
+    "complexity": {
+      "time": "O(p) for prefix traversal + O(n log k) for DFS Top-K, p=prefix len, n=matching words",
+      "space": "O(total characters in all words)"
+    },
+    "walkthrough": "면접관: 'DFS 대신 BFS도 되나요?' → '됩니다. BFS는 레벨 순서로 탐색하는 차이만 있고 모든 단어를 수집하는 결과는 동일합니다. DFS가 재귀적으로 더 간단하게 구현됩니다.'\n면접관: '실시간 검색 빈도 업데이트를 어떻게 처리하나요?' → 'insert를 다시 호출하거나 TrieNode에 updateFrequency(word, delta) 메서드를 추가합니다. 각 노드에 Top-K 캐시를 두면 업데이트 시 캐시 무효화 처리가 필요합니다.'\n면접관: '수백만 개의 단어가 있을 때 성능 최적화는?' → '각 TrieNode에 Top-K 단어를 캐시하면 search가 O(p + k)로 줄어듭니다. insert 시 루트까지 역방향으로 캐시 갱신합니다.'",
+    "secret": "라이브 코테 꿀팁: Top-K에서 minHeap을 쓰는 이유(크기를 K로 제한하면서 최솟값 제거)를 먼저 설명하세요. 비교기(Comparator)에서 동점 처리(알파벳 순)를 명확히 구현하면 꼼꼼한 인상을 줍니다. insert와 search 두 메서드 시그니처를 면접관에게 확인 후 시작하세요.",
+    "similar": ["cdl-012", "cdl-013"]
+  },
+  {
+    "id": "cdl-015",
+    "title": "Find 3 Bugs: NPE + Off-by-One + Integer Overflow",
+    "titleKo": "버그 찾기: NPE + Off-by-One + Integer Overflow",
+    "difficulty": "medium",
+    "patterns": ["debugging", "bug-fix", "implementation"],
+    "companies": ["카카오", "토스", "구글", "메타"],
+    "description": "면접관: '아래 코드에는 세 종류의 고전적인 버그가 숨어 있습니다. (1) NullPointerException, (2) Off-by-one error, (3) Integer overflow. 각 버그를 찾아 수정하고, 어떤 입력에서 버그가 발생하는지 설명해 주세요.'",
+    "examples": [
+      {
+        "input": "// 버그 코드 1 (NPE)\nString getFirstElement(List<String> list) {\n    return list.get(0).toUpperCase(); // Bug?\n}\n\n// 버그 코드 2 (Off-by-one)\nint sumArray(int[] arr) {\n    int sum = 0;\n    for (int i = 0; i <= arr.length; i++) { // Bug?\n        sum += arr[i];\n    }\n    return sum;\n}\n\n// 버그 코드 3 (Integer Overflow)\nlong twoSum(int a, int b) {\n    return (long)(a + b); // Bug?\n}",
+        "output": "3개 버그 식별 및 수정",
+        "explanation": "NPE: list가 null 또는 비어있을 때. Off-by-one: i<=arr.length에서 ArrayIndexOutOfBounds. Integer overflow: int끼리 더한 후 long 캐스팅."
+      }
+    ],
+    "constraints": [
+      "각 버그가 발생하는 최소 입력 케이스 제시",
+      "방어적 수정 (null 체크, 범위 체크, 타입 처리)",
+      "수정 후에도 원래 로직의 의도 유지"
+    ],
+    "hints": [
+      "NPE: null vs empty list 두 케이스 모두 고려",
+      "Off-by-one: 배열 인덱스 0부터 length-1까지. i<arr.length이어야 함",
+      "Integer overflow: int의 최댓값은 2^31-1 = 약 21억. a=b=Integer.MAX_VALUE이면?",
+      "(long)(a + b) vs (long)a + b: 캐스팅 순서가 핵심"
+    ],
+    "approach": "Bug 1(NPE): list가 null이면 list.get(0)에서 NullPointerException. list가 비어있으면 IndexOutOfBoundsException. null/empty 체크 추가. Bug 2(Off-by-one): i<=arr.length에서 arr.length 인덱스 접근 → ArrayIndexOutOfBoundsException. i<arr.length로 수정. Bug 3(Integer Overflow): a+b가 int 범위를 초과하면 이미 오버플로 발생 후 long 캐스팅. (long)a + b 순서로 long 먼저 변환 후 덧셈.",
+    "code": "import java.util.Arrays;\nimport java.util.List;\n\npublic class BugFixes {\n\n    // ===== Bug 1: NullPointerException =====\n    // 원본 (버그): list.get(0).toUpperCase() — list가 null이면 NPE, 비어있으면 IOOBE\n    String getFirstElement(List<String> list) {\n        if (list == null || list.isEmpty()) {\n            return null;\n        }\n        String first = list.get(0);\n        return first != null ? first.toUpperCase() : null;\n    }\n\n    // ===== Bug 2: Off-by-One Error =====\n    // 원본 (버그): i <= arr.length — i == arr.length에서 ArrayIndexOutOfBoundsException\n    int sumArray(int[] arr) {\n        if (arr == null) return 0;\n        int sum = 0;\n        for (int i = 0; i < arr.length; i++) { // <= → < 수정\n            sum += arr[i];\n        }\n        return sum;\n        // 또는: return Arrays.stream(arr).sum();\n    }\n\n    // ===== Bug 3: Integer Overflow =====\n    // 원본 (버그): (long)(a + b) — a+b가 int로 먼저 계산되어 오버플로 후 long 캐스팅\n    long twoSum(int a, int b) {\n        return (long) a + b; // a를 먼저 long으로 승격 → 덧셈이 long 범위에서 수행\n        // 또는: return Long.sum(a, b);\n    }\n\n    // ===== 보너스: Binary Search mid 계산 overflow =====\n    int safeMid(int lo, int hi) {\n        // Bug: return (lo + hi) / 2; // lo+hi가 int 범위 초과 가능\n        return lo + (hi - lo) / 2; // 안전한 방법\n        // 또는: return (lo + hi) >>> 1;\n    }\n\n    long safeMultiply(int a, int b) {\n        // Bug: return (long)(a * b); // int * int로 overflow 후 캐스팅\n        return (long) a * b; // a를 long으로 먼저 승격\n    }\n}",
+    "complexity": {
+      "time": "O(n) for sumArray, O(1) for others",
+      "space": "O(1)"
+    },
+    "walkthrough": "면접관: '(long)(a + b)와 (long)a + b의 차이를 설명해 주세요.' → '(long)(a+b)는 a+b를 int로 먼저 계산 후 캐스팅. Integer.MAX_VALUE + 1은 이미 int 단계에서 오버플로하여 음수가 됩니다. (long)a + b는 a를 long으로 먼저 승격 후 덧셈이 long 범위에서 수행됩니다.'\n면접관: 'Binary search의 mid 계산 버그 아시나요?' → '(lo + hi) / 2도 lo + hi가 int 범위를 넘을 수 있습니다. lo + (hi - lo) / 2 또는 부호 없는 우측 시프트 (lo + hi) >>> 1이 안전합니다.'\n면접관: 'Off-by-one이 실제 서비스에서 어떤 문제를 일으키나요?' → '날짜 계산, 페이지네이션(마지막 페이지 항목 누락), 시간 범위 조회(>= vs >)에서 자주 발생합니다. 경계값 분석(Boundary Value Analysis)으로 테스트해야 합니다.'",
+    "secret": "라이브 코테 꿀팁: 버그 찾기는 '1번, 2번, 3번 순서로 설명하겠습니다'라고 먼저 구조화. Integer overflow 버그에서 보너스로 Binary search mid 버그를 언급하면 깊이가 드러납니다. '어떤 입력에서 터지냐'를 구체적 숫자로 보여주면(Integer.MAX_VALUE + Integer.MAX_VALUE) 실력이 드러납니다.",
+    "similar": ["cdl-010"]
+  }
+]
