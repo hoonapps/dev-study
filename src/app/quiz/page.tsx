@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { getRandomQuestions, getQuestionById } from "@/lib/questions";
 import { addResult, getApiKey } from "@/lib/storage";
 import { Question, Category, Difficulty, CATEGORY_LABELS, CATEGORY_COLORS, DIFFICULTY_LABELS } from "@/types/question";
@@ -189,7 +190,7 @@ export default function QuizPage() {
         </div>
         <div className="flex gap-4">
           <button onClick={() => { setPhase("setup"); }} className="btn-primary flex-1">New Quiz</button>
-          <a href="/review" className="btn-secondary flex-1 text-center">Review Wrong</a>
+          <Link href="/review" className="btn-secondary flex-1 text-center">Review Wrong</Link>
         </div>
       </div>
     );

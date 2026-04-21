@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { getWrongResults, getResults } from "@/lib/storage";
 import { getQuestionById } from "@/lib/questions";
 import { Question, QuizResult, CATEGORY_LABELS, CATEGORY_COLORS } from "@/types/question";
@@ -19,7 +20,7 @@ export default function ReviewPage() {
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold mb-4">Review</h1>
         <p className="text-[var(--muted)]">No wrong answers yet. Take a quiz first!</p>
-        <a href="/quiz" className="btn-primary inline-block mt-4">Start Quiz</a>
+        <Link href="/quiz" className="btn-primary inline-block mt-4">Start Quiz</Link>
       </div>
     );
   }

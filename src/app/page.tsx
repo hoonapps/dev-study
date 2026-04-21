@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getDailyInsights, getAllQuestions } from "@/lib/questions";
 import { getCategoryStats } from "@/lib/storage";
 import { Question, CATEGORY_LABELS, CATEGORY_COLORS, Category } from "@/types/question";
@@ -34,9 +35,9 @@ export default function Home() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-3 gap-2">
-        <a href="/quiz" className="btn-primary text-center block text-sm py-3">Quiz</a>
-        <a href="/flashcards" className="btn-secondary text-center block text-sm py-3">Cards</a>
-        <a href="/browse" className="btn-secondary text-center block text-sm py-3">Browse</a>
+        <Link href="/quiz" className="btn-primary text-center block text-sm py-3">Quiz</Link>
+        <Link href="/flashcards" className="btn-secondary text-center block text-sm py-3">Cards</Link>
+        <Link href="/browse" className="btn-secondary text-center block text-sm py-3">Browse</Link>
       </div>
 
       {/* Daily Insights */}
