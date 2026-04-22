@@ -1,1 +1,728 @@
-[]
+[
+  {
+    "id": "os-001",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "프로세스와 스레드의 가장 핵심적인 차이는?",
+    "answer": 1,
+    "options": [
+      "프로세스는 CPU를 사용하고 스레드는 메모리를 사용한다",
+      "스레드는 프로세스의 메모리 공간(코드/데이터/힙)을 공유하지만 스택은 독립적으로 갖는다",
+      "프로세스는 단일 실행 흐름만 가질 수 있다",
+      "스레드는 파일 디스크립터를 공유하지 않는다"
+    ],
+    "explanation": "스레드는 같은 프로세스 내에서 코드, 데이터, 힙, 파일 디스크립터를 공유하지만 각 스레드는 독립적인 스택과 레지스터(PC 포함)를 갖는다. 이 때문에 context switch 비용이 프로세스보다 낮다.",
+    "deepDive": "스택을 독립적으로 갖는 이유는 무엇인가? 각 스레드가 독립적인 함수 호출 체인을 가져야 하기 때문이다. 힙을 공유하면 어떤 문제가 발생할 수 있는가?",
+    "seniorTip": "Java JVM 관점: JVM 프로세스 내 스레드들은 힙을 공유하므로 객체 상태에 대한 동기화가 필수. Go의 goroutine은 더 작은 스택(2KB)으로 시작해 필요시 확장하는 방식으로 경량화.",
+    "tags": ["process", "thread", "memory"]
+  },
+  {
+    "id": "os-002",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "fork()와 exec()의 역할 차이를 설명하고, 두 개를 함께 쓰는 이유는?",
+    "answer": "fork()는 현재 프로세스를 복제해 자식 프로세스를 생성하고, exec()는 현재 프로세스의 이미지를 새 프로그램으로 교체한다. 새 프로그램을 실행하면서도 부모와 분리된 환경(파일 디스크립터 설정 등)을 만들기 위해 함께 사용한다.",
+    "explanation": "shell에서 명령어를 실행할 때 fork()로 자식을 만들고 자식이 exec()로 대상 프로그램을 로드한다. fork() 후 exec() 전 사이에 fd 리다이렉션, 환경변수 설정 등을 수행할 수 있다.",
+    "deepDive": "fork() 후 exec()를 호출하지 않으면 어떻게 되는가? Copy-on-Write와 fork()의 관계는 무엇인가? vfork()가 등장한 이유는?",
+    "seniorTip": "K8s Pod/Docker 관점: 컨테이너 내부에서 PID 1 프로세스(entrypoint)가 자식을 fork하지 않고 exec만 하면 좀비 프로세스 수확 문제가 발생. tini 같은 init 프로세스가 필요한 이유.",
+    "tags": ["process", "fork", "exec", "system-call"]
+  },
+  {
+    "id": "os-003",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "좀비(zombie) 프로세스가 발생하는 조건은?",
+    "answer": 2,
+    "options": [
+      "부모 프로세스가 자식보다 먼저 종료될 때",
+      "자식 프로세스가 무한 루프에 빠질 때",
+      "자식 프로세스가 종료됐지만 부모가 wait()를 호출하지 않을 때",
+      "프로세스가 SIGKILL을 무시할 때"
+    ],
+    "explanation": "자식 프로세스가 종료되면 PCB(프로세스 제어 블록)는 종료 상태 코드를 보관하기 위해 메모리에 남는다. 부모가 wait()/waitpid()를 호출해야 이 정보를 회수하고 PCB가 해제된다. 이를 하지 않으면 좀비 상태로 남는다.",
+    "deepDive": "좀비 프로세스가 시스템에 미치는 실질적 영향은? PID 테이블이 가득 찰 수 있는가? 부모가 이미 종료된 좀비는 어떻게 처리되는가?",
+    "seniorTip": "Node.js/Java 관점: child_process.spawn()이나 Runtime.exec()로 자식 프로세스 생성 후 종료 이벤트 핸들링을 누락하면 좀비 누적. 장기 실행 서버에서는 반드시 exit 이벤트 처리 필요.",
+    "tags": ["process", "zombie", "orphan", "wait"]
+  },
+  {
+    "id": "os-004",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Context Switch 비용이 발생하는 구체적인 요소들을 나열하라.",
+    "answer": "CPU 레지스터 저장/복원, PC(Program Counter) 저장/복원, 커널 스택 교체, TLB 플러시(프로세스 간 전환 시), 캐시 콜드 미스 증가, 스케줄러 실행 오버헤드.",
+    "explanation": "스레드 간 context switch는 같은 주소 공간을 공유하므로 TLB 플러시가 없어 프로세스 간 전환보다 저렴하다. 하지만 캐시 오염은 스레드 전환에서도 발생한다. ASID(Address Space ID) 지원 CPU는 TLB 플러시 없이 프로세스 전환 가능.",
+    "deepDive": "TLB 플러시를 피하는 방법은? voluntary vs involuntary context switch의 차이는? /proc/pid/status의 voluntary_ctxt_switches 의미는?",
+    "seniorTip": "Java JVM 관점: synchronized 블록 경합이 심하면 involuntary context switch 급증. vmstat -w 1로 cs 컬럼 모니터링. 가상 스레드(Project Loom)는 OS 스레드를 차단하지 않아 context switch 비용 절감.",
+    "tags": ["context-switch", "TLB", "cache", "performance"]
+  },
+  {
+    "id": "os-005",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "고아(orphan) 프로세스를 입양하는 프로세스는?",
+    "answer": 0,
+    "options": [
+      "PID 1 (init/systemd)",
+      "부모의 부모 프로세스(조부모)",
+      "가장 오래된 실행 중인 프로세스",
+      "커널 스레드"
+    ],
+    "explanation": "부모 프로세스가 자식보다 먼저 종료되면 자식은 고아가 되고, 커널은 이 프로세스의 PPID를 PID 1(init 또는 systemd)로 재설정한다. init은 항상 wait()를 호출하므로 고아 프로세스의 종료 상태가 정리된다.",
+    "deepDive": "컨테이너 환경에서 PID 1이 init 역할을 하지 않으면 어떤 문제가 생기는가? subreaper 개념(prctl PR_SET_CHILD_SUBREAPER)은 무엇인가?",
+    "seniorTip": "K8s Pod 관점: Pod 내 컨테이너의 PID 1이 bash나 앱 바이너리일 경우 신호 전달과 좀비 수확 문제 발생. shareProcessNamespace: true 설정과 tini/dumb-init 사용 패턴 숙지 필요.",
+    "tags": ["process", "orphan", "init", "pid"]
+  },
+  {
+    "id": "os-006",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "mutex는 소유권 개념이 있어서 lock을 잡은 스레드만 unlock할 수 있지만, semaphore는 소유권이 없어 다른 스레드가 signal할 수 있다.",
+    "answer": "O",
+    "explanation": "mutex(mutual exclusion lock)는 소유권 개념이 있어 lock을 획득한 스레드만 unlock 가능하다. binary semaphore와 기능은 유사하지만 소유권 차이로 인해 우선순위 역전 방지(priority inheritance) 등에서 동작이 다르다.",
+    "deepDive": "소유권 없는 semaphore의 장점이 되는 사용 사례는? 생산자-소비자 패턴에서 semaphore를 어떻게 쓰는가? counting semaphore와 binary semaphore의 차이는?",
+    "seniorTip": "Java 관점: ReentrantLock은 mutex처럼 소유권 있음. Semaphore 클래스는 소유권 없음. DB 커넥션 풀(HikariCP)은 semaphore로 최대 연결 수를 제한하는 구조.",
+    "tags": ["synchronization", "mutex", "semaphore", "ownership"]
+  },
+  {
+    "id": "os-007",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "데드락이 발생하기 위한 4가지 필요 조건(Coffman conditions) 중 하나가 아닌 것은?",
+    "answer": 3,
+    "options": [
+      "상호 배제(Mutual Exclusion)",
+      "점유 대기(Hold and Wait)",
+      "비선점(No Preemption)",
+      "우선순위 역전(Priority Inversion)"
+    ],
+    "explanation": "데드락 4조건: 상호 배제, 점유 대기, 비선점, 순환 대기(Circular Wait). 우선순위 역전은 데드락과 별개의 문제로, 낮은 우선순위 스레드가 보유한 락을 높은 우선순위 스레드가 기다리는 상황이다.",
+    "deepDive": "4가지 조건 중 하나만 제거해도 데드락을 막을 수 있다. 실무에서 가장 많이 제거하는 조건은 무엇이고 그 방법은? 순환 대기를 방지하기 위한 락 순서(lock ordering) 전략이란?",
+    "seniorTip": "Java 관점: synchronized 블록의 중첩 순서가 다른 두 스레드가 존재하면 데드락 발생. jstack으로 'Found one Java-level deadlock' 감지 가능. tryLock(timeout)으로 점유 대기 조건 약화 가능.",
+    "tags": ["deadlock", "coffman", "synchronization"]
+  },
+  {
+    "id": "os-008",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "spinlock과 mutex의 차이를 설명하고, spinlock이 유리한 상황은?",
+    "answer": "spinlock은 락 획득 실패 시 CPU를 점유하며 바쁜 대기(busy-wait)하고, mutex는 블로킹되어 context switch가 발생한다. 임계 구역이 매우 짧고 멀티코어 환경이면 context switch 비용보다 spin 비용이 적을 수 있어 spinlock이 유리하다.",
+    "explanation": "단일 코어에서 spinlock은 CPU를 독점하므로 절대 유리하지 않다. 멀티코어에서 락 보유 시간이 컨텍스트 스위치 비용(수 마이크로초)보다 짧으면 spinlock이 효율적이다. Linux 커널 내부에서 인터럽트 핸들러와 공유 데이터 보호 시 spinlock을 주로 사용한다.",
+    "deepDive": "adaptive mutex란 무엇인가? 처음엔 spin하다 일정 시간 후 블록으로 전환하는 방식의 장단점은? Linux futex는 어떤 문제를 해결하는가?",
+    "seniorTip": "Java JVM 관점: JVM의 biased locking, thin lock, inflated lock 순서로 경합 증가에 따라 자동 전환. JDK 21에서 biased locking 제거됨. -XX:+UseSpinning 옵션으로 spin 동작 제어 가능했음.",
+    "tags": ["spinlock", "mutex", "busy-wait", "context-switch"]
+  },
+  {
+    "id": "os-009",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Race condition이 발생하는 근본 원인은?",
+    "answer": 1,
+    "options": [
+      "CPU 클럭 속도가 달라서",
+      "공유 자원에 대한 접근 순서가 비결정적(non-deterministic)이어서",
+      "메모리 용량이 부족해서",
+      "스레드 수가 CPU 코어 수보다 많아서"
+    ],
+    "explanation": "Race condition은 두 개 이상의 스레드가 공유 자원에 동시에 접근하고, 그 접근 순서에 따라 결과가 달라지는 상황이다. 근본 원인은 read-modify-write 같은 비원자적 연산이 중단될 수 있다는 것이다.",
+    "deepDive": "i++ 연산이 원자적이지 않은 이유를 어셈블리 수준에서 설명하라. 하드웨어 atomic 명령(CAS, LOCK XADD)은 어떻게 이를 해결하는가?",
+    "seniorTip": "Java 관점: volatile은 가시성만 보장하고 원자성은 보장 안 함. AtomicInteger의 incrementAndGet()은 CAS(Compare-And-Swap) 루프로 구현되어 락 없이 원자성 보장. 고빈도 카운터는 LongAdder가 더 효율적.",
+    "tags": ["race-condition", "atomicity", "concurrency"]
+  },
+  {
+    "id": "os-010",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "모니터(Monitor)가 mutex + condition variable 조합보다 나은 점은?",
+    "answer": "모니터는 상호 배제와 조건 동기화를 언어 수준에서 추상화하여 프로그래머가 명시적으로 lock/unlock을 관리할 필요가 없다. 락 누락이나 잘못된 순서로 인한 버그를 컴파일 타임에 방지할 수 있고, wait/signal 의미도 모니터 내부에 캡슐화된다.",
+    "explanation": "mutex + condvar는 올바른 사용이 까다롭다(lock 보유 상태에서 wait 호출, signal 전 조건 재확인 등). 모니터는 Java의 synchronized 키워드처럼 이를 언어가 강제하여 오용 가능성을 줄인다.",
+    "deepDive": "Java의 wait()/notify()가 반드시 synchronized 블록 안에서 호출되어야 하는 이유는? spurious wakeup이란 무엇이고 while 루프로 조건을 확인해야 하는 이유는?",
+    "seniorTip": "Java 관점: Object.wait()/notify()는 모니터 구현. ReentrantLock + Condition은 더 세밀한 제어(다중 condition, tryLock, interruptible). BlockingQueue 구현 내부에서 두 방식 모두 사용됨.",
+    "tags": ["monitor", "mutex", "condition-variable", "synchronization"]
+  },
+  {
+    "id": "os-011",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Round Robin 스케줄링에서 타임 퀀텀(time quantum)이 너무 작으면 발생하는 문제는?",
+    "answer": 2,
+    "options": [
+      "기아(starvation) 현상이 발생한다",
+      "장기 프로세스가 영구히 실행된다",
+      "Context switch 오버헤드가 커져 CPU 효율이 떨어진다",
+      "우선순위가 낮은 프로세스가 먼저 실행된다"
+    ],
+    "explanation": "타임 퀀텀이 너무 작으면 프로세스가 조금 실행되고 바로 context switch가 발생해, 유용한 작업 시간보다 스케줄링 오버헤드 시간이 커진다. 반대로 너무 크면 FCFS처럼 동작해 응답 시간이 나빠진다.",
+    "deepDive": "최적 타임 퀀텀을 어떻게 결정하는가? Linux CFS(Completely Fair Scheduler)는 고정 타임 퀀텀 대신 어떤 방식을 사용하는가? vruntime이란?",
+    "seniorTip": "K8s 관점: CPU request/limit이 설정된 컨테이너는 cgroup의 CFS bandwidth control로 관리됨. cpu.cfs_period_us와 cpu.cfs_quota_us로 CPU throttling 제어. 과도한 throttling은 레이턴시 급증의 원인.",
+    "tags": ["scheduling", "round-robin", "context-switch", "time-quantum"]
+  },
+  {
+    "id": "os-012",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "SJF(Shortest Job First) 스케줄링은 평균 대기 시간을 최소화하지만, 실제 환경에서는 적용하기 어렵다.",
+    "answer": "O",
+    "explanation": "SJF는 최적 평균 대기 시간을 보장하는 이론적으로 최적인 알고리즘이다. 그러나 '다음 CPU burst 시간'을 미리 알 수 없기 때문에 실제 OS에서는 과거 burst 시간의 지수이동평균(aging)으로 예측하는 방식을 사용한다.",
+    "deepDive": "SJF의 비선점 vs 선점 버전(SRTF, Shortest Remaining Time First)의 차이는? SRTF에서 convoy effect가 발생하지 않는 이유는? 기아 방지를 위해 SJF에 aging을 적용하면?",
+    "seniorTip": "실무 관점: 작업 크기 예측이 가능한 배치 시스템(Hadoop MapReduce, Spark)에서 짧은 작업 우선 처리로 전체 처리량 향상. YARN의 Fair Scheduler와 Capacity Scheduler 차이 이해 필요.",
+    "tags": ["scheduling", "SJF", "starvation", "optimal"]
+  },
+  {
+    "id": "os-013",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "MLFQ(Multi-Level Feedback Queue)가 SJF와 RR의 장점을 모두 취하는 방식을 설명하라.",
+    "answer": "MLFQ는 여러 우선순위 큐를 두고, 새 프로세스는 최상위 큐(짧은 타임 퀀텀)에서 시작한다. 타임 퀀텀을 모두 소모하면 CPU 집약적으로 판단해 낮은 큐로 이동시키고, I/O 대기 후 복귀하면 높은 큐로 올린다. 이렇게 CPU burst가 짧은 대화형 프로세스는 높은 우선순위를 유지하고, CPU 집약적 프로세스는 긴 타임 퀀텀의 낮은 큐에서 실행된다.",
+    "explanation": "이 방식은 실제 CPU burst를 측정해 자동으로 적응하므로 SJF처럼 미래 burst를 예측할 필요가 없다. 기아 방지를 위해 오래된 프로세스를 주기적으로 상위 큐로 올리는 boosting을 적용한다.",
+    "deepDive": "priority boosting이 없으면 어떤 문제가 생기는가? Linux의 nice값과 MLFQ 개념은 어떻게 연결되는가? Windows의 foreground 프로세스 우선순위 부스팅은 어떻게 동작하는가?",
+    "seniorTip": "K8s 관점: Pod의 PriorityClass와 QoS(Guaranteed/Burstable/BestEffort)는 MLFQ와 유사한 계층적 스케줄링 개념. OOM killer가 BestEffort Pod를 먼저 종료하는 것도 같은 맥락.",
+    "tags": ["MLFQ", "scheduling", "priority", "feedback"]
+  },
+  {
+    "id": "os-014",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Convoy Effect가 발생하는 스케줄링 알고리즘과 그 원인은?",
+    "answer": 0,
+    "options": [
+      "FCFS: 긴 CPU burst 프로세스 뒤에 짧은 프로세스들이 대기하면서 평균 대기 시간 급증",
+      "RR: 타임 퀀텀이 너무 커서 모든 프로세스가 순서를 못 받음",
+      "Priority: 낮은 우선순위 프로세스가 영구히 대기",
+      "SJF: 긴 프로세스가 먼저 도착해서 짧은 프로세스가 대기"
+    ],
+    "explanation": "FCFS에서 CPU를 오래 사용하는 프로세스(CPU-bound) 하나가 큰 I/O 작업들을 포함한 짧은 프로세스들을 뒤에서 기다리게 만드는 현상이다. I/O 장치도 idle해지므로 전체 시스템 효율이 급감한다.",
+    "deepDive": "데이터베이스의 lock convoy는 OS convoy effect와 어떻게 유사한가? FCFS 대신 SRTF를 사용하면 convoy effect를 완전히 제거할 수 있는가?",
+    "seniorTip": "MySQL/PostgreSQL 관점: 긴 트랜잭션이 row lock을 오래 보유하면 뒤따르는 짧은 트랜잭션들이 대기하는 'lock convoy' 현상. SHOW ENGINE INNODB STATUS로 lock wait 확인.",
+    "tags": ["scheduling", "FCFS", "convoy-effect", "performance"]
+  },
+  {
+    "id": "os-015",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "선점형(preemptive) 스케줄링은 커널 코드 실행 중에도 언제든지 프로세스를 교체할 수 있다.",
+    "answer": "X",
+    "explanation": "초기 Unix 커널은 non-preemptive 커널이었다. Preemptive kernel(Linux 2.6+)에서도 spin_lock 보유 중이나 인터럽트 처리 중에는 선점이 불가하다. CONFIG_PREEMPT 옵션으로 커널 선점성 수준을 조정할 수 있다.",
+    "deepDive": "PREEMPT_RT 패치는 무엇이고 실시간 시스템에서 왜 필요한가? 커널 선점 불가 구간(preempt_disable)이 길어지면 실시간 응답성에 어떤 영향을 주는가?",
+    "seniorTip": "실무 관점: 고빈도 트레이딩, 오디오 처리 등 실시간성이 요구되는 시스템에서는 PREEMPT_RT 커널 사용. 일반 웹 서버에서는 표준 preemptive kernel로 충분하며, latency vs throughput 트레이드오프 이해 필요.",
+    "tags": ["scheduling", "preemptive", "kernel", "real-time"]
+  },
+  {
+    "id": "os-016",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "페이징(Paging)이 세그멘테이션(Segmentation)보다 외부 단편화 문제를 해결하는 이유는?",
+    "answer": 1,
+    "options": [
+      "페이징은 메모리를 더 크게 나누기 때문에",
+      "페이징은 고정 크기 블록(페이지)으로 나누어 임의의 프레임에 배치 가능하기 때문에",
+      "페이징은 연속 메모리 할당을 보장하기 때문에",
+      "페이징은 세그멘트보다 적은 메타데이터를 사용하기 때문에"
+    ],
+    "explanation": "세그멘테이션은 가변 크기 세그멘트를 연속 메모리에 배치하므로 외부 단편화가 발생한다. 페이징은 고정 크기 페이지를 임의의 프레임에 배치할 수 있어 외부 단편화가 없다. 대신 페이지 내 일부만 사용하는 내부 단편화가 발생한다.",
+    "deepDive": "내부 단편화를 줄이기 위해 페이지 크기를 어떻게 설정해야 하는가? Linux huge page(2MB, 1GB)는 언제 유리하고 언제 불리한가? TLB 커버리지와 페이지 크기의 관계는?",
+    "seniorTip": "Java JVM 관점: JVM heap을 huge page로 설정(-XX:+UseHugePages)하면 TLB 미스 감소로 성능 향상. 단, huge page는 메모리 낭비와 할당 지연이 발생할 수 있어 대용량 heap에서만 효과적.",
+    "tags": ["paging", "segmentation", "fragmentation", "memory"]
+  },
+  {
+    "id": "os-017",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "short-answer",
+    "question": "TLB(Translation Lookaside Buffer)의 역할과 TLB miss 시 발생하는 과정을 설명하라.",
+    "answer": "TLB는 가상 주소 → 물리 주소 변환 결과를 캐싱하는 하드웨어 캐시다. TLB hit 시 페이지 테이블 접근 없이 즉시 변환한다. TLB miss 시 MMU가 메모리의 페이지 테이블을 워크하여(page table walk) 물리 주소를 찾고 TLB에 적재한다.",
+    "explanation": "페이지 테이블 접근은 메모리 접근이므로 추가 지연이 발생한다. 멀티레벨 페이지 테이블에서는 여러 번의 메모리 접근이 필요하다(4KB 페이지, 4레벨 페이지 테이블이면 최대 4번). TLB hit rate가 99%이상이어야 성능에 문제 없다.",
+    "deepDive": "소프트웨어 관리 TLB(MIPS)와 하드웨어 관리 TLB(x86)의 차이는? context switch 시 TLB를 플러시해야 하는 이유와 ASID로 이를 피하는 방법은?",
+    "seniorTip": "K8s/Docker 관점: 컨테이너는 독립적인 가상 주소 공간을 가지므로 컨테이너 전환 시 TLB 플러시 발생. 컨테이너 밀도가 높은 환경에서 TLB 경쟁은 성능 병목 원인 중 하나.",
+    "tags": ["TLB", "virtual-memory", "MMU", "paging"]
+  },
+  {
+    "id": "os-018",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "가상 메모리(Virtual Memory)의 핵심 이점으로 가장 옳은 것은?",
+    "answer": 2,
+    "options": [
+      "물리 메모리보다 빠른 접근 속도 제공",
+      "CPU 레지스터 수를 증가시킴",
+      "프로세스 간 메모리 격리와 물리 메모리보다 큰 주소 공간 제공",
+      "디스크 I/O를 완전히 제거"
+    ],
+    "explanation": "가상 메모리는 각 프로세스에게 독립적인 가상 주소 공간을 제공해 격리를 달성하고, 물리 메모리에 없는 페이지는 디스크에서 demand paging으로 가져온다. 이를 통해 물리 메모리보다 큰 프로그램 실행과 메모리 오버커밋이 가능하다.",
+    "deepDive": "메모리 오버커밋(overcommit)이 가능한 이유는? Linux의 vm.overcommit_memory 설정 0/1/2의 의미는? OOM killer는 어떤 기준으로 프로세스를 선택하는가?",
+    "seniorTip": "K8s 관점: 노드의 메모리 오버커밋으로 인해 OOM killer가 컨테이너를 종료시키는 현상. Pod의 memory limit 설정과 requests 차이 이해 필요. /proc/meminfo의 MemAvailable이 실질적 가용 메모리.",
+    "tags": ["virtual-memory", "isolation", "demand-paging", "overcommit"]
+  },
+  {
+    "id": "os-019",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Page fault는 항상 오류 상황을 의미하며 즉시 프로세스를 종료시킨다.",
+    "answer": "X",
+    "explanation": "Page fault는 접근한 페이지가 물리 메모리에 없을 때 발생하는 트랩(예외)이다. Minor page fault(페이지가 메모리 어딘가에 있음)와 major page fault(디스크에서 로드 필요)로 나뉜다. OS가 처리하고 프로세스 실행이 재개된다. 실제 오류(잘못된 주소 접근)는 segmentation fault(SIGSEGV)다.",
+    "deepDive": "Minor page fault와 major page fault의 차이는? demand paging vs prepaging의 트레이드오프는? /proc/pid/stat에서 minflt, majflt로 무엇을 알 수 있는가?",
+    "seniorTip": "Java JVM 관점: JVM 시작 시 클래스 로딩으로 major page fault 다수 발생. 워밍업 시간이 긴 이유 중 하나. JVM heap을 미리 할당(-Xms == -Xmx)하면 page fault를 초기에 몰아서 처리 가능.",
+    "tags": ["page-fault", "virtual-memory", "demand-paging"]
+  },
+  {
+    "id": "os-020",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "내부 단편화와 외부 단편화를 구분하고, 각각을 해결하는 방법은?",
+    "answer": "내부 단편화는 할당된 블록 내부의 낭비 공간(예: 4KB 페이지에 1KB만 사용)이고, 외부 단편화는 전체 여유 공간은 충분하지만 연속되지 않아 할당 불가한 상황이다. 내부 단편화 해결: 페이지/블록 크기 줄이기, slab allocator. 외부 단편화 해결: 페이징, 압축(compaction), buddy system.",
+    "explanation": "slab allocator(Linux kmalloc)는 자주 사용되는 크기의 객체를 미리 준비해 내부 단편화를 최소화한다. 가상 메모리와 페이징으로 외부 단편화를 근본적으로 해결한다.",
+    "deepDive": "Java의 GC compaction은 외부 단편화 해결책인가? jemalloc/tcmalloc이 기본 malloc보다 단편화를 줄이는 방법은? Rust의 메모리 관리는 단편화를 어떻게 다루는가?",
+    "seniorTip": "Java JVM 관점: G1GC는 heap을 region으로 나눠 compaction을 selective하게 수행해 STW(Stop-The-World) 시간 감소. ZGC는 concurrent compaction으로 대부분의 compaction을 애플리케이션 실행 중 수행.",
+    "tags": ["fragmentation", "internal", "external", "memory-management"]
+  },
+  {
+    "id": "os-021",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "LRU(Least Recently Used) 페이지 교체 알고리즘의 이론적 근거는?",
+    "answer": 0,
+    "options": [
+      "시간 지역성(temporal locality): 최근 사용된 페이지가 가까운 미래에도 사용될 가능성이 높다",
+      "공간 지역성(spatial locality): 인접한 메모리는 함께 사용된다",
+      "FIFO처럼 오래된 것이 곧 필요 없어진다",
+      "프로세스는 모든 페이지를 균등하게 접근한다"
+    ],
+    "explanation": "LRU는 시간 지역성(temporal locality) 원리에 기반한다. 최근에 사용한 페이지는 곧 다시 사용될 확률이 높으므로, 가장 오랫동안 사용되지 않은 페이지를 교체 대상으로 선택한다. 실제 구현은 완전한 LRU보다 Clock/Approximate LRU를 사용한다.",
+    "deepDive": "완전한 LRU를 하드웨어 없이 소프트웨어만으로 구현하는 비용은? Clock 알고리즘이 LRU의 근사값인 이유는? LRU가 Optimal보다 나쁜 참조 패턴의 예시는?",
+    "seniorTip": "Redis 관점: Redis maxmemory-policy의 allkeys-lru, volatile-lru는 근사 LRU(샘플링 기반). redis.conf의 maxmemory-samples로 정확도/비용 조정. 캐시 히트율 모니터링에 INFO stats의 keyspace_hits/misses 활용.",
+    "tags": ["LRU", "page-replacement", "temporal-locality", "cache"]
+  },
+  {
+    "id": "os-022",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Belady's anomaly가 발생하는 페이지 교체 알고리즘은?",
+    "answer": 1,
+    "options": [
+      "LRU",
+      "FIFO",
+      "Optimal",
+      "LFU"
+    ],
+    "explanation": "Belady's anomaly는 FIFO 알고리즘에서 프레임 수를 늘렸는데 오히려 page fault가 증가하는 현상이다. LRU, Optimal 등 스택 속성(stack property)을 가진 알고리즘은 이 이상 현상이 발생하지 않는다. 스택 속성: n개 프레임에서 사용하는 페이지 집합이 n+1개 프레임의 부분집합인 성질.",
+    "deepDive": "스택 속성을 수학적으로 증명할 수 있는가? FIFO가 스택 속성을 갖지 않는 이유를 구체적인 참조 문자열로 설명하라. Clock 알고리즘에서 Belady's anomaly가 발생하는가?",
+    "seniorTip": "실무 관점: 캐시 크기를 늘렸는데 성능이 나빠지는 현상이 실제 시스템에서도 발생할 수 있음. CDN 캐시 설정, Redis 메모리 설정 시 캐시 크기와 히트율의 관계를 실측해야 함.",
+    "tags": ["FIFO", "Belady", "page-replacement", "anomaly"]
+  },
+  {
+    "id": "os-023",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Thrashing이 발생하는 원인과 해결 방법을 설명하라.",
+    "answer": "다중 프로세스가 각각 필요한 최소 페이지(working set)보다 적은 프레임을 할당받으면, 계속 page fault가 발생해 CPU가 페이지 교체만 하는 thrashing 상태가 된다. 해결책: Working Set 모델로 각 프로세스에 충분한 프레임 보장, 프로세스 수 줄이기(swapping out), 메모리 추가.",
+    "explanation": "Thrashing 시 CPU 이용률이 오히려 낮아지는 역설이 발생한다(프로세스들이 I/O 대기 상태가 되므로). OS가 이를 보고 CPU 이용률 높이려 프로세스 추가 → 더 심각한 thrashing. Working Set 모델은 최근 Δ 참조 내에서 사용된 페이지 집합을 해당 프로세스의 최소 필요 프레임으로 정의한다.",
+    "deepDive": "Working Set의 Δ(window size)를 어떻게 결정하는가? Page Fault Frequency(PFF) 방식은 working set 모델과 어떻게 다른가? 현대 시스템에서 thrashing 발생 시 OS가 취하는 조치는?",
+    "seniorTip": "K8s 관점: 메모리 부족 노드에서 kubelet의 eviction threshold 초과 시 Pod 강제 종료 발생. 이는 OS가 swap 부족으로 프로세스를 종료하는 것과 유사. memory.limit_in_bytes cgroup 제한으로 컨테이너별 thrashing 방지.",
+    "tags": ["thrashing", "working-set", "page-fault", "memory"]
+  },
+  {
+    "id": "os-024",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Optimal 페이지 교체 알고리즘은 실제 OS에서 구현하여 사용할 수 있다.",
+    "answer": "X",
+    "explanation": "Optimal 알고리즘(OPT/MIN)은 미래에 가장 오랫동안 사용되지 않을 페이지를 교체한다. 미래의 참조 순서를 미리 알아야 하므로 이론적 하한선(benchmark) 역할만 하고 실제 구현은 불가능하다. 시뮬레이션이나 오프라인 분석에서만 사용한다.",
+    "deepDive": "Optimal 알고리즘이 항상 최소 page fault를 보장함을 증명할 수 있는가? 실제 OS 알고리즘의 성능을 Optimal과 비교하는 이유는? 오프라인에서 Optimal이 활용되는 사례는?",
+    "seniorTip": "시스템 설계 관점: CDN 캐시 교체 정책 분석 시 실제 트래픽 로그로 Optimal 시뮬레이션을 돌려 현재 정책(LRU/LFU)과 gap을 측정. 이 gap이 크면 캐시 크기 확장보다 정책 변경이 효과적일 수 있음.",
+    "tags": ["optimal", "page-replacement", "theoretical"]
+  },
+  {
+    "id": "os-025",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "LFU(Least Frequently Used)의 단점과 이를 보완하는 방법을 설명하라.",
+    "answer": "LFU는 과거에 많이 사용됐지만 현재는 필요 없는 페이지가 높은 빈도수를 유지해 교체되지 않는 문제(오래된 기록 오염)가 있다. 보완 방법: 주기적으로 빈도수를 절반으로 줄이는 aging, 일정 시간 window만 고려하는 windowed LFU, LRU와 결합한 LRU-K.",
+    "explanation": "LRU는 단기 시간 지역성, LFU는 장기 빈도 패턴에 강하다. ARC(Adaptive Replacement Cache)는 두 리스트를 동적으로 관리해 둘의 장점을 취한다. Linux 페이지 캐시와 많은 데이터베이스 버퍼 풀에서 변형 알고리즘을 사용한다.",
+    "deepDive": "ARC(Adaptive Replacement Cache)의 동작 원리는? InnoDB buffer pool의 LRU 변형(midpoint insertion, young/old sublists)은 full table scan 시 버퍼 오염을 어떻게 방지하는가?",
+    "seniorTip": "MySQL InnoDB 관점: innodb_buffer_pool의 기본 교체 정책은 변형 LRU. SHOW ENGINE INNODB STATUS의 'Buffer pool hit rate'가 95% 이하면 버퍼 크기 증가 검토. full scan 시 innodb_old_blocks_time 설정으로 버퍼 오염 방지.",
+    "tags": ["LFU", "LRU", "ARC", "cache-replacement"]
+  },
+  {
+    "id": "os-026",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "inode가 저장하는 정보가 아닌 것은?",
+    "answer": 3,
+    "options": [
+      "파일 크기와 블록 위치",
+      "소유자, 그룹, 권한",
+      "타임스탬프 (atime, mtime, ctime)",
+      "파일 이름"
+    ],
+    "explanation": "inode는 파일 크기, 블록 위치(포인터), 소유자/그룹, 권한, 타임스탬프, 링크 카운트 등 파일 메타데이터를 저장한다. 파일 이름은 디렉토리 엔트리에 저장되며 inode 번호와 이름을 매핑한다. 이 분리 설계가 하드 링크를 가능하게 한다.",
+    "deepDive": "하드 링크와 심볼릭 링크가 inode 관점에서 어떻게 다른가? inode가 꽉 차서 파일을 만들 수 없는 상황(df -i)은 어떻게 발생하는가? stat 명령어로 볼 수 있는 정보는?",
+    "seniorTip": "운영 관점: Docker 이미지 레이어가 많은 환경에서 inode 고갈 발생 가능. df -i로 inode 사용률 확인 필요. 수많은 작은 파일(로그, 임시 파일) 생성 시 inode 소진 주의.",
+    "tags": ["inode", "filesystem", "metadata", "directory"]
+  },
+  {
+    "id": "os-027",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "저널링(Journaling) 파일 시스템이 일관성을 보장하는 방법을 설명하라.",
+    "answer": "저널링은 파일 시스템 변경 전에 변경 내용을 순차적으로 로그(저널)에 기록한다. 실제 파일 시스템 업데이트 중 비정상 종료 시 재부팅 때 저널을 재실행(redo)해 일관성을 복구한다. 완료된 트랜잭션은 저널에서 제거(checkpointing)한다.",
+    "explanation": "저널링 모드: write-back(메타데이터만 저널, 가장 빠름), ordered(데이터 먼저 기록 후 메타데이터 저널, 기본값), data(데이터+메타데이터 모두 저널, 가장 안전하지만 느림). ext4 기본은 ordered 모드.",
+    "deepDive": "ordered 모드에서 전원 차단 시 데이터 손실이 발생할 수 있는가? WAL(Write-Ahead Logging)과 저널링의 차이는? 저널링 없는 파일 시스템(tmpfs)은 어떤 용도로 사용하는가?",
+    "seniorTip": "데이터베이스 관점: PostgreSQL WAL, MySQL InnoDB redo log가 저널링과 동일한 원리. 데이터베이스 durability(ACID의 D)는 WAL flush(fsync)로 보장. fsync 비용이 쓰기 성능의 병목이 되는 이유.",
+    "tags": ["journaling", "filesystem", "consistency", "WAL"]
+  },
+  {
+    "id": "os-028",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "RAID 5의 특징으로 올바른 것은?",
+    "answer": 2,
+    "options": [
+      "모든 디스크에 동일 데이터를 미러링하여 1개 이상 디스크 장애를 허용한다",
+      "데이터를 2개 디스크에 스트라이핑하여 읽기/쓰기 성능만 향상한다",
+      "데이터와 패리티를 분산 저장하여 1개 디스크 장애 허용 및 읽기 성능 향상",
+      "2개 패리티 디스크로 2개 동시 장애를 허용한다"
+    ],
+    "explanation": "RAID 5는 데이터와 패리티를 모든 디스크에 분산 저장한다. 1개 디스크 장애 시 패리티로 복구 가능하고, 읽기는 모든 디스크에서 병렬 처리로 빠르다. 쓰기 시 패리티 계산으로 write penalty 발생. RAID 6은 2개 패리티로 2개 디스크 장애 허용.",
+    "deepDive": "RAID 5의 write penalty(RAID write penalty = 4 I/O)는 어떻게 발생하는가? SSD 기반 스토리지에서 RAID 5가 여전히 유효한가? RAID와 erasure coding의 차이는?",
+    "seniorTip": "AWS/클라우드 관점: EBS는 소프트웨어 RAID 구현. S3의 내구성(11 9s)은 erasure coding 기반. 분산 스토리지(Ceph, GlusterFS)는 RAID보다 erasure coding으로 공간 효율과 내구성을 함께 달성.",
+    "tags": ["RAID", "storage", "parity", "fault-tolerance"]
+  },
+  {
+    "id": "os-029",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "ext4는 FAT32와 달리 파일에 대한 접근 권한(ACL), 저널링, 대용량 파일 지원을 모두 제공한다.",
+    "answer": "O",
+    "explanation": "FAT32는 단순한 파일 할당 테이블 구조로 최대 파일 크기 4GB, 권한 시스템 없음, 저널링 없음이다. ext4는 저널링, inode 기반 권한/ACL, 최대 16TB 파일, extents(연속 블록 그룹), 지연 할당(delayed allocation) 등 현대적 기능을 지원한다.",
+    "deepDive": "NTFS와 ext4의 주요 차이는? FAT32가 SD카드/USB에 여전히 사용되는 이유는? ext4의 지연 할당(delayed allocation)이 단편화를 줄이는 원리는?",
+    "seniorTip": "운영 관점: Docker overlay2 드라이버는 ext4/xfs 위에서 동작. XFS는 병렬 I/O에 강해 고성능 스토리지 서버에 선호. 파일 시스템 선택은 워크로드(대용량 파일 vs 소용량 다수 파일)에 따라 결정.",
+    "tags": ["ext4", "FAT", "filesystem", "journaling"]
+  },
+  {
+    "id": "os-030",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "파일 시스템 단편화(fragmentation)가 HDD와 SSD에서 각각 성능에 미치는 영향 차이는?",
+    "answer": "HDD는 기계적 헤드 이동(seek time)이 있어 단편화 시 비연속 블록 접근으로 성능이 크게 저하된다. SSD는 임의 접근(random access) 지연이 매우 낮아 단편화의 성능 영향이 거의 없다. 단, SSD에서 과도한 단편화는 write amplification을 증가시켜 수명에 영향.",
+    "explanation": "HDD에서 defrag는 의미 있지만 SSD에서는 불필요하며 오히려 불필요한 쓰기로 수명 단축. Linux에서 SSD용 최적화: TRIM(discard) 지원, elevator=noop 스케줄러. ext4의 online defragmentation(e4defrag)은 HDD용.",
+    "deepDive": "SSD의 write amplification이란? wear leveling이 write amplification과 어떤 관계인가? NVMe SSD에서 큐 깊이(queue depth)가 성능에 미치는 영향은?",
+    "seniorTip": "K8s/클라우드 관점: 클라우드 영구 볼륨(EBS, GCP PD)은 네트워크 블록 스토리지로 random vs sequential I/O 패턴에 따라 성능 차이 큼. throughput vs IOPS 요구에 맞게 볼륨 타입(gp3, io2) 선택.",
+    "tags": ["fragmentation", "HDD", "SSD", "filesystem"]
+  },
+  {
+    "id": "os-031",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "Blocking I/O와 Non-blocking I/O의 핵심 차이는?",
+    "answer": 1,
+    "options": [
+      "Blocking은 커널을 사용하고 Non-blocking은 유저 공간에서만 동작한다",
+      "Blocking은 I/O 완료까지 호출 스레드가 대기하고, Non-blocking은 즉시 반환하여 다른 작업 가능",
+      "Non-blocking은 항상 더 빠르다",
+      "Blocking I/O는 멀티스레드 환경에서 사용 불가능하다"
+    ],
+    "explanation": "Blocking I/O는 read() 호출 시 데이터가 준비될 때까지 스레드가 블록된다. Non-blocking(O_NONBLOCK)은 데이터가 없으면 즉시 EAGAIN을 반환하고 스레드는 다른 작업을 할 수 있다. Non-blocking이 항상 빠른 것은 아니며 폴링 오버헤드가 발생할 수 있다.",
+    "deepDive": "Blocking + 멀티스레드 vs Non-blocking + 단일 스레드의 트레이드오프는? Synchronous와 Asynchronous I/O는 Blocking/Non-blocking과 어떻게 다른가? io_uring은 어떤 문제를 해결하는가?",
+    "seniorTip": "Node.js 관점: Node.js는 libuv로 I/O를 비동기 처리. 실제로는 Non-blocking + 이벤트 루프 패턴. CPU 집약 작업을 메인 스레드에서 실행하면 이벤트 루프가 블록됨. worker_threads로 분리 필요.",
+    "tags": ["blocking", "non-blocking", "IO", "async"]
+  },
+  {
+    "id": "os-032",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "select, poll, epoll의 차이와 대규모 연결에서 epoll이 선호되는 이유는?",
+    "answer": "select는 fd_set 비트마스크로 최대 1024개 fd 제한이 있고, 매번 전체 fd 집합을 커널에 복사하며 O(n) 스캔. poll은 fd 수 제한은 없지만 동일하게 O(n) 스캔. epoll은 이벤트 기반으로 커널 내 관심 fd를 등록(epoll_ctl)하고, 이벤트 발생 시에만 활성 fd를 반환(epoll_wait)하여 O(1) 또는 O(활성 fd수).",
+    "explanation": "10만 연결에서 select/poll은 10만 fd를 매번 스캔하지만 epoll은 실제 이벤트 발생한 fd만 처리한다. Level-triggered(기본)와 edge-triggered 모드 지원. EPOLLET(edge-triggered) + Non-blocking fd 조합이 고성능의 핵심.",
+    "deepDive": "edge-triggered vs level-triggered의 차이와 edge-triggered에서 EAGAIN까지 읽어야 하는 이유는? epoll의 spurious wakeup은 없는가? kqueue(macOS/BSD)와 epoll의 차이는?",
+    "seniorTip": "Nginx/실무 관점: Nginx worker 프로세스가 epoll 기반으로 수만 연결을 단일 스레드에서 처리. Java NIO의 Selector도 OS에 따라 epoll/kqueue를 사용. Netty의 EpollEventLoop이 기본 NIO보다 빠른 이유.",
+    "tags": ["epoll", "select", "poll", "IO-multiplexing", "performance"]
+  },
+  {
+    "id": "os-033",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "DMA(Direct Memory Access)가 해결하는 문제는?",
+    "answer": 2,
+    "options": [
+      "CPU 캐시 일관성 문제",
+      "가상 메모리 주소 변환 속도",
+      "I/O 전송 중 CPU가 데이터를 직접 복사하는 오버헤드",
+      "멀티코어 간 동기화 문제"
+    ],
+    "explanation": "DMA 없이는 CPU가 I/O 장치와 메모리 간 데이터를 직접 바이트씩 복사해야 한다(programmed I/O). DMA 컨트롤러가 CPU 개입 없이 장치와 메모리 간 데이터를 전송하고, 완료 시 인터럽트로 CPU에 알린다. CPU는 다른 작업을 수행할 수 있다.",
+    "deepDive": "DMA 전송 중 CPU가 해당 메모리를 수정하면 어떤 문제가 생기는가? scatter-gather DMA란? IOMMU는 DMA와 어떤 관계가 있는가?",
+    "seniorTip": "고성능 네트워킹 관점: 네트워크 카드(NIC)가 패킷을 DMA로 직접 메모리에 기록. DPDK나 RDMA는 커널 우회로 DMA를 직접 제어해 수 마이크로초 레이턴시 달성. 커널 네트워킹 스택의 복사 비용이 왜 큰지 이해 필요.",
+    "tags": ["DMA", "IO", "interrupt", "performance"]
+  },
+  {
+    "id": "os-034",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Synchronous I/O는 반드시 Blocking I/O를 의미한다.",
+    "answer": "X",
+    "explanation": "동기/비동기는 '완료 통보 방식', 블로킹/논블로킹은 '호출 즉시 반환 여부'의 개념이다. Synchronous Non-blocking: 즉시 반환하지만 완료 확인을 caller가 polling함. Asynchronous Non-blocking(AIO): 즉시 반환하고 완료 시 콜백/시그널로 통보. 조합이 4가지 가능하다.",
+    "deepDive": "POSIX AIO(aio_read/aio_write)와 io_uring의 차이는? JavaScript의 async/await는 OS 레벨에서 어떤 I/O 모델에 해당하는가? epoll + Non-blocking fd가 Synchronous Non-blocking인 이유는?",
+    "seniorTip": "Spring WebFlux/Reactor 관점: 리액티브 프로그래밍은 Non-blocking I/O 위에서 backpressure와 함께 동작. Netty의 이벤트 루프가 epoll/kqueue 기반. 블로킹 코드(JDBC 등)를 리액티브 코드에 섞으면 전체 스레드 풀 고갈.",
+    "tags": ["synchronous", "asynchronous", "blocking", "non-blocking", "IO"]
+  },
+  {
+    "id": "os-035",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "인터럽트(Interrupt)와 트랩(Trap)의 차이를 설명하고 각각의 예시를 들어라.",
+    "answer": "인터럽트는 외부 하드웨어가 비동기적으로 CPU에 신호를 보내는 것(예: 타이머, I/O 완료, NIC 패킷 수신). 트랩은 실행 중인 프로그램이 의도적으로 또는 오류로 발생시키는 동기적 예외(예: 시스템 콜, divide-by-zero, page fault, segfault).",
+    "explanation": "인터럽트와 트랩 모두 현재 실행을 중단하고 커널의 핸들러로 점프한다. 인터럽트는 현재 명령 완료 후 처리, 트랩은 해당 명령에서 즉시 발생. 소프트웨어 인터럽트(int 0x80, syscall 명령어)는 트랩의 일종이다.",
+    "deepDive": "인터럽트 처리 시 하드웨어가 자동으로 저장하는 것(context)은? ISR(Interrupt Service Routine)에서 긴 처리를 피해야 하는 이유는? top-half와 bottom-half의 분리란?",
+    "seniorTip": "성능 관점: 높은 인터럽트 처리량(high interrupt rate)은 CPU를 소모함. 10Gbps NIC에서 패킷당 인터럽트 대신 NAPI(polling + interrupt 혼합) 사용. /proc/interrupts와 vmstat -i로 인터럽트 통계 확인.",
+    "tags": ["interrupt", "trap", "kernel", "exception"]
+  },
+  {
+    "id": "os-036",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "익명 파이프(anonymous pipe)의 특징이 아닌 것은?",
+    "answer": 2,
+    "options": [
+      "단방향 통신만 지원한다",
+      "부모-자식 관계의 프로세스 간에서만 사용 가능하다",
+      "파일 시스템에 이름이 등록되어 관련 없는 프로세스도 접근 가능하다",
+      "FIFO 방식의 바이트 스트림이다"
+    ],
+    "explanation": "익명 파이프는 파일 시스템에 이름이 없어 관련 없는 프로세스가 접근 불가하다. 이름을 가진 named pipe(FIFO)는 파일 시스템 경로를 통해 관련 없는 프로세스 간 통신이 가능하다. shell의 '|' 연산자는 익명 파이프를 사용한다.",
+    "deepDive": "파이프의 커널 버퍼 크기(기본 64KB on Linux)를 초과하면 어떻게 되는가? 파이프 양 끝을 모두 한 프로세스가 열면 어떤 문제가 생기는가? socketpair()는 어떤 경우에 파이프보다 유리한가?",
+    "seniorTip": "K8s/컨테이너 관점: 같은 Pod 내 컨테이너 간 통신은 네트워크 소켓(localhost) 또는 공유 볼륨. 파이프는 같은 프로세스 그룹 내에서만 사용. sidecar 패턴에서 프록시(Envoy)와 앱이 Unix 도메인 소켓으로 통신.",
+    "tags": ["pipe", "IPC", "named-pipe", "FIFO"]
+  },
+  {
+    "id": "os-037",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "공유 메모리(Shared Memory)가 다른 IPC보다 빠른 이유와 사용 시 주의사항은?",
+    "answer": "공유 메모리는 두 프로세스가 같은 물리 메모리를 각자의 가상 주소 공간에 매핑하므로 데이터 복사가 없다. 파이프, 소켓은 커널 버퍼를 거쳐 복사가 발생하지만 공유 메모리는 없다. 주의: 동기화 없으면 race condition 발생, 한 프로세스 비정상 종료 시 정리 필요, 메모리 누수 가능(IPC_RMID 필요).",
+    "explanation": "POSIX 공유 메모리(shm_open + mmap)와 System V 공유 메모리(shmget)가 있다. 동기화에는 세마포어나 뮤텍스(PTHREAD_PROCESS_SHARED 속성)를 함께 사용해야 한다.",
+    "deepDive": "공유 메모리와 mmap 파일 매핑의 차이는? huge page를 공유 메모리에 사용하는 이유는? 메모리 매핑된 파일을 데이터베이스 버퍼 풀에 활용하는 예시는?",
+    "seniorTip": "Redis 관점: Redis의 RDB snapshot은 fork() 후 Copy-on-Write로 공유 메모리를 이용해 부모는 계속 서비스하면서 자식이 스냅샷 작성. cow 비율이 높으면 메모리 사용량 급증. INFO memory의 rdb_last_cow_size 확인.",
+    "tags": ["shared-memory", "IPC", "mmap", "synchronization"]
+  },
+  {
+    "id": "os-038",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "ox",
+    "question": "Unix 도메인 소켓(Unix Domain Socket)은 TCP 소켓보다 같은 호스트 내 프로세스 간 통신에서 빠르다.",
+    "answer": "O",
+    "explanation": "Unix 도메인 소켓은 같은 호스트에서만 동작하며, TCP/IP 스택(IP 헤더 생성, 체크섬 계산, 라우팅 등)을 거치지 않아 오버헤드가 낮다. 파일 시스템 경로를 주소로 사용하고, 데이터그램(SOCK_DGRAM) 또는 스트림(SOCK_STREAM) 모드를 지원한다.",
+    "deepDive": "Unix 도메인 소켓과 named pipe의 차이는? SCM_CREDENTIALS로 소켓을 통해 peer의 PID/UID를 확인하는 방법은? Docker의 /var/run/docker.sock은 무엇이고 보안 위험은?",
+    "seniorTip": "Nginx/Postgres 관점: PHP-FPM과 Nginx 간 통신을 TCP:9000 대신 Unix 도메인 소켓(/run/php-fpm.sock)으로 변경하면 레이턴시 감소. PostgreSQL도 로컬 연결 시 /tmp/.s.PGSQL.5432 Unix 소켓 사용.",
+    "tags": ["unix-socket", "IPC", "networking", "performance"]
+  },
+  {
+    "id": "os-039",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "메시지 큐(Message Queue)가 파이프보다 나은 점은?",
+    "answer": 3,
+    "options": [
+      "양방향 통신을 지원한다",
+      "더 빠른 전송 속도를 보장한다",
+      "파일 시스템이 필요 없다",
+      "메시지 단위 통신, 우선순위 지원, 수신자 없어도 메시지 보존"
+    ],
+    "explanation": "파이프는 바이트 스트림으로 메시지 경계가 없고, 수신자 없으면 블록된다. 메시지 큐는 구조화된 메시지 단위, 우선순위 기반 수신, 비동기 통신(수신자가 나중에 읽기 가능), 여러 수신자가 경쟁적으로 읽기 가능하다.",
+    "deepDive": "POSIX mq_open과 System V msgget의 차이는? 메시지 큐가 꽉 찼을 때 송신자의 동작은? 분산 메시지 큐(Kafka, RabbitMQ)와 OS 메시지 큐의 개념적 연결점은?",
+    "seniorTip": "마이크로서비스 관점: Kafka/RabbitMQ는 OS 메시지 큐와 동일한 개념을 네트워크 레벨로 확장. at-least-once/exactly-once 전달 보장은 OS 메시지 큐에서도 중요한 개념. 컨슈머 그룹과 경쟁적 소비(competing consumer)는 같은 패턴.",
+    "tags": ["message-queue", "IPC", "priority", "async"]
+  },
+  {
+    "id": "os-040",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "시그널(Signal)의 특징과 주요 시그널(SIGTERM, SIGKILL, SIGCHLD, SIGUSR1)의 차이를 설명하라.",
+    "answer": "시그널은 프로세스에 비동기적으로 전달되는 소프트웨어 인터럽트다. SIGTERM(15): 정상 종료 요청, 핸들러 설정 가능. SIGKILL(9): 강제 종료, 무시/블록/핸들러 불가. SIGCHLD: 자식 프로세스 상태 변경 통보(부모가 wait() 시점 결정에 활용). SIGUSR1/2: 사용자 정의 시그널.",
+    "explanation": "시그널 핸들러 내에서는 async-signal-safe 함수만 호출 가능(malloc 등 불가). 시그널은 큐잉되지 않아(pending signal) 같은 시그널이 여러 번 오면 하나만 처리될 수 있다. signalfd()로 시그널을 파일 디스크립터로 처리 가능.",
+    "deepDive": "시그널 핸들러에서 errno를 보존해야 하는 이유는? SA_RESTART 플래그는 어떤 역할을 하는가? 멀티스레드 프로세스에서 시그널은 어느 스레드가 수신하는가?",
+    "seniorTip": "K8s 관점: Pod 종료 시 SIGTERM → grace period → SIGKILL 순서. terminationGracePeriodSeconds 내에 앱이 SIGTERM에 정상 종료해야 함. Java 앱에서 Runtime.addShutdownHook()으로 SIGTERM 처리, Go에서는 os/signal.Notify() 사용.",
+    "tags": ["signal", "IPC", "SIGTERM", "SIGKILL", "process"]
+  },
+  {
+    "id": "os-041",
+    "category": "os",
+    "difficulty": "mid",
+    "type": "multiple-choice",
+    "question": "User mode와 Kernel mode를 구분하는 주된 목적은?",
+    "answer": 1,
+    "options": [
+      "User mode가 더 빠른 실행 속도를 제공하기 위해",
+      "하드웨어와 시스템 자원 접근을 제한해 시스템 안정성과 보안 보장",
+      "멀티태스킹을 가능하게 하기 위해",
+      "메모리 주소 공간을 확장하기 위해"
+    ],
+    "explanation": "User mode에서는 특권 명령어와 하드웨어 직접 접근이 차단되어, 버그 있는 프로그램이 다른 프로세스나 OS를 손상시킬 수 없다. Kernel mode(ring 0)에서는 모든 명령어와 하드웨어 접근이 가능하다. 모드 전환은 시스템 콜, 인터럽트, 예외를 통해 발생한다.",
+    "deepDive": "x86의 CPU 링(ring 0~3) 구조와 현대 OS가 ring 0과 ring 3만 사용하는 이유는? Spectre/Meltdown 취약점이 user/kernel 분리와 어떤 관계인가?",
+    "seniorTip": "보안 관점: KPTI(Kernel Page Table Isolation)는 Meltdown 패치로 커널/유저 페이지 테이블을 분리. syscall 시 페이지 테이블 전환 오버헤드 발생. 보안 강화와 성능 트레이드오프로 HPC 환경에서 KPTI 비활성화 논쟁.",
+    "tags": ["user-mode", "kernel-mode", "protection", "CPU-rings"]
+  },
+  {
+    "id": "os-042",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "시스템 콜(System Call)의 실행 과정을 단계별로 설명하라.",
+    "answer": "1) 유저 모드 프로그램이 syscall 명령어(x86-64) 실행. 2) CPU가 kernel mode로 전환, 유저 스택 → 커널 스택 전환, 레지스터 저장. 3) syscall 번호(rax)로 sys_call_table에서 핸들러 찾음. 4) 커널 핸들러 실행. 5) sysret 명령어로 user mode 복귀, 레지스터 복원.",
+    "explanation": "과거 int 0x80 소프트웨어 인터럽트 방식보다 syscall/sysret이 빠르다(SYSENTER/SYSEXIT도 동일 목적). strace 도구로 프로세스의 시스템 콜을 추적할 수 있다. vDSO(virtual Dynamic Shared Object)는 일부 syscall(gettimeofday 등)을 커널 전환 없이 실행.",
+    "deepDive": "vDSO가 커널 전환 없이 동작할 수 있는 이유는? seccomp-bpf로 syscall을 필터링하는 원리는? 컨테이너 보안에서 syscall 필터링이 중요한 이유는?",
+    "seniorTip": "컨테이너 보안 관점: Docker의 기본 seccomp 프로파일은 ~300개 syscall 중 위험한 것을 차단. Kubernetes의 seccompProfile 설정. strace -c로 애플리케이션의 syscall 빈도 프로파일링 → 최적화 포인트 발견.",
+    "tags": ["syscall", "kernel", "mode-switch", "security"]
+  },
+  {
+    "id": "os-043",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Linux cgroups가 컨테이너 격리에서 담당하는 역할은?",
+    "answer": 0,
+    "options": [
+      "CPU, 메모리, I/O, 네트워크 대역폭 등 리소스 사용량 제한 및 계측",
+      "파일 시스템 경로 격리",
+      "프로세스 PID 격리",
+      "네트워크 인터페이스 격리"
+    ],
+    "explanation": "cgroups(control groups)는 프로세스 그룹의 자원 사용을 제한, 계측, 우선순위화한다. 컨테이너의 CPU/메모리 limit은 cgroups로 구현된다. 반면 파일 시스템 격리는 mount namespace, PID 격리는 PID namespace, 네트워크 격리는 network namespace가 담당한다.",
+    "deepDive": "cgroup v1과 v2의 주요 차이는? cgroups와 namespaces의 조합이 어떻게 '컨테이너'를 정의하는가? systemd가 모든 서비스를 cgroup으로 관리하는 이유는?",
+    "seniorTip": "K8s 관점: Guaranteed QoS Pod(request==limit)는 안정적인 cgroup 설정. Burstable Pod는 리소스 경합 시 throttling. cgroupv2 지원은 K8s 1.25부터 GA. /sys/fs/cgroup/memory/docker/<id>/memory.usage_in_bytes로 컨테이너 메모리 직접 확인.",
+    "tags": ["cgroups", "container", "isolation", "resource-limit"]
+  },
+  {
+    "id": "os-044",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "ox",
+    "question": "컨테이너(Docker)는 VM과 달리 호스트 OS 커널을 공유하므로, 컨테이너 내에서 커널 취약점을 악용하면 호스트를 침해할 수 있다.",
+    "answer": "O",
+    "explanation": "VM은 하이퍼바이저가 별도의 커널을 갖는 완전한 격리를 제공한다. 컨테이너는 namespace와 cgroups로 격리하지만 같은 커널을 공유한다. 커널 취약점(예: dirty cow, runc 취약점)을 통한 컨테이너 탈출이 실제로 발생한다. seccomp, AppArmor/SELinux, capabilities 최소화로 공격 면적 줄임.",
+    "deepDive": "namespace 종류(PID, net, mnt, uts, ipc, user)를 설명하고 각각의 격리 대상은? user namespace가 rootless container를 가능하게 하는 원리는? gVisor나 Kata Containers가 해결하는 보안 문제는?",
+    "seniorTip": "보안 관점: K8s Pod의 privileged: true는 거의 모든 namespace 격리를 해제. readOnlyRootFilesystem, runAsNonRoot, allowPrivilegeEscalation: false를 기본값으로 설정. Pod Security Standards(restricted)를 조직 정책으로 채택 권장.",
+    "tags": ["container", "VM", "security", "namespace", "kernel"]
+  },
+  {
+    "id": "os-045",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Linux capabilities란 무엇이고 컨테이너 보안에서 왜 중요한가?",
+    "answer": "전통적으로 Linux는 root(전체 권한)와 일반 사용자로만 구분했다. Capabilities는 root 권한을 세분화한 것으로, CAP_NET_BIND_SERVICE(1024 이하 포트 바인딩), CAP_SYS_ADMIN(관리 작업), CAP_NET_RAW(raw socket) 등 38개로 나뉜다. 컨테이너에서 필요한 capability만 부여해 최소 권한 원칙 실현.",
+    "explanation": "Docker 기본값은 일부 capability 제거(CAP_SYS_ADMIN 등 위험 capability 제거). --cap-add/--cap-drop으로 조정. K8s에서 securityContext.capabilities로 설정. CAP_SYS_PTRACE를 악용해 다른 프로세스 메모리 읽기 등 권한 상승 가능.",
+    "deepDive": "CAP_NET_RAW를 가진 컨테이너가 할 수 있는 공격 시나리오는? ambient capability란? setuid 바이너리와 capability의 관계는?",
+    "seniorTip": "K8s 보안 관점: allowPrivilegeEscalation: false는 자식 프로세스가 더 높은 privilege 획득 차단. NET_ADMIN capability 없이도 iptables 규칙이 작동하는 이유(kube-proxy 권한 모델). OPA/Kyverno로 capability 정책 자동 강제.",
+    "tags": ["capabilities", "linux", "security", "container", "privilege"]
+  },
+  {
+    "id": "os-046",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "Copy-on-Write(CoW)가 fork() 성능을 향상시키는 원리는?",
+    "answer": 1,
+    "options": [
+      "자식 프로세스의 메모리를 비동기적으로 백그라운드에서 복사한다",
+      "fork() 직후에는 부모와 자식이 동일 물리 페이지를 공유하고, 쓰기 시에만 해당 페이지를 복사한다",
+      "자식 프로세스는 부모의 메모리를 전혀 복사하지 않는다",
+      "쓰기 연산을 캐시에 버퍼링해 물리 복사를 지연한다"
+    ],
+    "explanation": "fork() 시 페이지 테이블만 복사하고 모든 페이지를 read-only로 표시한다. 부모나 자식이 페이지에 쓰기 시 write protection fault가 발생하고, OS가 그 페이지만 복사(실제 CoW)한다. exec()가 즉시 따라오는 경우(shell 명령 실행) 거의 복사가 발생하지 않는다.",
+    "deepDive": "대용량 메모리 프로세스가 fork() + exec() 대신 posix_spawn()을 선호하는 이유는? Redis BGSAVE에서 CoW로 인한 메모리 증가를 어떻게 예측하는가? CoW와 NUMA의 상호작용은?",
+    "seniorTip": "Redis 관점: BGSAVE/BGREWRITEAOF 시 fork() 후 CoW 발생. 쓰기 부하가 높은 시간에 fork하면 CoW로 메모리가 최대 2배까지 증가 가능. redis.conf의 rdbcompression과 repl-backlog-size 조정으로 메모리 관리.",
+    "tags": ["copy-on-write", "fork", "virtual-memory", "performance"]
+  },
+  {
+    "id": "os-047",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "Zero-copy 기법이 일반 파일 전송보다 효율적인 이유와 구현 방법을 설명하라.",
+    "answer": "일반 read()+write() 파일 전송은 disk→커널 버퍼→유저 버퍼→커널 소켓 버퍼→NIC 순으로 4번 복사와 2번 syscall이 필요하다. sendfile()은 커널 버퍼에서 직접 소켓 버퍼로 전송해 유저 공간 복사를 없애 2번 복사로 줄인다. splice()는 파이프를 통해 두 fd 사이를 커널 내에서 직접 연결.",
+    "explanation": "DMA gather-copy를 지원하는 NIC는 sendfile() + MSG_ZEROCOPY로 완전한 zero-copy 가능(1번 DMA copy만 발생). mmap() + write()도 유저 공간 복사를 없애는 방식. Kafka가 sendfile()로 고성능 처리량을 달성하는 핵심 기법.",
+    "deepDive": "sendfile()의 제한(파일→소켓만 가능)을 넘어서는 splice()와 tee()의 활용 사례는? io_uring의 zero-copy send는 기존 sendfile과 어떻게 다른가?",
+    "seniorTip": "Kafka/Nginx 관점: Kafka consumer가 빠른 이유 중 하나가 sendfile() 기반 zero-copy. Nginx의 sendfile on 설정이 정적 파일 서빙 성능을 향상시키는 원리. Java NIO의 FileChannel.transferTo()도 내부적으로 sendfile() 사용.",
+    "tags": ["zero-copy", "sendfile", "IO", "performance", "kernel"]
+  },
+  {
+    "id": "os-048",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "multiple-choice",
+    "question": "NUMA(Non-Uniform Memory Access)에서 'non-uniform'이 의미하는 것은?",
+    "answer": 2,
+    "options": [
+      "각 CPU가 다른 속도로 동작한다",
+      "메모리 모듈의 용량이 각기 다르다",
+      "CPU가 자신의 로컬 메모리에 접근할 때와 다른 CPU의 메모리에 접근할 때 레이턴시가 다르다",
+      "NUMA 시스템은 캐시 일관성을 보장하지 않는다"
+    ],
+    "explanation": "멀티소켓 서버에서 각 CPU 소켓은 자신에게 물리적으로 가까운 로컬 메모리를 빠르게 접근(low latency)하고, 다른 소켓의 메모리(remote memory)는 인터커넥트(QPI, Infinity Fabric 등)를 통해 더 느리게 접근한다. NUMA-aware 메모리 할당이 성능에 중요하다.",
+    "deepDive": "numactl --hardware로 NUMA 토폴로지를 확인하는 방법은? NUMA balancing(자동 마이그레이션)의 장단점은? JVM의 -XX:+UseNUMA 옵션은 어떻게 동작하는가?",
+    "seniorTip": "K8s 관점: Topology Manager와 CPU Manager를 사용해 Pod를 동일 NUMA 노드의 CPU+메모리에 할당. Guaranteed QoS + CPU manager static policy 조합으로 NUMA 최적화. 고성능 컴퓨팅, 레이턴시 민감 앱에서 NUMA 설정 필수.",
+    "tags": ["NUMA", "memory", "performance", "multi-socket"]
+  },
+  {
+    "id": "os-049",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "False sharing이 발생하는 조건과 이를 방지하는 방법을 설명하라.",
+    "answer": "False sharing은 서로 다른 CPU 코어가 다른 변수를 수정하지만 그 변수들이 같은 캐시 라인(보통 64바이트)에 위치할 때 발생한다. 한 코어가 변수를 수정하면 캐시 일관성 프로토콜(MESI)이 다른 코어의 해당 캐시 라인을 무효화해 불필요한 캐시 미스가 연속 발생한다. 방지법: 패딩(padding)으로 변수를 다른 캐시 라인에 배치, @Contended 애노테이션(Java 8+), 정렬(alignas).",
+    "explanation": "성능 저하가 크면서 버그처럼 보이지 않아 발견이 어렵다. perf c2c나 Intel VTune으로 false sharing 탐지 가능. 멀티스레드 카운터, 독립적 플래그 배열 등에서 빈번히 발생.",
+    "deepDive": "MESI 프로토콜에서 false sharing 발생 시 상태 전환을 단계별로 설명하라. true sharing과 false sharing의 차이는? Java의 LongAdder가 AtomicLong보다 높은 경합에서 빠른 이유는?",
+    "seniorTip": "Java JVM 관점: Java 8의 @sun.misc.Contended(또는 @jdk.internal.vm.annotation.Contended)는 필드 앞뒤에 패딩을 추가해 false sharing 방지. -XX:-RestrictContended로 활성화. ConcurrentHashMap 내부의 CounterCell이 이 방식 사용.",
+    "tags": ["false-sharing", "cache-line", "MESI", "performance", "multi-core"]
+  },
+  {
+    "id": "os-050",
+    "category": "os",
+    "difficulty": "senior",
+    "type": "short-answer",
+    "question": "메모리 배리어(Memory Barrier/Fence)가 필요한 이유와 acquire/release 시맨틱을 설명하라.",
+    "answer": "현대 CPU와 컴파일러는 성능 최적화를 위해 메모리 읽기/쓰기 순서를 재배열(reordering)한다. 멀티스레드 환경에서 이 재배열이 다른 코어에게 일관성 없는 상태를 보여줄 수 있다. acquire 배리어: 이 명령 이후의 읽기/쓰기가 앞으로 올 수 없음(lock 획득 시 사용). release 배리어: 이 명령 이전의 읽기/쓰기가 뒤로 갈 수 없음(lock 해제 시 사용).",
+    "explanation": "x86은 비교적 강한 메모리 모델(TSO)을 가져 store-load 재배열만 발생. ARM/POWER는 약한 모델로 더 많은 재배열 가능. Java의 volatile은 acquire/release 시맨틱 보장. C++11의 std::atomic과 memory_order 파라미터로 세밀한 제어.",
+    "deepDive": "x86의 TSO(Total Store Order)와 ARM의 weakly ordered memory model의 실제 차이는? Java volatile의 happens-before 관계는 메모리 배리어와 어떻게 연결되는가? Lock-free 알고리즘에서 메모리 배리어 없이 CAS만으로 충분한가?",
+    "seniorTip": "Java/JVM 관점: JMM(Java Memory Model)의 happens-before 규칙이 메모리 배리어를 추상화. synchronized, volatile, Lock은 모두 적절한 배리어를 삽입. JIT 컴파일러가 최적화 시 happens-before를 위반하지 않도록 JMM 스펙을 준수해야 하는 이유.",
+    "tags": ["memory-barrier", "memory-ordering", "CPU", "concurrency", "volatile"]
+  }
+]
