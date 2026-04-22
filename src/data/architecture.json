@@ -1059,7 +1059,7 @@
     "id": "arch-052",
     "category": "architecture",
     "difficulty": "mid",
-    "type": "concept",
+    "type": "short-answer",
     "question": "Specification 패턴이란 무엇이고, 복잡한 비즈니스 규칙 조합이 필요한 조회 쿼리에서 어떻게 활용하는가?",
     "answer": "Specification 패턴은 비즈니스 규칙을 객체로 캡슐화하여 조합(AND, OR, NOT)할 수 있게 한다. isSatisfiedBy(entity) 메서드로 규칙을 검증하거나, toQuery()로 DB 쿼리 조건으로 변환한다.",
     "explanation": "예시: IsActiveCoupon, IsNotExpired, IsEligibleForUser를 각각 Specification으로 구현하고 and()로 조합. couponSpec = isActive.and(notExpired).and(eligibleForUser). Repository에서 spec.toTypeOrmQuery()로 WHERE 조건을 생성한다. 복잡한 필터 조건이 재사용 가능한 단위로 분리된다.",

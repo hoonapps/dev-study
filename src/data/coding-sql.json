@@ -4,8 +4,15 @@
     "title": "Daily Signups with Running Total",
     "titleKo": "일별 가입자 수 집계 + 누적 합계",
     "difficulty": "easy",
-    "patterns": ["sql", "window-function", "aggregation"],
-    "companies": ["카카오", "쿠팡"],
+    "patterns": [
+      "sql",
+      "window-function",
+      "aggregation"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
     "description": "아래 users 테이블에서 날짜별 신규 가입자 수와 누적 가입자 수를 함께 조회하세요.\n\n```sql\nCREATE TABLE users (\n  user_id   BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  email     VARCHAR(100) NOT NULL,\n  joined_at DATE        NOT NULL\n);\n\nINSERT INTO users (email, joined_at) VALUES\n  ('a@ex.com', '2024-01-01'),\n  ('b@ex.com', '2024-01-01'),\n  ('c@ex.com', '2024-01-02'),\n  ('d@ex.com', '2024-01-03'),\n  ('e@ex.com', '2024-01-03'),\n  ('f@ex.com', '2024-01-03');\n```\n\n결과는 joined_at 오름차순으로 정렬하세요.",
     "examples": [
       {
@@ -32,15 +39,26 @@
     },
     "walkthrough": "CTE daily에서 joined_at별로 COUNT(*)를 구하고, 외부 쿼리에서 SUM() OVER(ORDER BY joined_at)로 누적 합산합니다. ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW를 명시하면 같은 날짜가 없으므로 RANGE 기본값과 동일하지만, 명시적으로 쓰는 것이 의도를 드러내어 좋습니다.",
     "secret": "흔한 실수: GROUP BY 없이 Window Function만 쓰면 row 단위 누적이 돼 일별 집계가 되지 않습니다. 또한 SUM OVER에서 ORDER BY를 생략하면 전체 합계가 모든 행에 같은 값으로 들어갑니다. RANGE vs ROWS의 차이도 주의 — 날짜가 동일한 행이 있으면 RANGE는 같은 날짜 행을 모두 같은 누적값으로 처리합니다.",
-    "similar": ["cds-004", "cds-002"]
+    "similar": [
+      "cds-004",
+      "cds-002"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-002",
     "title": "Top N Products per Category",
     "titleKo": "카테고리별 TOP N 상품 조회",
     "difficulty": "medium",
-    "patterns": ["sql", "window-function", "ranking"],
-    "companies": ["카카오", "쿠팡"],
+    "patterns": [
+      "sql",
+      "window-function",
+      "ranking"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
     "description": "products 테이블에서 카테고리별로 판매량 기준 상위 3개 상품을 조회하세요. 동순위가 있을 경우 모두 포함합니다.\n\n```sql\nCREATE TABLE products (\n  product_id   BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  category     VARCHAR(50)  NOT NULL,\n  product_name VARCHAR(100) NOT NULL,\n  sales_count  INT          NOT NULL DEFAULT 0\n);\n\nINSERT INTO products (category, product_name, sales_count) VALUES\n  ('전자', 'TV-A', 500),\n  ('전자', 'TV-B', 300),\n  ('전자', '노트북-X', 700),\n  ('전자', '노트북-Y', 300),\n  ('전자', '태블릿-Z', 200),\n  ('식품', '과자-A', 1200),\n  ('식품', '음료-B', 900),\n  ('식품', '음료-C', 900),\n  ('식품', '과자-D', 400),\n  ('식품', '과자-E', 100);\n```",
     "examples": [
       {
@@ -67,15 +85,26 @@
     },
     "walkthrough": "CTE ranked에서 카테고리별로 sales_count 내림차순 순위를 RANK()로 계산합니다. 외부 쿼리에서 rnk <= 3 필터를 적용하면 동순위 행도 모두 포함됩니다. DENSE_RANK()를 쓰면 갭 없이 순위가 매겨지므로 비즈니스 요구사항에 맞게 선택해야 합니다.",
     "secret": "흔한 실수: Window Function 결과를 같은 SELECT의 WHERE 절에서 바로 필터하려 하면 'rnk' column unknown 에러가 납니다. 반드시 CTE나 서브쿼리로 한 번 감싸야 합니다. 또한 RANK vs DENSE_RANK 혼동 — 카카오 코테에서 '동순위 포함' 조건을 주면 RANK를 쓰면서 rnk <= N 필터가 의도대로 동작하는지 검증 케이스를 꼭 만들어보세요.",
-    "similar": ["cds-001", "cds-003"]
+    "similar": [
+      "cds-001",
+      "cds-003"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-003",
     "title": "Consecutive Order Days per Customer",
     "titleKo": "고객별 최대 연속 주문 일수 계산",
     "difficulty": "hard",
-    "patterns": ["sql", "window-function", "gaps-and-islands", "date-diff"],
-    "companies": ["카카오"],
+    "patterns": [
+      "sql",
+      "window-function",
+      "gaps-and-islands",
+      "date-diff"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "description": "orders 테이블에서 고객별로 연속 주문 일수가 가장 긴 streak(최대 연속 일수)를 구하세요. 같은 날 여러 주문은 1일로 카운트합니다.\n\n```sql\nCREATE TABLE orders (\n  order_id    BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  user_id     BIGINT   NOT NULL,\n  ordered_at  DATE     NOT NULL\n);\n\nINSERT INTO orders (user_id, ordered_at) VALUES\n  (1, '2024-01-01'), (1, '2024-01-02'), (1, '2024-01-03'),\n  (1, '2024-01-05'),\n  (2, '2024-01-01'), (2, '2024-01-02'),\n  (2, '2024-01-04'), (2, '2024-01-05'), (2, '2024-01-06'),\n  (3, '2024-01-10');\n```",
     "examples": [
       {
@@ -102,15 +131,27 @@
     },
     "walkthrough": "deduped CTE에서 같은 날 중복 주문을 제거합니다. rowed CTE에서 유저별로 날짜 순으로 ROW_NUMBER를 부여합니다. grouped CTE에서 'ordered_at - rn일'이 같은 행들은 연속된 날짜 그룹이므로 COUNT(*) = 연속 길이가 됩니다. 마지막으로 MAX(streak_len)으로 유저별 최대 streak을 구합니다.",
     "secret": "흔한 실수: DISTINCT 없이 중복 날짜가 있으면 ROW_NUMBER가 달라져 연속 그룹이 깨집니다. LAG로 하루 차이를 직접 비교하는 방식도 가능하지만 그룹 경계만 찾아주므로 streak 길이를 따로 누적해야 해서 더 복잡합니다. DATE 타입이 아닌 DATETIME이라면 DATE() 함수로 날짜만 추출한 뒤 DISTINCT 해야 합니다.",
-    "similar": ["cds-004", "cds-002"]
+    "similar": [
+      "cds-004",
+      "cds-002"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-004",
     "title": "Month-over-Month Revenue Change Rate",
     "titleKo": "전월 대비 매출 증감률",
     "difficulty": "medium",
-    "patterns": ["sql", "window-function", "lag", "date-truncation"],
-    "companies": ["카카오", "쿠팡"],
+    "patterns": [
+      "sql",
+      "window-function",
+      "lag",
+      "date-truncation"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
     "description": "sales 테이블에서 월별 총 매출과 전월 대비 증감률(%)을 구하세요.\n\n```sql\nCREATE TABLE sales (\n  sale_id    BIGINT    NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  sale_date  DATE      NOT NULL,\n  amount     DECIMAL(12,2) NOT NULL\n);\n\nINSERT INTO sales (sale_date, amount) VALUES\n  ('2024-01-05', 1000000),\n  ('2024-01-20', 500000),\n  ('2024-02-03', 2000000),\n  ('2024-02-15', 1000000),\n  ('2024-03-10', 1500000),\n  ('2024-03-25', 500000);\n```\n\n증감률 공식: (당월 매출 - 전월 매출) / 전월 매출 * 100, 소수점 2자리 반올림, 전월 없으면 NULL.",
     "examples": [
       {
@@ -137,15 +178,27 @@
     },
     "walkthrough": "monthly CTE에서 DATE_FORMAT으로 월 키를 생성하고 SUM으로 월 매출을 집계합니다. with_prev CTE에서 LAG(monthly_total, 1)로 이전 행(= 전월)의 매출을 가져옵니다. 최종 SELECT에서 ROUND와 NULLIF로 증감률을 안전하게 계산합니다.",
     "secret": "흔한 실수: DATE_FORMAT 결과는 문자열이므로 ORDER BY ym에서 사전순으로 정렬됩니다. 2024-01 < 2024-02 처럼 연-월 형식이면 사전순 = 시간순이라 괜찮지만, 만약 월만 쓴다면('01', '12') 12 < 2 문제가 생깁니다. LAG를 잊고 자기조인(self JOIN)으로 구현하면 성능이 크게 떨어집니다.",
-    "similar": ["cds-001", "cds-003"]
+    "similar": [
+      "cds-001",
+      "cds-003"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-005",
     "title": "Churned Customers (No Order in 30 Days)",
     "titleKo": "이탈 고객 찾기 (30일 이상 주문 없는 고객)",
     "difficulty": "easy",
-    "patterns": ["sql", "left-join", "date-filter", "subquery"],
-    "companies": ["쿠팡", "카카오"],
+    "patterns": [
+      "sql",
+      "left-join",
+      "date-filter",
+      "subquery"
+    ],
+    "companies": [
+      "쿠팡",
+      "카카오"
+    ],
     "description": "users와 orders 테이블을 이용해 최근 30일(기준일: 2024-02-29) 동안 주문이 없는 이탈 고객 목록을 조회하세요.\n\n```sql\nCREATE TABLE users (\n  user_id    BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  username   VARCHAR(50)  NOT NULL,\n  created_at DATE         NOT NULL\n);\n\nCREATE TABLE orders (\n  order_id   BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  user_id    BIGINT   NOT NULL,\n  ordered_at DATETIME NOT NULL\n);\n\nINSERT INTO users (username, created_at) VALUES\n  ('alice', '2023-06-01'),\n  ('bob',   '2023-07-15'),\n  ('carol', '2023-08-20'),\n  ('dave',  '2024-02-01');\n\nINSERT INTO orders (user_id, ordered_at) VALUES\n  (1, '2024-01-10 10:00:00'),\n  (1, '2024-02-28 15:00:00'),\n  (2, '2024-01-05 09:00:00'),\n  (3, '2023-12-01 12:00:00');\n```\n\n기준일로부터 30일 이내 주문이 하나도 없는 유저를 반환하세요.",
     "examples": [
       {
@@ -172,15 +225,27 @@
     },
     "walkthrough": "서브쿼리에서 user_id별 최근 주문일을 집계합니다. users와 LEFT JOIN하면 주문이 없는 유저도 포함됩니다. WHERE에서 last_order_at IS NULL(주문 없음) 또는 30일 이전 주문이면 이탈 고객으로 판단합니다.",
     "secret": "흔한 실수: NOT IN 방식은 서브쿼리 결과에 NULL이 포함되면 전체 결과가 비어버립니다(NULL IN/NOT IN 삼값 논리). NOT EXISTS 또는 LEFT JOIN + IS NULL 패턴이 안전합니다. 또한 DATETIME 컬럼에 DATE_SUB 비교 시 인덱스를 타려면 컬럼을 함수로 감싸지 말고 우변을 변환해야 합니다.",
-    "similar": ["cds-006", "cds-008"]
+    "similar": [
+      "cds-006",
+      "cds-008"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-006",
     "title": "Duplicate Transaction Detection",
     "titleKo": "중복 거래 탐지 (시간 구간 기반)",
     "difficulty": "hard",
-    "patterns": ["sql", "self-join", "window-function", "fraud-detection"],
-    "companies": ["카카오", "쿠팡"],
+    "patterns": [
+      "sql",
+      "self-join",
+      "window-function",
+      "fraud-detection"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
     "description": "transactions 테이블에서 동일 사용자가 동일 금액으로 5분 이내에 2번 이상 결제한 의심 거래를 탐지하세요.\n\n```sql\nCREATE TABLE transactions (\n  txn_id     BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  user_id    BIGINT       NOT NULL,\n  amount     DECIMAL(12,2) NOT NULL,\n  txn_time   DATETIME     NOT NULL\n);\n\nINSERT INTO transactions (user_id, amount, txn_time) VALUES\n  (1, 10000.00, '2024-01-01 10:00:00'),\n  (1, 10000.00, '2024-01-01 10:03:00'),\n  (1, 10000.00, '2024-01-01 10:10:00'),\n  (1, 20000.00, '2024-01-01 10:01:00'),\n  (2, 5000.00,  '2024-01-01 11:00:00'),\n  (2, 5000.00,  '2024-01-01 11:06:00');\n```\n\n의심 거래 쌍(txn_id 오름차순 기준 earlier_id, later_id)을 반환하세요.",
     "examples": [
       {
@@ -207,15 +272,27 @@
     },
     "walkthrough": "t1.txn_id < t2.txn_id 조건으로 같은 쌍이 두 번 나오는 것을 방지합니다. user_id + amount가 같고, TIMESTAMPDIFF로 두 거래 시간 차이가 300초 이하인 것만 반환합니다. (user_id, amount, txn_time) 복합 인덱스를 걸면 JOIN 성능이 크게 향상됩니다.",
     "secret": "흔한 실수: t1.txn_id != t2.txn_id로 조건을 쓰면 (A,B)와 (B,A) 중복 쌍이 모두 나옵니다. 반드시 < 연산자를 사용해야 합니다. 또한 SELF JOIN은 데이터가 클수록 O(N²)로 느려지므로, LAG() 방식(각 행과 직전 행 비교)이 대용량에서 유리하지만 연속 3건 이상 탐지는 놓칠 수 있습니다.",
-    "similar": ["cds-005", "cds-010"]
+    "similar": [
+      "cds-005",
+      "cds-010"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-007",
     "title": "Customer Lifetime Value",
     "titleKo": "고객 생애 가치(LTV) 계산",
     "difficulty": "easy",
-    "patterns": ["sql", "aggregation", "join", "ltv"],
-    "companies": ["쿠팡", "카카오"],
+    "patterns": [
+      "sql",
+      "aggregation",
+      "join",
+      "ltv"
+    ],
+    "companies": [
+      "쿠팡",
+      "카카오"
+    ],
     "description": "customers와 orders 테이블로 고객별 총 주문 금액(LTV), 평균 주문 금액, 주문 횟수를 계산하고 LTV 내림차순으로 상위 5명을 반환하세요.\n\n```sql\nCREATE TABLE customers (\n  customer_id BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  name        VARCHAR(50) NOT NULL,\n  tier        ENUM('bronze','silver','gold') NOT NULL DEFAULT 'bronze'\n);\n\nCREATE TABLE orders (\n  order_id    BIGINT        NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  customer_id BIGINT        NOT NULL,\n  total_price DECIMAL(12,2) NOT NULL,\n  status      VARCHAR(20)   NOT NULL,\n  ordered_at  DATETIME      NOT NULL\n);\n\nINSERT INTO customers (name, tier) VALUES\n  ('김철수','gold'),('이영희','silver'),('박민준','bronze'),\n  ('최지수','gold'),('정다은','silver'),('한승호','bronze');\n\nINSERT INTO orders (customer_id, total_price, status, ordered_at) VALUES\n  (1,150000,'completed','2024-01-10 10:00:00'),\n  (1,200000,'completed','2024-02-05 11:00:00'),\n  (1,80000,'cancelled','2024-03-01 09:00:00'),\n  (2,300000,'completed','2024-01-15 14:00:00'),\n  (2,120000,'completed','2024-02-20 16:00:00'),\n  (3,50000,'completed','2024-01-20 10:00:00'),\n  (4,500000,'completed','2024-01-25 12:00:00'),\n  (5,90000,'completed','2024-02-01 10:00:00'),\n  (5,110000,'completed','2024-02-10 11:00:00');\n```\n\nstatus = 'completed'인 주문만 집계하세요.",
     "examples": [
       {
@@ -242,15 +319,27 @@
     },
     "walkthrough": "JOIN 후 WHERE status = 'completed'로 완료 주문만 남깁니다. GROUP BY customer_id에서 SUM/AVG/COUNT를 한 번에 계산합니다. ORDER BY ltv DESC + LIMIT 5로 상위 5명을 반환합니다.",
     "secret": "흔한 실수: AVG를 DECIMAL 컬럼에서 계산하면 소수 자릿수가 길어질 수 있으므로 ROUND 처리가 필요합니다. HAVING vs WHERE 혼동 — status 필터는 집계 전에 적용 가능하므로 WHERE를 쓰는 것이 성능상 유리합니다. HAVING은 집계 결과에 조건을 걸 때만 사용하세요.",
-    "similar": ["cds-008", "cds-005"]
+    "similar": [
+      "cds-008",
+      "cds-005"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-008",
     "title": "Repurchase Rate Calculation",
     "titleKo": "재구매율 계산",
     "difficulty": "medium",
-    "patterns": ["sql", "cte", "conditional-aggregation", "cohort"],
-    "companies": ["카카오", "쿠팡"],
+    "patterns": [
+      "sql",
+      "cte",
+      "conditional-aggregation",
+      "cohort"
+    ],
+    "companies": [
+      "카카오",
+      "쿠팡"
+    ],
     "description": "orders 테이블에서 2024년 1월에 첫 주문을 한 고객 중 2024년 2월에도 주문한 고객의 비율(재구매율)을 계산하세요.\n\n```sql\nCREATE TABLE orders (\n  order_id    BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  user_id     BIGINT   NOT NULL,\n  ordered_at  DATETIME NOT NULL\n);\n\nINSERT INTO orders (user_id, ordered_at) VALUES\n  (1, '2024-01-05 10:00:00'),\n  (1, '2024-02-10 11:00:00'),\n  (2, '2024-01-10 09:00:00'),\n  (3, '2024-01-15 14:00:00'),\n  (3, '2024-02-20 15:00:00'),\n  (4, '2024-02-01 10:00:00'),\n  (5, '2024-01-20 12:00:00');\n```\n\n1월에 첫 주문(전체 이력 기준 첫 주문이 1월)을 한 고객 대비 2월 재주문 비율을 DECIMAL(5,2)로 반환하세요.",
     "examples": [
       {
@@ -277,15 +366,26 @@
     },
     "walkthrough": "first_order CTE에서 유저별 첫 주문월을 구합니다. jan_cohort CTE는 첫 주문이 2024-01인 유저만 추립니다. feb_repurchase는 그 유저들 중 2월에 주문한 유저를 뽑습니다. 마지막 SELECT에서 두 카운트의 비율로 재구매율을 계산합니다.",
     "secret": "흔한 실수: '1월에 주문이 있는 유저'와 '1월에 첫 주문을 한 유저'를 혼동합니다. MIN(ordered_at) 기반으로 첫 주문월을 결정해야 정확합니다. 또한 동월에 여러 번 주문한 경우 COUNT(*)가 아닌 COUNT(DISTINCT user_id)를 써야 유저 수 기준이 됩니다.",
-    "similar": ["cds-005", "cds-007"]
+    "similar": [
+      "cds-005",
+      "cds-007"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-009",
     "title": "Active Users by Hour Slot",
     "titleKo": "시간대별 활성 사용자 수",
     "difficulty": "easy",
-    "patterns": ["sql", "date-format", "case-when", "aggregation"],
-    "companies": ["카카오"],
+    "patterns": [
+      "sql",
+      "date-format",
+      "case-when",
+      "aggregation"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "description": "user_events 테이블에서 시간대별(새벽/오전/오후/저녁/심야) 활성 사용자 수를 구하세요.\n\n```sql\nCREATE TABLE user_events (\n  event_id    BIGINT   NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  user_id     BIGINT   NOT NULL,\n  event_type  VARCHAR(30) NOT NULL,\n  created_at  DATETIME NOT NULL\n);\n\nINSERT INTO user_events (user_id, event_type, created_at) VALUES\n  (1,'login','2024-01-01 02:30:00'),\n  (2,'login','2024-01-01 07:15:00'),\n  (3,'purchase','2024-01-01 09:45:00'),\n  (1,'purchase','2024-01-01 13:20:00'),\n  (4,'login','2024-01-01 15:00:00'),\n  (5,'logout','2024-01-01 18:30:00'),\n  (2,'purchase','2024-01-01 20:10:00'),\n  (3,'login','2024-01-01 23:50:00');\n```\n\n시간대 구분: 새벽(0-5), 오전(6-11), 오후(12-17), 저녁(18-21), 심야(22-23). 시간대 순서로 정렬하세요.",
     "examples": [
       {
@@ -312,15 +412,28 @@
     },
     "walkthrough": "HOUR(created_at)으로 시간을 추출하고 CASE WHEN으로 시간대 레이블과 정렬 순서(slot_order)를 함께 부여합니다. GROUP BY로 시간대별로 묶고 COUNT(DISTINCT user_id)로 중복 유저를 제거한 실제 활성 사용자 수를 계산합니다.",
     "secret": "흔한 실수: COUNT(*)를 쓰면 같은 유저가 여러 이벤트를 발생시킨 경우 중복 카운트됩니다. COUNT(DISTINCT user_id)가 필수입니다. 또한 HOUR 함수를 컬럼에 적용하면 해당 컬럼의 인덱스를 타지 못합니다. 대용량이라면 파생 컬럼(generated column)이나 time_slot 별도 컬럼 전략을 고려하세요.",
-    "similar": ["cds-001", "cds-007"]
+    "similar": [
+      "cds-001",
+      "cds-007"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cds-010",
     "title": "Frequently Co-Purchased Products",
     "titleKo": "자주 함께 구매된 상품 쌍 추출",
     "difficulty": "hard",
-    "patterns": ["sql", "self-join", "group-by", "having", "market-basket"],
-    "companies": ["쿠팡", "카카오"],
+    "patterns": [
+      "sql",
+      "self-join",
+      "group-by",
+      "having",
+      "market-basket"
+    ],
+    "companies": [
+      "쿠팡",
+      "카카오"
+    ],
     "description": "order_items 테이블에서 같은 주문(order_id)에서 함께 구매된 상품 쌍 중 3번 이상 같이 구매된 조합을 찾아 빈도 내림차순으로 반환하세요.\n\n```sql\nCREATE TABLE order_items (\n  item_id    BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  order_id   BIGINT NOT NULL,\n  product_id BIGINT NOT NULL\n);\n\nINSERT INTO order_items (order_id, product_id) VALUES\n  (1,101),(1,102),(1,103),\n  (2,101),(2,102),\n  (3,101),(3,102),(3,104),\n  (4,102),(4,103),\n  (5,101),(5,102),\n  (6,103),(6,104),\n  (7,101),(7,103);\n```\n\n결과 컬럼: product_a, product_b, co_count. product_a < product_b 조건으로 중복 쌍 제거.",
     "examples": [
       {
@@ -347,6 +460,10 @@
     },
     "walkthrough": "a.order_id = b.order_id로 같은 주문의 상품 쌍을 만들고, a.product_id < b.product_id로 역방향 중복을 제거합니다. GROUP BY로 상품 쌍별 횟수를 세고, HAVING co_count >= 3으로 3회 이상 함께 구매된 쌍만 필터합니다.",
     "secret": "흔한 실수: a.product_id != b.product_id 조건만 쓰면 (101,102)와 (102,101)이 모두 나와 결과가 두 배가 됩니다. 반드시 < 연산자로 순서를 고정해야 합니다. 대용량에서는 한 주문에 상품이 N개 있으면 SELF JOIN이 N² 행을 만들어 성능이 급격히 저하됩니다. 상품 수가 많은 주문은 미리 필터하거나, 상품 페어 테이블을 애플리케이션 레벨에서 생성하는 방식도 고려하세요.",
-    "similar": ["cds-006", "cds-002"]
+    "similar": [
+      "cds-006",
+      "cds-002"
+    ],
+    "type": "short-answer"
   }
 ]

@@ -39,7 +39,8 @@
     "similar": [
       "cd-002",
       "cd-003"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-002",
@@ -82,7 +83,8 @@
     "similar": [
       "cd-001",
       "cd-003"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-003",
@@ -124,7 +126,8 @@
     "similar": [
       "cd-001",
       "cd-060"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-004",
@@ -165,7 +168,8 @@
     "similar": [
       "cd-001",
       "cd-005"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-005",
@@ -205,7 +209,8 @@
     "similar": [
       "cd-001",
       "cd-004"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-006",
@@ -247,7 +252,8 @@
     "similar": [
       "cd-007",
       "cd-008"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-007",
@@ -289,7 +295,8 @@
     "similar": [
       "cd-006",
       "cd-010"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-008",
@@ -330,7 +337,8 @@
     "similar": [
       "cd-006",
       "cd-009"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-009",
@@ -370,7 +378,8 @@
     "similar": [
       "cd-006",
       "cd-008"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-010",
@@ -411,7 +420,8 @@
     "similar": [
       "cd-007",
       "cd-009"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-011",
@@ -454,7 +464,8 @@
     "similar": [
       "cd-012",
       "cd-013"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-012",
@@ -496,7 +507,8 @@
     "similar": [
       "cd-011",
       "cd-013"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-013",
@@ -537,7 +549,8 @@
     "similar": [
       "cd-011",
       "cd-015"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-014",
@@ -579,7 +592,8 @@
     "similar": [
       "cd-011",
       "cd-013"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-015",
@@ -621,7 +635,8 @@
     "similar": [
       "cd-011",
       "cd-013"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-016",
@@ -664,7 +679,8 @@
     "similar": [
       "cd-017",
       "cd-045"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-017",
@@ -706,7 +722,8 @@
     "similar": [
       "cd-016",
       "cd-018"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-018",
@@ -748,7 +765,8 @@
     "similar": [
       "cd-016",
       "cd-017"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-019",
@@ -790,7 +808,8 @@
     "similar": [
       "cd-016",
       "cd-020"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-020",
@@ -833,7 +852,8 @@
     "similar": [
       "cd-019",
       "cd-016"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-021",
@@ -874,7 +894,8 @@
     "similar": [
       "cd-022",
       "cd-024"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-022",
@@ -915,7 +936,8 @@
     "similar": [
       "cd-021",
       "cd-023"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-023",
@@ -957,7 +979,8 @@
     "similar": [
       "cd-021",
       "cd-025"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-024",
@@ -998,7 +1021,8 @@
     "similar": [
       "cd-021",
       "cd-022"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-025",
@@ -1040,7 +1064,8 @@
     "similar": [
       "cd-023",
       "cd-021"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-026",
@@ -1081,7 +1106,8 @@
     "similar": [
       "cd-027",
       "cd-030"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-027",
@@ -1123,7 +1149,8 @@
     "similar": [
       "cd-026",
       "cd-028"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-028",
@@ -1166,7 +1193,8 @@
     "similar": [
       "cd-026",
       "cd-029"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-029",
@@ -1208,7 +1236,8 @@
     "similar": [
       "cd-026",
       "cd-030"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-030",
@@ -1249,7 +1278,8 @@
     "similar": [
       "cd-028",
       "cd-029"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-031",
@@ -1290,7 +1320,8 @@
     "similar": [
       "cd-032",
       "cd-033"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-032",
@@ -1331,7 +1362,8 @@
     "similar": [
       "cd-031",
       "cd-033"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-033",
@@ -1372,7 +1404,8 @@
     "similar": [
       "cd-031",
       "cd-032"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-034",
@@ -1413,7 +1446,8 @@
     "similar": [
       "cd-031",
       "cd-035"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-035",
@@ -1456,7 +1490,8 @@
     "similar": [
       "cd-034",
       "cd-016"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-036",
@@ -1498,7 +1533,8 @@
     "similar": [
       "cd-037",
       "cd-038"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-037",
@@ -1539,7 +1575,8 @@
     "similar": [
       "cd-036",
       "cd-038"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-038",
@@ -1581,7 +1618,8 @@
     "similar": [
       "cd-036",
       "cd-039"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-039",
@@ -1622,7 +1660,8 @@
     "similar": [
       "cd-038",
       "cd-040"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-040",
@@ -1663,7 +1702,8 @@
     "similar": [
       "cd-039",
       "cd-038"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-041",
@@ -1706,7 +1746,8 @@
     "similar": [
       "cd-042",
       "cd-044"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-042",
@@ -1748,7 +1789,8 @@
     "similar": [
       "cd-041",
       "cd-043"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-043",
@@ -1790,7 +1832,8 @@
     "similar": [
       "cd-041",
       "cd-042"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-044",
@@ -1831,7 +1874,8 @@
     "similar": [
       "cd-041",
       "cd-043"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-045",
@@ -1873,7 +1917,8 @@
     "similar": [
       "cd-046",
       "cd-047"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-046",
@@ -1913,7 +1958,8 @@
     "similar": [
       "cd-045",
       "cd-047"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-047",
@@ -1955,7 +2001,8 @@
     "similar": [
       "cd-045",
       "cd-046"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-048",
@@ -1997,7 +2044,8 @@
     "similar": [
       "cd-045",
       "cd-047"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-049",
@@ -2039,7 +2087,8 @@
     "similar": [
       "cd-050",
       "cd-051"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-050",
@@ -2082,7 +2131,8 @@
     "similar": [
       "cd-049",
       "cd-035"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-051",
@@ -2123,7 +2173,8 @@
     "similar": [
       "cd-049",
       "cd-050"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-052",
@@ -2164,7 +2215,8 @@
     "similar": [
       "cd-049",
       "cd-051"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-053",
@@ -2206,7 +2258,8 @@
     "similar": [
       "cd-054",
       "cd-055"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-054",
@@ -2246,7 +2299,8 @@
     "similar": [
       "cd-053",
       "cd-055"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-055",
@@ -2287,7 +2341,8 @@
     "similar": [
       "cd-054",
       "cd-056"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-056",
@@ -2327,7 +2382,8 @@
     "similar": [
       "cd-053",
       "cd-055"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-057",
@@ -2369,7 +2425,8 @@
     "similar": [
       "cd-058",
       "cd-060"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-058",
@@ -2410,7 +2467,8 @@
     "similar": [
       "cd-057",
       "cd-059"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-059",
@@ -2452,7 +2510,8 @@
     "similar": [
       "cd-057",
       "cd-060"
-    ]
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cd-060",
@@ -2496,6 +2555,7 @@
     "similar": [
       "cd-003",
       "cd-059"
-    ]
+    ],
+    "type": "short-answer"
   }
 ]

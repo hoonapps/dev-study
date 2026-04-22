@@ -4,532 +4,1167 @@
     "title": "LRU Cache with Hit Count",
     "titleKo": "LRU 캐시 구현 (히트 카운트 포함)",
     "difficulty": "medium",
-    "patterns": ["implementation", "simulation", "linked-list", "hash-map"],
-    "companies": ["카카오", "네이버"],
+    "patterns": [
+      "implementation",
+      "simulation",
+      "linked-list",
+      "hash-map"
+    ],
+    "companies": [
+      "카카오",
+      "네이버"
+    ],
     "year": "2022",
     "description": "캐시 크기 cacheSize와 도시 이름 배열 cities가 주어질 때, LRU 캐시를 구현하여 총 실행 시간을 구하세요. 캐시 히트 시 1, 미스 시 5의 시간이 소요됩니다. 도시 이름은 대소문자 구분 없이 처리합니다. cacheSize=0이면 항상 miss 처리합니다.",
     "examples": [
-      {"input": "cacheSize=3, cities=[\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\",\"Pangyo\",\"Seoul\"]", "output": "21", "explanation": "처음 3개 miss(15), 이후 6개 hit(6) = 21"},
-      {"input": "cacheSize=0, cities=[\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\"]", "output": "20", "explanation": "cacheSize=0이면 항상 miss → 4*5=20"}
+      {
+        "input": "cacheSize=3, cities=[\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\",\"Pangyo\",\"Seoul\"]",
+        "output": "21",
+        "explanation": "처음 3개 miss(15), 이후 6개 hit(6) = 21"
+      },
+      {
+        "input": "cacheSize=0, cities=[\"Jeju\",\"Pangyo\",\"Seoul\",\"Jeju\"]",
+        "output": "20",
+        "explanation": "cacheSize=0이면 항상 miss → 4*5=20"
+      }
     ],
-    "constraints": ["1 <= cacheSize <= 30", "1 <= cities.length <= 100", "도시 이름은 알파벳, 길이 1~20", "대소문자 구분 없음"],
-    "hints": ["LinkedHashMap(accessOrder=true)을 사용하면 get/put 시 해당 항목이 tail로 이동해 LRU 자동 구현됩니다.", "removeEldestEntry를 override하여 캐시 크기 초과 시 자동 제거합니다."],
+    "constraints": [
+      "1 <= cacheSize <= 30",
+      "1 <= cities.length <= 100",
+      "도시 이름은 알파벳, 길이 1~20",
+      "대소문자 구분 없음"
+    ],
+    "hints": [
+      "LinkedHashMap(accessOrder=true)을 사용하면 get/put 시 해당 항목이 tail로 이동해 LRU 자동 구현됩니다.",
+      "removeEldestEntry를 override하여 캐시 크기 초과 시 자동 제거합니다."
+    ],
     "approach": "LinkedHashMap(accessOrder=true)로 LRU 구현. get 시 hit/miss 판단 후 캐시 갱신. cacheSize=0 예외 처리 필수.",
     "code": "import java.util.*;\n\npublic class LRUCache {\n    public int solution(int cacheSize, String[] cities) {\n        if (cacheSize == 0) return cities.length * 5;\n\n        LinkedHashMap<String, Integer> cache = new LinkedHashMap<>(cacheSize, 0.75f, true) {\n            @Override\n            protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest) {\n                return size() > cacheSize;\n            }\n        };\n\n        int totalTime = 0;\n        for (String city : cities) {\n            String key = city.toLowerCase();\n            if (cache.containsKey(key)) {\n                cache.get(key); // accessOrder 갱신\n                totalTime += 1;\n            } else {\n                cache.put(key, 1);\n                totalTime += 5;\n            }\n        }\n        return totalTime;\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(cacheSize)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(cacheSize)"
+    },
     "walkthrough": "LinkedHashMap accessOrder=true로 생성하면 get/put 시 해당 항목이 tail로 이동합니다. removeEldestEntry override로 캐시 초과 시 head를 자동 제거합니다. cacheSize=0 케이스를 먼저 처리합니다.",
     "secret": "cacheSize=0 케이스 빠뜨리면 즉시 오답. containsKey 후 반드시 cache.get()을 호출해야 accessOrder가 갱신됨 — containsKey만으로는 순서가 바뀌지 않아 LRU가 깨진다.",
-    "similar": ["cdr-002", "cdr-012"]
+    "similar": [
+      "cdr-002",
+      "cdr-012"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-002",
     "title": "Natural Sort of Filenames",
     "titleKo": "파일명 정렬 (자연 정렬)",
     "difficulty": "medium",
-    "patterns": ["string", "sorting", "simulation"],
-    "companies": ["카카오"],
+    "patterns": [
+      "string",
+      "sorting",
+      "simulation"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "year": "2018",
     "description": "파일명 배열 files가 주어집니다. 각 파일명은 HEAD(숫자 외 문자), NUMBER(연속된 숫자, 최대 5자리), TAIL(나머지)로 구성됩니다. 정렬 규칙: 1) HEAD 사전순(대소문자 무시) 2) HEAD 같으면 NUMBER 정수 오름차순 3) HEAD, NUMBER 모두 같으면 입력 순서 유지(stable sort).",
     "examples": [
-      {"input": "[\"img12.png\",\"img10.png\",\"img02.png\",\"img1.png\",\"IMG01.png\",\"img2.png\"]", "output": "[\"img1.png\",\"IMG01.png\",\"img02.png\",\"img2.png\",\"img10.png\",\"img12.png\"]", "explanation": "HEAD=img 동일, NUMBER 정수 비교: 1=1(입력순), 2=2(입력순), 10, 12"}
+      {
+        "input": "[\"img12.png\",\"img10.png\",\"img02.png\",\"img1.png\",\"IMG01.png\",\"img2.png\"]",
+        "output": "[\"img1.png\",\"IMG01.png\",\"img02.png\",\"img2.png\",\"img10.png\",\"img12.png\"]",
+        "explanation": "HEAD=img 동일, NUMBER 정수 비교: 1=1(입력순), 2=2(입력순), 10, 12"
+      }
     ],
-    "constraints": ["1 <= files.length <= 1000", "3 <= 파일명 길이 <= 100", "HEAD는 1자 이상, NUMBER는 1~5자리 숫자"],
-    "hints": ["정규식 ^([^0-9]+)(\\d{1,5})(.*) 로 HEAD/NUMBER/TAIL 파싱 가능.", "Java Arrays.sort는 stable sort이므로 Comparator가 0 반환 시 입력 순서 유지됩니다."],
+    "constraints": [
+      "1 <= files.length <= 1000",
+      "3 <= 파일명 길이 <= 100",
+      "HEAD는 1자 이상, NUMBER는 1~5자리 숫자"
+    ],
+    "hints": [
+      "정규식 ^([^0-9]+)(\\d{1,5})(.*) 로 HEAD/NUMBER/TAIL 파싱 가능.",
+      "Java Arrays.sort는 stable sort이므로 Comparator가 0 반환 시 입력 순서 유지됩니다."
+    ],
     "approach": "정규식으로 HEAD/NUMBER 추출 후 Comparator 정의. HEAD toLowerCase 비교, NUMBER Integer.parseInt 정수 비교.",
     "code": "import java.util.*;\nimport java.util.regex.*;\n\npublic class FileSort {\n    public String[] solution(String[] files) {\n        Pattern p = Pattern.compile(\"^([^0-9]+)(\\\\d{1,5})(.*)\");\n        Arrays.sort(files, (a, b) -> {\n            Matcher ma = p.matcher(a), mb = p.matcher(b);\n            ma.find(); mb.find();\n            int headCmp = ma.group(1).toLowerCase().compareTo(mb.group(1).toLowerCase());\n            if (headCmp != 0) return headCmp;\n            return Integer.compare(Integer.parseInt(ma.group(2)), Integer.parseInt(mb.group(2)));\n        });\n        return files;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "정규식으로 각 파일명을 HEAD/NUMBER/TAIL로 파싱합니다. HEAD 소문자 변환 후 사전 비교, 동일 시 NUMBER 정수 비교. Java stable sort 덕분에 두 값 동일 시 원래 순서가 유지됩니다.",
     "secret": "NUMBER를 문자열로 비교하면 '2' > '10' 이 되어 오답. 반드시 Integer.parseInt 후 정수 비교. HEAD 파싱에서 첫 숫자 이전까지만 추출해야 함에 주의.",
-    "similar": ["cdr-001", "cdr-003"]
+    "similar": [
+      "cdr-001",
+      "cdr-003"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-003",
     "title": "Tuple from Set Notation",
     "titleKo": "튜플 (집합 기호 파싱)",
     "difficulty": "medium",
-    "patterns": ["string", "parsing", "sorting", "set"],
-    "companies": ["카카오"],
+    "patterns": [
+      "string",
+      "parsing",
+      "sorting",
+      "set"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "year": "2019",
     "description": "집합 기호로 표현된 튜플 문자열 s가 주어집니다. 예: '{{2},{2,1},{2,1,3},{2,1,3,4}}'. 원소가 n개인 튜플은 n개의 집합으로 표현되며 크기 1인 집합의 원소가 첫 번째, 크기 2에서 새로 추가된 원소가 두 번째... 순서입니다. 튜플의 원소를 순서대로 배열에 담아 반환하세요.",
     "examples": [
-      {"input": "\"{{2},{2,1},{2,1,3},{2,1,3,4}}\"", "output": "[2, 1, 3, 4]", "explanation": "집합을 원소 수 기준 정렬 후, 각 집합에서 이전에 없던 원소를 순서대로 추가"},
-      {"input": "\"{{1,2,3},{2,1},{1,2,4,3},{2}}\"", "output": "[2, 1, 3, 4]", "explanation": "크기1={2}, 크기2에서 1추가, 크기3에서 3추가, 크기4에서 4추가"}
+      {
+        "input": "\"{{2},{2,1},{2,1,3},{2,1,3,4}}\"",
+        "output": "[2, 1, 3, 4]",
+        "explanation": "집합을 원소 수 기준 정렬 후, 각 집합에서 이전에 없던 원소를 순서대로 추가"
+      },
+      {
+        "input": "\"{{1,2,3},{2,1},{1,2,4,3},{2}}\"",
+        "output": "[2, 1, 3, 4]",
+        "explanation": "크기1={2}, 크기2에서 1추가, 크기3에서 3추가, 크기4에서 4추가"
+      }
     ],
-    "constraints": ["s의 길이 5 이상 1,000,000 이하", "원소는 1 이상 100,000 이하 자연수", "중복된 집합 없음"],
-    "hints": ["s에서 바깥 {} 제거 후 '},{'로 분리하면 내부 집합 문자열 배열을 얻습니다.", "각 집합을 쉼표 수(원소 수-1) 기준 오름차순 정렬 후, LinkedHashSet으로 순서를 유지하며 새 원소만 추가합니다."],
+    "constraints": [
+      "s의 길이 5 이상 1,000,000 이하",
+      "원소는 1 이상 100,000 이하 자연수",
+      "중복된 집합 없음"
+    ],
+    "hints": [
+      "s에서 바깥 {} 제거 후 '},{'로 분리하면 내부 집합 문자열 배열을 얻습니다.",
+      "각 집합을 쉼표 수(원소 수-1) 기준 오름차순 정렬 후, LinkedHashSet으로 순서를 유지하며 새 원소만 추가합니다."
+    ],
     "approach": "외부 괄호 제거 후 내부 집합 파싱. 집합을 원소 수 기준 정렬 후, LinkedHashSet으로 순서 추적하며 새 원소만 결과에 추가.",
     "code": "import java.util.*;\n\npublic class Tuple {\n    public int[] solution(String s) {\n        s = s.substring(2, s.length() - 2);\n        String[] setStrs = s.split(\"\\\\},\\\\{\");\n        Arrays.sort(setStrs, (a, b) -> a.split(\",\").length - b.split(\",\").length);\n\n        Set<Integer> seen = new LinkedHashSet<>();\n        for (String setStr : setStrs)\n            for (String num : setStr.split(\",\"))\n                seen.add(Integer.parseInt(num.trim()));\n\n        return seen.stream().mapToInt(Integer::intValue).toArray();\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "외부 이중 괄호 제거 후 '},{'로 분리해 각 집합 문자열을 얻습니다. split(',').length로 원소 수 기준 정렬 후 LinkedHashSet에 삽입하면 삽입 순서를 유지하면서 중복이 자동 제거됩니다.",
     "secret": "문자열 길이로 정렬하면 '{1,10}'(6자)이 '{2,3}'(5자)보다 길어지는 엣지케이스 발생. 반드시 split(',').length로 원소 개수 비교해야 함. 두 자리 이상 숫자가 있으면 단순 길이 정렬이 틀린다.",
-    "similar": ["cdr-002", "cdr-004"]
+    "similar": [
+      "cdr-002",
+      "cdr-004"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-004",
     "title": "Open Chat Room",
     "titleKo": "오픈채팅방 (HashMap + 이벤트 로그)",
     "difficulty": "medium",
-    "patterns": ["implementation", "hash-map", "simulation"],
-    "companies": ["카카오"],
+    "patterns": [
+      "implementation",
+      "hash-map",
+      "simulation"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "year": "2019",
     "description": "오픈채팅방 기록 record 배열이 주어집니다. 형식: 'Enter uid 닉네임', 'Leave uid', 'Change uid 닉네임'. 닉네임은 마지막으로 설정된 값으로 표시합니다. Enter/Leave 이벤트에 대한 최종 메시지 배열을 반환하세요. Enter: '[닉네임]님이 들어왔습니다.', Leave: '[닉네임]님이 나갔습니다.'",
     "examples": [
-      {"input": "[\"Enter uid1234 Muzi\",\"Enter uid4567 Prodo\",\"Leave uid1234\",\"Enter uid1234 Muzi\",\"Change uid4567 Ryan\"]", "output": "[\"Muzi님이 들어왔습니다.\",\"Prodo님이 들어왔습니다.\",\"Muzi님이 나갔습니다.\",\"Muzi님이 들어왔습니다.\"]", "explanation": "uid4567 최종 닉네임은 Ryan이지만 Change는 메시지 없음. Enter/Leave만 출력, 닉네임은 최종값 사용"}
+      {
+        "input": "[\"Enter uid1234 Muzi\",\"Enter uid4567 Prodo\",\"Leave uid1234\",\"Enter uid1234 Muzi\",\"Change uid4567 Ryan\"]",
+        "output": "[\"Muzi님이 들어왔습니다.\",\"Prodo님이 들어왔습니다.\",\"Muzi님이 나갔습니다.\",\"Muzi님이 들어왔습니다.\"]",
+        "explanation": "uid4567 최종 닉네임은 Ryan이지만 Change는 메시지 없음. Enter/Leave만 출력, 닉네임은 최종값 사용"
+      }
     ],
-    "constraints": ["1 <= record.length <= 100,000", "uid 길이 1~10 알파벳 소문자+숫자", "닉네임 길이 1~10 알파벳"],
-    "hints": ["2-pass: 1패스에서 uid→최종닉네임 Map 구성, 2패스에서 Enter/Leave 이벤트만 처리합니다.", "Change는 메시지가 없으므로 이벤트 리스트에 추가하지 않습니다."],
+    "constraints": [
+      "1 <= record.length <= 100,000",
+      "uid 길이 1~10 알파벳 소문자+숫자",
+      "닉네임 길이 1~10 알파벳"
+    ],
+    "hints": [
+      "2-pass: 1패스에서 uid→최종닉네임 Map 구성, 2패스에서 Enter/Leave 이벤트만 처리합니다.",
+      "Change는 메시지가 없으므로 이벤트 리스트에 추가하지 않습니다."
+    ],
     "approach": "1패스: uid→닉네임 HashMap 구성. 2패스: Enter/Leave 이벤트를 최종 닉네임으로 메시지 생성.",
     "code": "import java.util.*;\n\npublic class OpenChat {\n    public String[] solution(String[] record) {\n        Map<String, String> nickMap = new HashMap<>();\n        List<String[]> events = new ArrayList<>();\n\n        for (String r : record) {\n            String[] parts = r.split(\" \");\n            String type = parts[0], uid = parts[1];\n            if (type.equals(\"Enter\")) {\n                nickMap.put(uid, parts[2]);\n                events.add(new String[]{\"Enter\", uid});\n            } else if (type.equals(\"Leave\")) {\n                events.add(new String[]{\"Leave\", uid});\n            } else {\n                nickMap.put(uid, parts[2]);\n            }\n        }\n\n        String[] result = new String[events.size()];\n        for (int i = 0; i < events.size(); i++) {\n            String type = events.get(i)[0], uid = events.get(i)[1];\n            result[i] = nickMap.get(uid) + \"님이 \" + (type.equals(\"Enter\") ? \"들어왔습니다.\" : \"나갔습니다.\");\n        }\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(N)"
+    },
     "walkthrough": "1패스에서 Enter/Change 시 uid→닉네임 맵을 업데이트하고, Enter/Leave 이벤트만 리스트에 저장합니다. 2패스에서 최종 닉네임으로 메시지를 생성합니다.",
     "secret": "Change는 events에 절대 추가하면 안 됨. 1패스와 2패스를 분리하지 않으면 중간 닉네임이 사용되는 버그 발생. Enter가 여러 번인 uid는 마지막 Enter 또는 Change 값이 최종 닉네임.",
-    "similar": ["cdr-003", "cdr-005"]
+    "similar": [
+      "cdr-003",
+      "cdr-005"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-005",
     "title": "Friends4Block",
     "titleKo": "프렌즈4블록 (그리드 시뮬레이션)",
     "difficulty": "medium",
-    "patterns": ["simulation", "grid", "implementation"],
-    "companies": ["카카오"],
+    "patterns": [
+      "simulation",
+      "grid",
+      "implementation"
+    ],
+    "companies": [
+      "카카오"
+    ],
     "year": "2018",
     "description": "m×n 보드에서 같은 문자로 이루어진 2×2 블록을 동시에 제거하고 위의 블록이 아래로 떨어지는 시뮬레이션을 반복합니다. 더 이상 제거할 블록이 없을 때까지 반복하며 총 제거된 블록 수를 반환하세요.",
     "examples": [
-      {"input": "m=4, n=5, board=[\"CCBDE\",\"AAADE\",\"AAABF\",\"CCBBF\"]", "output": "14", "explanation": "1회 제거 후 중력. 반복 후 총 14개 제거"}
+      {
+        "input": "m=4, n=5, board=[\"CCBDE\",\"AAADE\",\"AAABF\",\"CCBBF\"]",
+        "output": "14",
+        "explanation": "1회 제거 후 중력. 반복 후 총 14개 제거"
+      }
     ],
-    "constraints": ["2 <= m, n <= 30", "보드는 대문자 알파벳으로 구성"],
-    "hints": ["제거할 블록을 먼저 boolean 배열로 마킹 후 한꺼번에 제거해야 동시 제거 조건을 만족합니다.", "중력 적용은 각 열(column)을 아래에서 위로 스캔하며 빈 칸을 건너뛰고 값 있는 칸을 아래로 채우는 방식입니다."],
+    "constraints": [
+      "2 <= m, n <= 30",
+      "보드는 대문자 알파벳으로 구성"
+    ],
+    "hints": [
+      "제거할 블록을 먼저 boolean 배열로 마킹 후 한꺼번에 제거해야 동시 제거 조건을 만족합니다.",
+      "중력 적용은 각 열(column)을 아래에서 위로 스캔하며 빈 칸을 건너뛰고 값 있는 칸을 아래로 채우는 방식입니다."
+    ],
     "approach": "while 루프에서 2x2 체크→마킹→제거 카운트→중력 반복. 제거 블록 없으면 종료.",
     "code": "public class Friends4Block {\n    public int solution(int m, int n, String[] board) {\n        char[][] grid = new char[m][n];\n        for (int i = 0; i < m; i++) grid[i] = board[i].toCharArray();\n        int total = 0;\n        while (true) {\n            boolean[][] toRemove = new boolean[m][n];\n            for (int r = 0; r < m-1; r++)\n                for (int c = 0; c < n-1; c++) {\n                    char ch = grid[r][c];\n                    if (ch != '.' && ch == grid[r][c+1] && ch == grid[r+1][c] && ch == grid[r+1][c+1])\n                        toRemove[r][c] = toRemove[r][c+1] = toRemove[r+1][c] = toRemove[r+1][c+1] = true;\n                }\n            int removed = 0;\n            for (int r = 0; r < m; r++)\n                for (int c = 0; c < n; c++)\n                    if (toRemove[r][c]) { grid[r][c] = '.'; removed++; }\n            if (removed == 0) break;\n            total += removed;\n            for (int c = 0; c < n; c++) {\n                int bottom = m - 1;\n                for (int r = m-1; r >= 0; r--)\n                    if (grid[r][c] != '.') grid[bottom--][c] = grid[r][c];\n                while (bottom >= 0) grid[bottom--][c] = '.';\n            }\n        }\n        return total;\n    }\n}",
-    "complexity": {"time": "O(m*n*rounds)", "space": "O(m*n)"},
+    "complexity": {
+      "time": "O(m*n*rounds)",
+      "space": "O(m*n)"
+    },
     "walkthrough": "매 라운드 2x2 블록을 모두 마킹 후 동시 제거합니다. 이후 각 열에 대해 아래에서 위로 스캔하며 빈 칸을 건너뛰고 값 있는 칸을 아래로 채워 중력을 구현합니다. 제거 블록 없으면 종료.",
     "secret": "발견 즉시 제거하면 안 됨 — 반드시 마킹 후 동시 제거. 중력 구현은 반드시 열(column) 기준. 행 기준으로 처리하면 틀림.",
-    "similar": ["cdr-004"]
+    "similar": [
+      "cdr-004"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-006",
     "title": "Longest Increasing Subsequence",
     "titleKo": "가장 긴 증가하는 부분 수열 (LIS, O(N log N))",
     "difficulty": "hard",
-    "patterns": ["dynamic-programming", "binary-search"],
-    "companies": ["네이버", "카카오"],
+    "patterns": [
+      "dynamic-programming",
+      "binary-search"
+    ],
+    "companies": [
+      "네이버",
+      "카카오"
+    ],
     "year": "2023",
     "description": "정수 배열 nums가 주어질 때, 가장 긴 증가하는 부분 수열(LIS)의 길이를 반환하세요. O(N log N) 시간복잡도로 구현해야 합니다. LIS는 인덱스 순서를 유지하며 값이 순증가하는 부분 수열입니다.",
     "examples": [
-      {"input": "nums = [10, 9, 2, 5, 3, 7, 101, 18]", "output": "4", "explanation": "LIS: [2, 3, 7, 101] 길이 4"},
-      {"input": "nums = [0, 1, 0, 3, 2, 3]", "output": "4", "explanation": "LIS: [0, 1, 2, 3] 길이 4"}
+      {
+        "input": "nums = [10, 9, 2, 5, 3, 7, 101, 18]",
+        "output": "4",
+        "explanation": "LIS: [2, 3, 7, 101] 길이 4"
+      },
+      {
+        "input": "nums = [0, 1, 0, 3, 2, 3]",
+        "output": "4",
+        "explanation": "LIS: [0, 1, 2, 3] 길이 4"
+      }
     ],
-    "constraints": ["1 <= nums.length <= 100,000", "-10,000 <= nums[i] <= 10,000"],
-    "hints": ["tails[i]는 길이 i+1인 증가 수열의 마지막 원소 최솟값입니다.", "각 원소에 대해 tails에서 lower bound 이분탐색으로 교체 위치를 찾고, lo==size이면 배열 확장합니다."],
+    "constraints": [
+      "1 <= nums.length <= 100,000",
+      "-10,000 <= nums[i] <= 10,000"
+    ],
+    "hints": [
+      "tails[i]는 길이 i+1인 증가 수열의 마지막 원소 최솟값입니다.",
+      "각 원소에 대해 tails에서 lower bound 이분탐색으로 교체 위치를 찾고, lo==size이면 배열 확장합니다."
+    ],
     "approach": "patience sorting 기반 O(N log N) LIS. tails 배열 유지, 각 원소에 대해 lower bound 이분탐색으로 교체 위치 찾기.",
     "code": "public class LIS {\n    public int lengthOfLIS(int[] nums) {\n        int[] tails = new int[nums.length];\n        int size = 0;\n        for (int num : nums) {\n            int lo = 0, hi = size;\n            while (lo < hi) {\n                int mid = (lo + hi) / 2;\n                if (tails[mid] < num) lo = mid + 1;\n                else hi = mid;\n            }\n            tails[lo] = num;\n            if (lo == size) size++;\n        }\n        return size;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "tails 배열은 각 길이의 증가 수열에서 마지막 원소가 가장 작은 값을 저장합니다. 새 원소 num에 대해 lower bound로 삽입 위치를 찾아 교체합니다. tails가 실제 LIS를 나타내지 않을 수 있지만 크기는 정확합니다.",
     "secret": "O(N²) DP로는 N=100,000에서 TLE 확정. tails 배열 내용은 실제 LIS가 아닐 수 있음(길이만 올바름). 실제 수열 복원 필요 시 parent 배열 추가 필요.",
-    "similar": ["cdr-007", "cdr-010"]
+    "similar": [
+      "cdr-007",
+      "cdr-010"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-007",
     "title": "Edit Distance",
     "titleKo": "문자열 편집 거리 (Levenshtein Distance)",
     "difficulty": "medium",
-    "patterns": ["dynamic-programming", "string"],
-    "companies": ["네이버", "라인"],
+    "patterns": [
+      "dynamic-programming",
+      "string"
+    ],
+    "companies": [
+      "네이버",
+      "라인"
+    ],
     "year": "2022",
     "description": "두 문자열 word1, word2가 주어질 때, word1을 word2로 변환하는 데 필요한 최소 편집 횟수를 반환하세요. 사용 가능한 연산: 삽입(insert), 삭제(delete), 교체(replace) — 각 1회. 이를 레벤슈타인 거리라고 합니다.",
     "examples": [
-      {"input": "word1=\"horse\", word2=\"ros\"", "output": "3", "explanation": "horse→rorse(교체)→rose(삭제)→ros(삭제)"},
-      {"input": "word1=\"intention\", word2=\"execution\"", "output": "5", "explanation": "5번 편집으로 변환 가능"}
+      {
+        "input": "word1=\"horse\", word2=\"ros\"",
+        "output": "3",
+        "explanation": "horse→rorse(교체)→rose(삭제)→ros(삭제)"
+      },
+      {
+        "input": "word1=\"intention\", word2=\"execution\"",
+        "output": "5",
+        "explanation": "5번 편집으로 변환 가능"
+      }
     ],
-    "constraints": ["0 <= word1.length, word2.length <= 500", "소문자 알파벳만 포함"],
-    "hints": ["dp[i][j] = word1의 i번째까지와 word2의 j번째까지의 편집 거리.", "word1[i-1]==word2[j-1]이면 dp[i][j]=dp[i-1][j-1], 다르면 1+min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])"],
+    "constraints": [
+      "0 <= word1.length, word2.length <= 500",
+      "소문자 알파벳만 포함"
+    ],
+    "hints": [
+      "dp[i][j] = word1의 i번째까지와 word2의 j번째까지의 편집 거리.",
+      "word1[i-1]==word2[j-1]이면 dp[i][j]=dp[i-1][j-1], 다르면 1+min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])"
+    ],
     "approach": "2D DP. dp[i][j]는 word1[0..i-1]→word2[0..j-1] 편집 거리. 점화식: 문자 같으면 대각, 다르면 1+min(위,왼,대각).",
     "code": "public class EditDistance {\n    public int minDistance(String word1, String word2) {\n        int m = word1.length(), n = word2.length();\n        int[][] dp = new int[m+1][n+1];\n        for (int i = 0; i <= m; i++) dp[i][0] = i;\n        for (int j = 0; j <= n; j++) dp[0][j] = j;\n        for (int i = 1; i <= m; i++)\n            for (int j = 1; j <= n; j++)\n                if (word1.charAt(i-1) == word2.charAt(j-1))\n                    dp[i][j] = dp[i-1][j-1];\n                else\n                    dp[i][j] = 1 + Math.min(dp[i-1][j-1], Math.min(dp[i-1][j], dp[i][j-1]));\n        return dp[m][n];\n    }\n}",
-    "complexity": {"time": "O(M*N)", "space": "O(M*N)"},
+    "complexity": {
+      "time": "O(M*N)",
+      "space": "O(M*N)"
+    },
     "walkthrough": "dp 테이블을 왼쪽 위에서 오른쪽 아래로 채웁니다. 기저: 빈 문자열 변환(삽입/삭제만). 문자 같으면 대각, 다르면 세 가지 연산(삭제=위, 삽입=왼, 교체=대각) 중 최솟값+1.",
     "secret": "삽입/삭제/교체 방향을 헷갈리면 틀림: dp[i-1][j]=word1에서 삭제, dp[i][j-1]=word1에 삽입, dp[i-1][j-1]=교체. 빈 문자열 기저 조건 초기화 빠뜨리지 말 것.",
-    "similar": ["cdr-006"]
+    "similar": [
+      "cdr-006"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-008",
     "title": "Number of Islands",
     "titleKo": "섬의 개수 (BFS)",
     "difficulty": "medium",
-    "patterns": ["bfs", "dfs", "graph"],
-    "companies": ["네이버", "쿠팡"],
+    "patterns": [
+      "bfs",
+      "dfs",
+      "graph"
+    ],
+    "companies": [
+      "네이버",
+      "쿠팡"
+    ],
     "year": "2023",
     "description": "'1'(땅)과 '0'(물)로 구성된 m×n 그리드에서 섬의 개수를 반환하세요. 섬은 4방향으로 연결된 '1'의 집합이며, 그리드 경계 밖은 물로 처리합니다.",
     "examples": [
-      {"input": "grid=[[1,1,0,0,0],[1,1,0,0,0],[0,0,1,0,0],[0,0,0,1,1]]", "output": "3", "explanation": "좌상단 섬1, 중앙 섬2, 우하단 섬3"},
-      {"input": "grid=[[1,1,1,1,0],[1,1,0,1,0],[1,1,0,0,0],[0,0,0,0,0]]", "output": "1", "explanation": "모든 1이 연결된 하나의 섬"}
+      {
+        "input": "grid=[[1,1,0,0,0],[1,1,0,0,0],[0,0,1,0,0],[0,0,0,1,1]]",
+        "output": "3",
+        "explanation": "좌상단 섬1, 중앙 섬2, 우하단 섬3"
+      },
+      {
+        "input": "grid=[[1,1,1,1,0],[1,1,0,1,0],[1,1,0,0,0],[0,0,0,0,0]]",
+        "output": "1",
+        "explanation": "모든 1이 연결된 하나의 섬"
+      }
     ],
-    "constraints": ["1 <= m, n <= 300", "grid[i][j]는 0 또는 1"],
-    "hints": ["미방문 '1' 발견 시 count++, BFS로 연결된 모든 '1'을 '0'으로 마킹합니다.", "BFS 큐에 넣을 때 즉시 마킹해야 중복 삽입을 방지합니다."],
+    "constraints": [
+      "1 <= m, n <= 300",
+      "grid[i][j]는 0 또는 1"
+    ],
+    "hints": [
+      "미방문 '1' 발견 시 count++, BFS로 연결된 모든 '1'을 '0'으로 마킹합니다.",
+      "BFS 큐에 넣을 때 즉시 마킹해야 중복 삽입을 방지합니다."
+    ],
     "approach": "BFS: 미방문 1 발견 시 count++, BFS로 연결된 모든 1을 0으로 마킹. O(M*N).",
     "code": "import java.util.*;\n\npublic class NumberOfIslands {\n    private static final int[][] DIRS = {{0,1},{0,-1},{1,0},{-1,0}};\n\n    public int numIslands(char[][] grid) {\n        int m = grid.length, n = grid[0].length, count = 0;\n        for (int r = 0; r < m; r++)\n            for (int c = 0; c < n; c++)\n                if (grid[r][c] == '1') { count++; bfs(grid, r, c, m, n); }\n        return count;\n    }\n\n    private void bfs(char[][] grid, int sr, int sc, int m, int n) {\n        Queue<int[]> q = new ArrayDeque<>();\n        q.offer(new int[]{sr, sc});\n        grid[sr][sc] = '0';\n        while (!q.isEmpty()) {\n            int[] cur = q.poll();\n            for (int[] d : DIRS) {\n                int nr = cur[0]+d[0], nc = cur[1]+d[1];\n                if (nr>=0 && nr<m && nc>=0 && nc<n && grid[nr][nc]=='1') {\n                    grid[nr][nc] = '0';\n                    q.offer(new int[]{nr, nc});\n                }\n            }\n        }\n    }\n}",
-    "complexity": {"time": "O(M*N)", "space": "O(min(M,N))"},
+    "complexity": {
+      "time": "O(M*N)",
+      "space": "O(min(M,N))"
+    },
     "walkthrough": "모든 셀 순회 중 미방문 '1' 발견 시 섬 카운트 증가 후 BFS로 연결 영역 전체를 '0'으로 마킹합니다. BFS에서 큐 삽입 시 즉시 마킹해야 중복 삽입이 방지됩니다.",
     "secret": "큐에서 꺼낼 때 마킹하면 같은 셀이 큐에 중복 삽입되어 O(M*N) 보장이 깨짐. 반드시 큐에 넣을 때 마킹. 입력 변경 불가 조건이 있으면 반드시 visited 배열 별도 사용.",
-    "similar": ["cdr-009", "cdr-010"]
+    "similar": [
+      "cdr-009",
+      "cdr-010"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-009",
     "title": "Shortest Path (Dijkstra)",
     "titleKo": "최단 경로 (다익스트라)",
     "difficulty": "hard",
-    "patterns": ["dijkstra", "graph", "priority-queue"],
-    "companies": ["네이버", "카카오"],
+    "patterns": [
+      "dijkstra",
+      "graph",
+      "priority-queue"
+    ],
+    "companies": [
+      "네이버",
+      "카카오"
+    ],
     "year": "2022",
     "description": "N개의 노드와 간선 정보 edges가 주어집니다. edges[i] = [출발, 도착, 비용]. 노드 1에서 모든 노드로의 최단 거리를 배열로 반환하세요. 도달 불가한 노드는 -1로 표시합니다. 방향 그래프입니다.",
     "examples": [
-      {"input": "N=5, edges=[[1,2,2],[1,3,3],[2,3,4],[2,4,5],[3,4,6],[4,5,1],[3,5,7]]", "output": "[0, 2, 3, 7, 8]", "explanation": "1→2:2, 1→3:3, 1→2→4:7, 1→2→4→5:8"}
+      {
+        "input": "N=5, edges=[[1,2,2],[1,3,3],[2,3,4],[2,4,5],[3,4,6],[4,5,1],[3,5,7]]",
+        "output": "[0, 2, 3, 7, 8]",
+        "explanation": "1→2:2, 1→3:3, 1→2→4:7, 1→2→4→5:8"
+      }
     ],
-    "constraints": ["1 <= N <= 20,000", "1 <= edges.length <= 300,000", "1 <= 비용 <= 10,000"],
-    "hints": ["PriorityQueue<int[]>를 {비용, 노드} 형태로 사용해 최소 비용 노드부터 처리합니다.", "꺼낸 비용이 현재 dist보다 크면 이미 처리된 상태이므로 건너뜁니다."],
+    "constraints": [
+      "1 <= N <= 20,000",
+      "1 <= edges.length <= 300,000",
+      "1 <= 비용 <= 10,000"
+    ],
+    "hints": [
+      "PriorityQueue<int[]>를 {비용, 노드} 형태로 사용해 최소 비용 노드부터 처리합니다.",
+      "꺼낸 비용이 현재 dist보다 크면 이미 처리된 상태이므로 건너뜁니다."
+    ],
     "approach": "다익스트라: min-heap PriorityQueue로 최단 거리 갱신. dist[i]=Integer.MAX_VALUE 초기화. cost>dist[node] 체크로 중복 처리 방지.",
     "code": "import java.util.*;\n\npublic class Dijkstra {\n    public int[] solution(int n, int[][] edges) {\n        List<int[]>[] graph = new ArrayList[n+1];\n        for (int i = 1; i <= n; i++) graph[i] = new ArrayList<>();\n        for (int[] e : edges) graph[e[0]].add(new int[]{e[1], e[2]});\n\n        int[] dist = new int[n+1];\n        Arrays.fill(dist, Integer.MAX_VALUE);\n        dist[1] = 0;\n        PriorityQueue<int[]> pq = new PriorityQueue<>(Comparator.comparingInt(a -> a[0]));\n        pq.offer(new int[]{0, 1});\n\n        while (!pq.isEmpty()) {\n            int[] cur = pq.poll();\n            int cost = cur[0], node = cur[1];\n            if (cost > dist[node]) continue;\n            for (int[] next : graph[node]) {\n                int newCost = dist[node] + next[1];\n                if (newCost < dist[next[0]]) {\n                    dist[next[0]] = newCost;\n                    pq.offer(new int[]{newCost, next[0]});\n                }\n            }\n        }\n\n        int[] result = new int[n];\n        for (int i = 1; i <= n; i++)\n            result[i-1] = dist[i] == Integer.MAX_VALUE ? -1 : dist[i];\n        return result;\n    }\n}",
-    "complexity": {"time": "O((V+E) log V)", "space": "O(V+E)"},
+    "complexity": {
+      "time": "O((V+E) log V)",
+      "space": "O(V+E)"
+    },
     "walkthrough": "dist 배열을 최댓값으로 초기화 후 시작 노드를 0으로 설정합니다. PriorityQueue에서 최소 비용 노드를 꺼내 인접 노드의 거리를 갱신합니다. 꺼낸 비용이 현재 dist보다 크면 이미 처리된 상태이므로 건너뜁니다.",
     "secret": "cost > dist[node] 체크를 빠뜨리면 동일 노드가 여러 번 처리되어 TLE. Integer.MAX_VALUE에 값을 더할 때 오버플로우 주의 — newCost를 long으로 처리하거나 조건 체크 필요.",
-    "similar": ["cdr-008", "cdr-010"]
+    "similar": [
+      "cdr-008",
+      "cdr-010"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-010",
     "title": "Topological Sort (Task Ordering)",
     "titleKo": "위상 정렬 (작업 순서)",
     "difficulty": "hard",
-    "patterns": ["topological-sort", "graph", "bfs"],
-    "companies": ["네이버", "카카오"],
+    "patterns": [
+      "topological-sort",
+      "graph",
+      "bfs"
+    ],
+    "companies": [
+      "네이버",
+      "카카오"
+    ],
     "year": "2021",
     "description": "N개의 작업과 선행 관계 relations가 주어집니다. relations[i] = [a, b]는 작업 a가 완료되어야 b를 시작할 수 있음을 의미합니다. 모든 작업을 완료하는 데 필요한 최소 시간을 구하세요. 각 작업은 1의 시간이 걸리며, 선행 작업이 없는 것은 동시에 시작할 수 있습니다.",
     "examples": [
-      {"input": "N=6, relations=[[1,2],[1,3],[2,6],[3,4],[4,6],[5,6]]", "output": "4", "explanation": "가장 긴 경로: 1→3→4→6 = 4단계"},
-      {"input": "N=4, relations=[[1,2],[2,3],[3,4]]", "output": "4", "explanation": "직렬 경로: 1→2→3→4 = 4단계"}
+      {
+        "input": "N=6, relations=[[1,2],[1,3],[2,6],[3,4],[4,6],[5,6]]",
+        "output": "4",
+        "explanation": "가장 긴 경로: 1→3→4→6 = 4단계"
+      },
+      {
+        "input": "N=4, relations=[[1,2],[2,3],[3,4]]",
+        "output": "4",
+        "explanation": "직렬 경로: 1→2→3→4 = 4단계"
+      }
     ],
-    "constraints": ["1 <= N <= 1000", "1 <= relations.length <= 500", "사이클 없음 보장"],
-    "hints": ["위상 정렬 + DP: dist[i]는 작업 i까지의 최장 경로 길이입니다.", "진입차수 0인 노드를 dist=1로 초기화 후 BFS로 처리합니다."],
+    "constraints": [
+      "1 <= N <= 1000",
+      "1 <= relations.length <= 500",
+      "사이클 없음 보장"
+    ],
+    "hints": [
+      "위상 정렬 + DP: dist[i]는 작업 i까지의 최장 경로 길이입니다.",
+      "진입차수 0인 노드를 dist=1로 초기화 후 BFS로 처리합니다."
+    ],
     "approach": "위상 정렬(Kahn's algorithm) + 각 노드까지 최장 경로 DP. 최종 답은 max(dist[1..N]).",
     "code": "import java.util.*;\n\npublic class TopologicalSort {\n    public int solution(int n, int[][] relations) {\n        List<Integer>[] graph = new ArrayList[n+1];\n        int[] indegree = new int[n+1], dist = new int[n+1];\n        for (int i = 1; i <= n; i++) graph[i] = new ArrayList<>();\n        for (int[] r : relations) { graph[r[0]].add(r[1]); indegree[r[1]]++; }\n\n        Queue<Integer> q = new ArrayDeque<>();\n        for (int i = 1; i <= n; i++)\n            if (indegree[i] == 0) { q.offer(i); dist[i] = 1; }\n\n        while (!q.isEmpty()) {\n            int cur = q.poll();\n            for (int next : graph[cur]) {\n                dist[next] = Math.max(dist[next], dist[cur] + 1);\n                if (--indegree[next] == 0) q.offer(next);\n            }\n        }\n\n        int ans = 0;\n        for (int i = 1; i <= n; i++) ans = Math.max(ans, dist[i]);\n        return ans;\n    }\n}",
-    "complexity": {"time": "O(V+E)", "space": "O(V+E)"},
+    "complexity": {
+      "time": "O(V+E)",
+      "space": "O(V+E)"
+    },
     "walkthrough": "진입차수 0인 노드를 큐에 넣고 dist=1로 초기화합니다. 큐에서 노드를 꺼내며 다음 노드의 dist를 현재+1과 비교해 최댓값으로 갱신합니다. 진입차수가 0이 된 노드를 큐에 추가합니다.",
     "secret": "dist 초기화를 0으로 하면 선행 작업 없는 노드가 1이 되어야 하는데 0이 됨. 진입차수 0인 노드를 dist=1로 초기화해야 함. 최종 답은 dist 배열 전체 최댓값.",
-    "similar": ["cdr-009", "cdr-023"]
+    "similar": [
+      "cdr-009",
+      "cdr-023"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-011",
     "title": "Delivery Time Statistics",
     "titleKo": "주문 ID별 배송 시간 통계",
     "difficulty": "medium",
-    "patterns": ["implementation", "hash-map", "sorting"],
-    "companies": ["쿠팡"],
+    "patterns": [
+      "implementation",
+      "hash-map",
+      "sorting"
+    ],
+    "companies": [
+      "쿠팡"
+    ],
     "year": "2023",
     "description": "배송 로그 배열이 주어집니다. 각 로그는 [orderId, eventType, timestamp] 형식이며 eventType은 'CREATED', 'SHIPPED', 'DELIVERED' 중 하나입니다. 각 주문의 (DELIVERED - CREATED) 배송 시간을 구하고 전체의 평균/최대/최솟값을 반환하세요. DELIVERED가 없는 주문은 제외합니다.",
     "examples": [
-      {"input": "logs=[[1,\"CREATED\",100],[1,\"SHIPPED\",200],[1,\"DELIVERED\",400],[2,\"CREATED\",150],[2,\"DELIVERED\",350],[3,\"CREATED\",200]]", "output": "{avg:250.0, max:300, min:200}", "explanation": "주문1: 400-100=300, 주문2: 350-150=200. 주문3은 DELIVERED 없으므로 제외. avg=250.0"}
+      {
+        "input": "logs=[[1,\"CREATED\",100],[1,\"SHIPPED\",200],[1,\"DELIVERED\",400],[2,\"CREATED\",150],[2,\"DELIVERED\",350],[3,\"CREATED\",200]]",
+        "output": "{avg:250.0, max:300, min:200}",
+        "explanation": "주문1: 400-100=300, 주문2: 350-150=200. 주문3은 DELIVERED 없으므로 제외. avg=250.0"
+      }
     ],
-    "constraints": ["1 <= logs.length <= 100,000", "1 <= orderId <= 1,000,000", "timestamp는 단조 증가"],
-    "hints": ["HashMap<Long, Map<String, Long>>으로 orderId별 이벤트 타임스탬프를 저장합니다.", "CREATED와 DELIVERED가 모두 존재하는 주문만 통계에 포함합니다."],
+    "constraints": [
+      "1 <= logs.length <= 100,000",
+      "1 <= orderId <= 1,000,000",
+      "timestamp는 단조 증가"
+    ],
+    "hints": [
+      "HashMap<Long, Map<String, Long>>으로 orderId별 이벤트 타임스탬프를 저장합니다.",
+      "CREATED와 DELIVERED가 모두 존재하는 주문만 통계에 포함합니다."
+    ],
     "approach": "HashMap으로 orderId별 이벤트 수집. DELIVERED-CREATED 계산 후 통계 산출. 빈 결과 케이스 먼저 처리.",
     "code": "import java.util.*;\n\npublic class DeliveryStats {\n    public double[] solution(long[][] logs) {\n        Map<Long, Map<String, Long>> orderEvents = new HashMap<>();\n        String[] types = {\"CREATED\", \"SHIPPED\", \"DELIVERED\"};\n        for (long[] log : logs) {\n            long orderId = log[0];\n            String eventType = types[(int)log[1]];\n            orderEvents.computeIfAbsent(orderId, k -> new HashMap<>()).put(eventType, log[2]);\n        }\n\n        List<Long> deliveryTimes = new ArrayList<>();\n        for (Map<String, Long> events : orderEvents.values()) {\n            if (events.containsKey(\"CREATED\") && events.containsKey(\"DELIVERED\"))\n                deliveryTimes.add(events.get(\"DELIVERED\") - events.get(\"CREATED\"));\n        }\n\n        if (deliveryTimes.isEmpty()) return new double[]{0, 0, 0};\n        long sum = 0, max = Long.MIN_VALUE, min = Long.MAX_VALUE;\n        for (long t : deliveryTimes) { sum += t; max = Math.max(max, t); min = Math.min(min, t); }\n        return new double[]{(double)sum/deliveryTimes.size(), max, min};\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(N)"
+    },
     "walkthrough": "computeIfAbsent로 NPE 없이 중첩 맵을 구성합니다. CREATED와 DELIVERED가 모두 있는 주문만 배송 시간을 계산합니다. 빈 결과 케이스를 먼저 처리한 후 sum/max/min을 산출합니다.",
     "secret": "DELIVERED 없는 주문을 포함하면 NullPointerException. Long.MIN_VALUE/MAX_VALUE 초기화를 빠뜨리면 빈 리스트 케이스에서 오답. computeIfAbsent 없이 get().put() 하면 NPE.",
-    "similar": ["cdr-012", "cdr-013"]
+    "similar": [
+      "cdr-012",
+      "cdr-013"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-012",
     "title": "Inventory Management with Heap",
     "titleKo": "재고 관리 (Heap + 최저가 쿼리)",
     "difficulty": "hard",
-    "patterns": ["heap", "priority-queue", "implementation"],
-    "companies": ["쿠팡"],
+    "patterns": [
+      "heap",
+      "priority-queue",
+      "implementation"
+    ],
+    "companies": [
+      "쿠팡"
+    ],
     "year": "2022",
     "description": "상품 재고 관리 시스템을 구현하세요. 쿼리 배열이 주어지며 각 쿼리는 다음 중 하나입니다: ADD productId quantity price (재고 추가), SELL productId quantity (가격이 낮은 재고부터 판매, 동일 가격이면 먼저 입고된 것부터), MIN_PRICE (현재 재고 중 최저 가격 반환). 각 MIN_PRICE 쿼리 결과 배열을 반환하세요.",
     "examples": [
-      {"input": "queries=[[ADD,P1,10,500],[ADD,P1,5,300],[MIN_PRICE],[SELL,P1,6],[MIN_PRICE]]", "output": "[300, 500]", "explanation": "MIN_PRICE: P1 최저 300. SELL 6개: 300짜리 5개+500짜리 1개. 두번째 MIN_PRICE: 남은 500짜리"}
+      {
+        "input": "queries=[[ADD,P1,10,500],[ADD,P1,5,300],[MIN_PRICE],[SELL,P1,6],[MIN_PRICE]]",
+        "output": "[300, 500]",
+        "explanation": "MIN_PRICE: P1 최저 300. SELL 6개: 300짜리 5개+500짜리 1개. 두번째 MIN_PRICE: 남은 500짜리"
+      }
     ],
-    "constraints": ["1 <= queries.length <= 100,000", "1 <= quantity <= 10,000", "1 <= price <= 1,000,000"],
-    "hints": ["PriorityQueue에 {price, insertOrder, quantity}로 저장해 최저가+FIFO 정렬합니다.", "SELL 시 heap에서 꺼내 수량을 차감하고, 남은 수량은 다시 push합니다."],
+    "constraints": [
+      "1 <= queries.length <= 100,000",
+      "1 <= quantity <= 10,000",
+      "1 <= price <= 1,000,000"
+    ],
+    "hints": [
+      "PriorityQueue에 {price, insertOrder, quantity}로 저장해 최저가+FIFO 정렬합니다.",
+      "SELL 시 heap에서 꺼내 수량을 차감하고, 남은 수량은 다시 push합니다."
+    ],
     "approach": "min-heap으로 최저가 재고 관리. SELL 시 heap에서 최저가부터 차감. MIN_PRICE는 heap.peek() 반환. 같은 가격이면 입고 순서(insertOrder) 기준 FIFO.",
     "code": "import java.util.*;\n\npublic class InventoryManager {\n    public List<Integer> solution(String[][] queries) {\n        // {price, insertOrder, quantity}\n        PriorityQueue<long[]> pq = new PriorityQueue<>((a, b) ->\n            a[0] != b[0] ? Long.compare(a[0], b[0]) : Long.compare(a[1], b[1]));\n        long order = 0;\n        List<Integer> result = new ArrayList<>();\n\n        for (String[] q : queries) {\n            switch (q[0]) {\n                case \"ADD\" -> pq.offer(new long[]{Long.parseLong(q[3]), order++, Long.parseLong(q[2])});\n                case \"SELL\" -> {\n                    long remaining = Long.parseLong(q[2]);\n                    while (!pq.isEmpty() && remaining > 0) {\n                        long[] top = pq.poll();\n                        if (top[2] <= remaining) { remaining -= top[2]; }\n                        else { top[2] -= remaining; remaining = 0; pq.offer(top); }\n                    }\n                }\n                case \"MIN_PRICE\" -> result.add(pq.isEmpty() ? -1 : (int) pq.peek()[0]);\n            }\n        }\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "min-heap에 {가격, 입고순서, 수량} 형태로 저장합니다. SELL에서 heap 상단부터 수량을 차감하고 남은 수량은 다시 push합니다. MIN_PRICE는 heap.peek()의 가격을 반환합니다.",
     "secret": "같은 가격의 재고가 여러 번 입고된 경우 FIFO 처리를 위해 insertOrder를 두 번째 정렬 키로 사용해야 함. 재고 없는 상태의 MIN_PRICE는 -1 반환. 부분 판매 후 남은 수량을 heap에 다시 넣는 로직 누락 주의.",
-    "similar": ["cdr-011", "cdr-015"]
+    "similar": [
+      "cdr-011",
+      "cdr-015"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-013",
     "title": "Log Analysis with Sliding Window",
     "titleKo": "로그 분석 (슬라이딩 윈도우)",
     "difficulty": "medium",
-    "patterns": ["sliding-window", "two-pointer", "hash-map"],
-    "companies": ["쿠팡", "네이버"],
+    "patterns": [
+      "sliding-window",
+      "two-pointer",
+      "hash-map"
+    ],
+    "companies": [
+      "쿠팡",
+      "네이버"
+    ],
     "year": "2023",
     "description": "요청 로그 배열 requests가 주어집니다. requests[i] = [timestamp, userId]. 길이 windowSize(초) 구간에서 가장 많은 요청을 보낸 userId를 반환하세요. 전체 기간 중 어떤 windowSize 구간에서든 최다 요청 유저를 반환합니다. 동일 최대값이면 userId 사전순 첫 번째를 반환합니다.",
     "examples": [
-      {"input": "requests=[[1,\"A\"],[1,\"B\"],[2,\"A\"],[3,\"C\"],[4,\"A\"],[5,\"B\"]], windowSize=3", "output": "A", "explanation": "타임스탬프 1~3 구간: A=2, B=1, C=1 → A 최다"}
+      {
+        "input": "requests=[[1,\"A\"],[1,\"B\"],[2,\"A\"],[3,\"C\"],[4,\"A\"],[5,\"B\"]], windowSize=3",
+        "output": "A",
+        "explanation": "타임스탬프 1~3 구간: A=2, B=1, C=1 → A 최다"
+      }
     ],
-    "constraints": ["1 <= requests.length <= 100,000", "1 <= timestamp <= 1,000,000", "windowSize >= 1"],
-    "hints": ["timestamp 기준 정렬 후 two-pointer로 슬라이딩 윈도우를 유지합니다.", "윈도우 내 카운트를 HashMap으로 관리하고 left 이동 시 카운트를 감소시킵니다."],
+    "constraints": [
+      "1 <= requests.length <= 100,000",
+      "1 <= timestamp <= 1,000,000",
+      "windowSize >= 1"
+    ],
+    "hints": [
+      "timestamp 기준 정렬 후 two-pointer로 슬라이딩 윈도우를 유지합니다.",
+      "윈도우 내 카운트를 HashMap으로 관리하고 left 이동 시 카운트를 감소시킵니다."
+    ],
     "approach": "Two pointer 슬라이딩 윈도우. HashMap으로 윈도우 내 userId 카운트 유지. 매 단계 최대 카운트 userId 추적.",
     "code": "import java.util.*;\n\npublic class LogAnalysis {\n    public String solution(int[][] requests, int windowSize) {\n        Arrays.sort(requests, (a, b) -> a[0] - b[0]);\n        Map<Integer, Integer> cnt = new HashMap<>();\n        int left = 0, maxCnt = 0, bestUser = -1;\n\n        for (int right = 0; right < requests.length; right++) {\n            int uid = requests[right][1];\n            cnt.merge(uid, 1, Integer::sum);\n\n            while (requests[right][0] - requests[left][0] >= windowSize) {\n                int lu = requests[left][1];\n                cnt.merge(lu, -1, Integer::sum);\n                if (cnt.get(lu) == 0) cnt.remove(lu);\n                left++;\n            }\n\n            int c = cnt.get(uid);\n            if (c > maxCnt || (c == maxCnt && (bestUser == -1 || uid < bestUser))) {\n                maxCnt = c; bestUser = uid;\n            }\n        }\n        return String.valueOf(bestUser);\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "timestamp 기준 정렬 후 two-pointer로 윈도우를 유지합니다. right를 전진시키며 추가, 윈도우 크기 초과 시 left를 전진시키며 카운트를 감소시킵니다. 매 단계 최대 카운트 userId를 갱신합니다.",
     "secret": "윈도우 조건을 > windowSize로 쓰면 경계값 오류. 조건은 >= windowSize. 정렬 없이 처리하면 오답. left 이동 시 cnt.remove()를 빠뜨리면 메모리 누수 및 오답.",
-    "similar": ["cdr-011", "cdr-014"]
+    "similar": [
+      "cdr-011",
+      "cdr-014"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-014",
     "title": "Price Change Tracking (Monotonic Stack)",
     "titleKo": "가격 변동 추적 (모노토닉 스택)",
     "difficulty": "hard",
-    "patterns": ["monotonic-stack", "stack"],
-    "companies": ["쿠팡", "토스"],
+    "patterns": [
+      "monotonic-stack",
+      "stack"
+    ],
+    "companies": [
+      "쿠팡",
+      "토스"
+    ],
     "year": "2022",
     "description": "상품 가격 배열 prices가 시간 순서로 주어집니다. 각 시점 i에서 가격이 처음으로 하락하는 시점까지 몇 초가 유지되는지 계산하세요. 끝까지 하락하지 않으면 남은 기간을 반환합니다. prices[i]는 i초의 가격입니다.",
     "examples": [
-      {"input": "prices = [1, 2, 3, 2, 3]", "output": "[4, 3, 1, 1, 0]", "explanation": "prices[0]=1: 4초 유지(끝까지), prices[2]=3: 1초 후 prices[3]=2로 하락"},
-      {"input": "prices = [5, 4, 3, 2, 1]", "output": "[1, 1, 1, 1, 0]", "explanation": "매 시점마다 다음 시점에 가격 하락"}
+      {
+        "input": "prices = [1, 2, 3, 2, 3]",
+        "output": "[4, 3, 1, 1, 0]",
+        "explanation": "prices[0]=1: 4초 유지(끝까지), prices[2]=3: 1초 후 prices[3]=2로 하락"
+      },
+      {
+        "input": "prices = [5, 4, 3, 2, 1]",
+        "output": "[1, 1, 1, 1, 0]",
+        "explanation": "매 시점마다 다음 시점에 가격 하락"
+      }
     ],
-    "constraints": ["1 <= prices.length <= 100,000", "1 <= prices[i] <= 10,000"],
-    "hints": ["단조 감소하지 않는 스택(monotonic non-decreasing stack)을 유지합니다.", "현재 가격이 스택 top의 가격보다 낮으면 스택에서 pop하며 유지 시간 = 현재 인덱스 - pop된 인덱스로 계산합니다."],
+    "constraints": [
+      "1 <= prices.length <= 100,000",
+      "1 <= prices[i] <= 10,000"
+    ],
+    "hints": [
+      "단조 감소하지 않는 스택(monotonic non-decreasing stack)을 유지합니다.",
+      "현재 가격이 스택 top의 가격보다 낮으면 스택에서 pop하며 유지 시간 = 현재 인덱스 - pop된 인덱스로 계산합니다."
+    ],
     "approach": "Monotonic stack: 스택에 인덱스 저장. 현재 가격 < stack top의 가격이면 pop하며 유지 시간 계산. 끝까지 남은 인덱스는 (n-1-index)로 처리.",
     "code": "import java.util.*;\n\npublic class PriceChange {\n    public int[] solution(int[] prices) {\n        int n = prices.length;\n        int[] result = new int[n];\n        Deque<Integer> stack = new ArrayDeque<>(); // 인덱스 저장\n\n        for (int i = 0; i < n; i++) {\n            // 현재 가격이 스택 top의 가격보다 낮으면 가격 하락\n            while (!stack.isEmpty() && prices[stack.peek()] > prices[i]) {\n                int idx = stack.pop();\n                result[idx] = i - idx; // 유지 시간\n            }\n            stack.push(i);\n        }\n\n        // 스택에 남은 인덱스: 끝까지 하락 없음\n        while (!stack.isEmpty()) {\n            int idx = stack.pop();\n            result[idx] = n - 1 - idx;\n        }\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(N)"
+    },
     "walkthrough": "스택에 인덱스를 저장하며 현재 가격이 스택 top의 가격보다 낮으면 pop하고 유지 시간(현재 인덱스 - pop된 인덱스)을 결과에 저장합니다. 루프 후 남은 인덱스는 끝까지 하락 없이 유지된 것이므로 (n-1-index)로 계산합니다.",
     "secret": "브루트포스 O(N²)로는 N=100,000에서 TLE 확정. 가격이 같을 때(>=가 아닌 >)를 하락 조건으로 처리해야 함 — 동일 가격은 하락이 아님. 스택 비울 때 result 초기화 빠뜨리면 0으로 남음.",
-    "similar": ["cdr-013", "cdr-015"]
+    "similar": [
+      "cdr-013",
+      "cdr-015"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-015",
     "title": "Recommended Product Score",
     "titleKo": "추천 상품 점수 계산",
     "difficulty": "medium",
-    "patterns": ["implementation", "sorting", "hash-map"],
-    "companies": ["쿠팡", "배민"],
+    "patterns": [
+      "implementation",
+      "sorting",
+      "hash-map"
+    ],
+    "companies": [
+      "쿠팡",
+      "배민"
+    ],
     "year": "2023",
     "description": "사용자 행동 로그와 상품 정보가 주어집니다. 각 로그는 [userId, productId, action] 형식이며 action은 'VIEW'(1점), 'CART'(3점), 'PURCHASE'(5점)입니다. 각 상품의 총 점수를 계산하고, 상위 K개 상품 ID를 점수 내림차순으로 반환하세요. 점수가 같으면 productId 오름차순.",
     "examples": [
-      {"input": "logs=[[1,\"P1\",\"VIEW\"],[2,\"P1\",\"PURCHASE\"],[1,\"P2\",\"CART\"],[3,\"P2\",\"VIEW\"]], K=2", "output": "[P1, P2]", "explanation": "P1: 1+5=6점, P2: 3+1=4점. 상위 2개: [P1, P2]"}
+      {
+        "input": "logs=[[1,\"P1\",\"VIEW\"],[2,\"P1\",\"PURCHASE\"],[1,\"P2\",\"CART\"],[3,\"P2\",\"VIEW\"]], K=2",
+        "output": "[P1, P2]",
+        "explanation": "P1: 1+5=6점, P2: 3+1=4점. 상위 2개: [P1, P2]"
+      }
     ],
-    "constraints": ["1 <= logs.length <= 100,000", "1 <= K <= 상품 수", "action은 VIEW/CART/PURCHASE만"],
-    "hints": ["HashMap<String, Integer>로 productId별 점수를 누적합니다.", "entrySet을 점수 내림차순, productId 오름차순으로 정렬 후 상위 K개를 추출합니다."],
+    "constraints": [
+      "1 <= logs.length <= 100,000",
+      "1 <= K <= 상품 수",
+      "action은 VIEW/CART/PURCHASE만"
+    ],
+    "hints": [
+      "HashMap<String, Integer>로 productId별 점수를 누적합니다.",
+      "entrySet을 점수 내림차순, productId 오름차순으로 정렬 후 상위 K개를 추출합니다."
+    ],
     "approach": "HashMap으로 상품별 점수 누적. Comparator로 점수 내림차순+productId 오름차순 정렬. 상위 K개 반환.",
     "code": "import java.util.*;\n\npublic class ProductScore {\n    private static final Map<String, Integer> SCORE = Map.of(\"VIEW\", 1, \"CART\", 3, \"PURCHASE\", 5);\n\n    public List<String> solution(String[][] logs, int k) {\n        Map<String, Integer> scores = new HashMap<>();\n        for (String[] log : logs)\n            scores.merge(log[1], SCORE.get(log[2]), Integer::sum);\n\n        return scores.entrySet().stream()\n            .sorted((a, b) -> !a.getValue().equals(b.getValue())\n                ? b.getValue() - a.getValue()\n                : a.getKey().compareTo(b.getKey()))\n            .limit(k)\n            .map(Map.Entry::getKey)\n            .collect(java.util.stream.Collectors.toList());\n    }\n}",
-    "complexity": {"time": "O(N + P log P)", "space": "O(P)"},
+    "complexity": {
+      "time": "O(N + P log P)",
+      "space": "O(P)"
+    },
     "walkthrough": "HashMap으로 상품별 점수를 누적합니다. entrySet을 점수 내림차순, productId 오름차순으로 정렬 후 상위 K개를 추출합니다. Map.of로 액션별 점수를 상수로 관리합니다.",
     "secret": "Integer 비교 시 == 대신 .equals() 사용 필수(Integer 캐시 범위 밖에서 == 오작동). merge()에서 null 처리가 자동으로 되므로 getOrDefault 불필요. K > 상품 수인 경우 limit(k)이 자동 처리됨.",
-    "similar": ["cdr-012", "cdr-014"]
+    "similar": [
+      "cdr-012",
+      "cdr-014"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-016",
     "title": "Transfer Deadlock Detection",
     "titleKo": "송금 데드락 탐지",
     "difficulty": "hard",
-    "patterns": ["graph", "cycle-detection", "dfs"],
-    "companies": ["토스"],
+    "patterns": [
+      "graph",
+      "cycle-detection",
+      "dfs"
+    ],
+    "companies": [
+      "토스"
+    ],
     "year": "2023",
     "description": "계좌 간 송금 대기 상태를 나타내는 배열 transfers가 주어집니다. transfers[i] = [from, to]는 from 계좌가 to 계좌로의 송금을 대기 중임을 의미합니다. 데드락(순환 대기)이 발생하는 계좌 그룹을 모두 반환하세요. 순환에 포함된 계좌 ID들을 정렬하여 반환합니다.",
     "examples": [
-      {"input": "transfers=[[1,2],[2,3],[3,1],[4,5],[5,4],[6,7]]", "output": "[[1,2,3],[4,5]]", "explanation": "1→2→3→1 순환, 4→5→4 순환. 6→7은 순환 없음"},
-      {"input": "transfers=[[1,2],[2,3],[3,4]]", "output": "[]", "explanation": "순환 없음"}
+      {
+        "input": "transfers=[[1,2],[2,3],[3,1],[4,5],[5,4],[6,7]]",
+        "output": "[[1,2,3],[4,5]]",
+        "explanation": "1→2→3→1 순환, 4→5→4 순환. 6→7은 순환 없음"
+      },
+      {
+        "input": "transfers=[[1,2],[2,3],[3,4]]",
+        "output": "[]",
+        "explanation": "순환 없음"
+      }
     ],
-    "constraints": ["1 <= 계좌 수 <= 10,000", "1 <= transfers.length <= 100,000"],
-    "hints": ["DFS + 방문 상태(UNVISITED/VISITING/VISITED)로 사이클을 탐지합니다.", "사이클 탐지 시 스택에서 사이클 구간의 노드를 추출합니다."],
+    "constraints": [
+      "1 <= 계좌 수 <= 10,000",
+      "1 <= transfers.length <= 100,000"
+    ],
+    "hints": [
+      "DFS + 방문 상태(UNVISITED/VISITING/VISITED)로 사이클을 탐지합니다.",
+      "사이클 탐지 시 스택에서 사이클 구간의 노드를 추출합니다."
+    ],
     "approach": "DFS 사이클 탐지. VISITING 상태 노드를 재방문하면 사이클. 스택에서 사이클 구간 노드 추출. 결과를 정렬.",
     "code": "import java.util.*;\n\npublic class DeadlockDetection {\n    private static final int UNVISITED = 0, VISITING = 1, VISITED = 2;\n\n    public List<List<Integer>> solution(int[][] transfers) {\n        Map<Integer, List<Integer>> graph = new HashMap<>();\n        Set<Integer> nodes = new HashSet<>();\n        for (int[] t : transfers) {\n            graph.computeIfAbsent(t[0], k -> new ArrayList<>()).add(t[1]);\n            nodes.add(t[0]); nodes.add(t[1]);\n        }\n\n        Map<Integer, Integer> state = new HashMap<>();\n        for (int n : nodes) state.put(n, UNVISITED);\n        List<List<Integer>> cycles = new ArrayList<>();\n        Deque<Integer> path = new ArrayDeque<>();\n\n        for (int node : nodes)\n            if (state.get(node) == UNVISITED)\n                dfs(node, graph, state, path, cycles);\n\n        cycles.forEach(Collections::sort);\n        return cycles;\n    }\n\n    private void dfs(int node, Map<Integer, List<Integer>> graph,\n                     Map<Integer, Integer> state, Deque<Integer> path, List<List<Integer>> cycles) {\n        state.put(node, VISITING);\n        path.push(node);\n        for (int next : graph.getOrDefault(node, Collections.emptyList())) {\n            if (state.get(next) == UNVISITED) {\n                dfs(next, graph, state, path, cycles);\n            } else if (state.get(next) == VISITING) {\n                // 사이클 발견: path에서 next부터 현재까지 추출\n                List<Integer> cycle = new ArrayList<>();\n                Iterator<Integer> it = path.iterator();\n                while (it.hasNext()) {\n                    int n = it.next();\n                    cycle.add(n);\n                    if (n == next) break;\n                }\n                cycles.add(cycle);\n            }\n        }\n        path.pop();\n        state.put(node, VISITED);\n    }\n}",
-    "complexity": {"time": "O(V+E)", "space": "O(V+E)"},
+    "complexity": {
+      "time": "O(V+E)",
+      "space": "O(V+E)"
+    },
     "walkthrough": "DFS에서 VISITING(현재 탐색 중), VISITED(완료) 상태를 구분합니다. VISITING 상태 노드를 재방문하면 사이클이 있는 것이며, 현재 경로 스택에서 해당 노드부터 현재까지의 구간이 사이클입니다.",
     "secret": "VISITING vs VISITED 구분이 핵심 — VISITED 노드를 재방문해도 사이클이 아님. 방향 그래프에서의 사이클은 역방향 간선(back edge)으로 탐지. 사이클 추출 시 path 스택에서 범위 계산 오류 주의.",
-    "similar": ["cdr-017", "cdr-010"]
+    "similar": [
+      "cdr-017",
+      "cdr-010"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-017",
     "title": "Transaction Order Guarantee",
     "titleKo": "거래 순서 보장 (이벤트 정렬)",
     "difficulty": "hard",
-    "patterns": ["sorting", "implementation", "simulation"],
-    "companies": ["토스"],
+    "patterns": [
+      "sorting",
+      "implementation",
+      "simulation"
+    ],
+    "companies": [
+      "토스"
+    ],
     "year": "2022",
     "description": "분산 시스템의 거래 이벤트 배열 events가 주어집니다. events[i] = [accountId, txId, timestamp, type, amount]. type은 'DEBIT' 또는 'CREDIT'. 같은 accountId의 거래는 timestamp 순으로 처리해야 합니다. 처리 후 각 계좌의 최종 잔액을 반환하세요. 초기 잔액은 0이며, DEBIT은 잔액을 초과할 수 없습니다(초과 시 해당 거래 무효).",
     "examples": [
-      {"input": "events=[[1,T1,100,'CREDIT',500],[1,T2,50,'DEBIT',200],[1,T3,150,'DEBIT',400]]", "output": "{1: 300}", "explanation": "T2(ts=50): CREDIT 500. T1(ts=100): DEBIT 200 → 잔액 300. T3(ts=150): DEBIT 400 → 잔액 부족, 무효. 최종 300"}
+      {
+        "input": "events=[[1,T1,100,'CREDIT',500],[1,T2,50,'DEBIT',200],[1,T3,150,'DEBIT',400]]",
+        "output": "{1: 300}",
+        "explanation": "T2(ts=50): CREDIT 500. T1(ts=100): DEBIT 200 → 잔액 300. T3(ts=150): DEBIT 400 → 잔액 부족, 무효. 최종 300"
+      }
     ],
-    "constraints": ["1 <= events.length <= 100,000", "amount는 양의 정수", "timestamp는 전역 유일"],
-    "hints": ["events를 accountId 기준으로 그루핑하고 각 그룹을 timestamp 오름차순으로 정렬합니다.", "DEBIT은 현재 잔액 >= amount일 때만 처리합니다."],
+    "constraints": [
+      "1 <= events.length <= 100,000",
+      "amount는 양의 정수",
+      "timestamp는 전역 유일"
+    ],
+    "hints": [
+      "events를 accountId 기준으로 그루핑하고 각 그룹을 timestamp 오름차순으로 정렬합니다.",
+      "DEBIT은 현재 잔액 >= amount일 때만 처리합니다."
+    ],
     "approach": "accountId별 그루핑 후 timestamp 정렬. CREDIT은 더하고 DEBIT은 잔액 확인 후 차감. 잔액 부족 시 무효 처리.",
     "code": "import java.util.*;\n\npublic class TransactionOrder {\n    public Map<Integer, Long> solution(long[][] events) {\n        // events: [accountId, txId, timestamp, type(0=DEBIT/1=CREDIT), amount]\n        Map<Integer, List<long[]>> grouped = new HashMap<>();\n        for (long[] e : events)\n            grouped.computeIfAbsent((int)e[0], k -> new ArrayList<>()).add(e);\n\n        Map<Integer, Long> balances = new HashMap<>();\n        for (Map.Entry<Integer, List<long[]>> entry : grouped.entrySet()) {\n            int accountId = entry.getKey();\n            List<long[]> txs = entry.getValue();\n            txs.sort(Comparator.comparingLong(a -> a[2])); // timestamp 정렬\n\n            long balance = 0;\n            for (long[] tx : txs) {\n                long amount = tx[4];\n                if (tx[3] == 1) { // CREDIT\n                    balance += amount;\n                } else { // DEBIT\n                    if (balance >= amount) balance -= amount; // 부족 시 무효\n                }\n            }\n            balances.put(accountId, balance);\n        }\n        return balances;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "이벤트를 accountId별로 그루핑하고 각 그룹을 timestamp 기준 정렬합니다. CREDIT은 잔액에 더하고, DEBIT은 잔액이 충분할 때만 차감합니다. 잔액 부족 시 해당 거래를 무효 처리합니다.",
     "secret": "분산 시스템에서 timestamp는 논리적 순서를 보장하지 않을 수 있으므로 반드시 정렬. 잔액 overflow를 방지하기 위해 int 대신 long 사용. 무효 처리 시 txId를 별도 로그로 기록하는 것이 실무 패턴.",
-    "similar": ["cdr-016", "cdr-018"]
+    "similar": [
+      "cdr-016",
+      "cdr-018"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-018",
     "title": "Balance Rollback Simulation",
     "titleKo": "잔액 롤백 시뮬레이션",
     "difficulty": "hard",
-    "patterns": ["simulation", "stack", "implementation"],
-    "companies": ["토스"],
+    "patterns": [
+      "simulation",
+      "stack",
+      "implementation"
+    ],
+    "companies": [
+      "토스"
+    ],
     "year": "2023",
     "description": "계좌 트랜잭션 로그 배열이 주어집니다. 각 로그는 [txId, type, amount] 형식입니다. type은 'BEGIN'(트랜잭션 시작), 'DEPOSIT', 'WITHDRAW', 'COMMIT'(확정), 'ROLLBACK'(취소) 중 하나입니다. ROLLBACK 시 해당 트랜잭션의 모든 변경을 취소합니다. 중첩 트랜잭션은 없습니다. 모든 로그 처리 후 최종 잔액을 반환하세요. 초기 잔액은 0입니다.",
     "examples": [
-      {"input": "logs=[[T1,BEGIN,0],[T1,DEPOSIT,500],[T1,COMMIT,0],[T2,BEGIN,0],[T2,DEPOSIT,200],[T2,ROLLBACK,0],[T3,BEGIN,0],[T3,WITHDRAW,100],[T3,COMMIT,0]]", "output": "400", "explanation": "T1: +500 COMMIT. T2: +200 ROLLBACK(취소). T3: -100 COMMIT. 최종: 500-100=400"}
+      {
+        "input": "logs=[[T1,BEGIN,0],[T1,DEPOSIT,500],[T1,COMMIT,0],[T2,BEGIN,0],[T2,DEPOSIT,200],[T2,ROLLBACK,0],[T3,BEGIN,0],[T3,WITHDRAW,100],[T3,COMMIT,0]]",
+        "output": "400",
+        "explanation": "T1: +500 COMMIT. T2: +200 ROLLBACK(취소). T3: -100 COMMIT. 최종: 500-100=400"
+      }
     ],
-    "constraints": ["1 <= logs.length <= 100,000", "COMMIT 또는 ROLLBACK은 반드시 쌍으로 존재", "amount >= 0"],
-    "hints": ["BEGIN 시 현재 잔액을 스택에 저장(savepoint)합니다.", "ROLLBACK 시 스택에서 pop하여 BEGIN 직전 잔액으로 복원합니다."],
+    "constraints": [
+      "1 <= logs.length <= 100,000",
+      "COMMIT 또는 ROLLBACK은 반드시 쌍으로 존재",
+      "amount >= 0"
+    ],
+    "hints": [
+      "BEGIN 시 현재 잔액을 스택에 저장(savepoint)합니다.",
+      "ROLLBACK 시 스택에서 pop하여 BEGIN 직전 잔액으로 복원합니다."
+    ],
     "approach": "스택으로 savepoint 관리. BEGIN 시 현재 잔액을 push. COMMIT 시 pop(확정). ROLLBACK 시 pop 후 잔액 복원.",
     "code": "import java.util.*;\n\npublic class BalanceRollback {\n    public long solution(String[][] logs) {\n        long balance = 0;\n        Deque<Long> savepoints = new ArrayDeque<>();\n\n        for (String[] log : logs) {\n            String type = log[1];\n            long amount = Long.parseLong(log[2]);\n            switch (type) {\n                case \"BEGIN\" -> savepoints.push(balance); // savepoint 저장\n                case \"DEPOSIT\" -> balance += amount;\n                case \"WITHDRAW\" -> balance -= amount;\n                case \"COMMIT\" -> savepoints.pop(); // 확정: savepoint 제거\n                case \"ROLLBACK\" -> balance = savepoints.pop(); // 복원\n            }\n        }\n        return balance;\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(depth)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(depth)"
+    },
     "walkthrough": "BEGIN 시 현재 잔액을 스택에 저장합니다. DEPOSIT/WITHDRAW는 잔액을 변경합니다. COMMIT은 savepoint를 제거(변경 확정), ROLLBACK은 스택에서 pop하여 BEGIN 전 잔액으로 복원합니다.",
     "secret": "COMMIT 시 스택에서 pop을 빠뜨리면 스택 오버플로우. 중첩 트랜잭션 없음 조건이 있으므로 스택 깊이는 최대 1. 실무에서는 중첩 트랜잭션 지원 시 스택 깊이가 N이 될 수 있음.",
-    "similar": ["cdr-017", "cdr-019"]
+    "similar": [
+      "cdr-017",
+      "cdr-019"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-019",
     "title": "Fee Calculation with Precision",
     "titleKo": "수수료 계산 (소수점 정밀도)",
     "difficulty": "medium",
-    "patterns": ["implementation", "math"],
-    "companies": ["토스"],
+    "patterns": [
+      "implementation",
+      "math"
+    ],
+    "companies": [
+      "토스"
+    ],
     "year": "2022",
     "description": "거래 금액 배열 transactions와 단계별 수수료율 feeRates가 주어집니다. feeRates[i] = [threshold, rate]는 threshold 초과분에 대해 rate% 수수료를 적용합니다. 누진 수수료 방식으로 각 거래의 수수료를 계산하세요. 소수점 처리: 원 단위 미만 절사(floor). 결과는 long 배열로 반환합니다.",
     "examples": [
-      {"input": "transactions=[100000, 250000], feeRates=[[0,0.1],[100000,0.2],[200000,0.3]]", "output": "[100, 350]", "explanation": "100000: 0~100000구간 0.1% = 100. 250000: 0~100000구간 100 + 100001~200000구간 200 + 200001~250000구간 150 = 450 (실제 계산 예시)"}
+      {
+        "input": "transactions=[100000, 250000], feeRates=[[0,0.1],[100000,0.2],[200000,0.3]]",
+        "output": "[100, 350]",
+        "explanation": "100000: 0~100000구간 0.1% = 100. 250000: 0~100000구간 100 + 100001~200000구간 200 + 200001~250000구간 150 = 450 (실제 계산 예시)"
+      }
     ],
-    "constraints": ["1 <= transactions.length <= 10,000", "0 <= threshold <= 1,000,000,000", "0 <= rate <= 100"],
-    "hints": ["누진 수수료는 각 구간별로 (구간 내 금액) * (해당 구간 rate)를 합산합니다.", "부동소수점 오류를 방지하기 위해 rate를 10000으로 곱해 정수로 처리 후 마지막에 나누세요."],
+    "constraints": [
+      "1 <= transactions.length <= 10,000",
+      "0 <= threshold <= 1,000,000,000",
+      "0 <= rate <= 100"
+    ],
+    "hints": [
+      "누진 수수료는 각 구간별로 (구간 내 금액) * (해당 구간 rate)를 합산합니다.",
+      "부동소수점 오류를 방지하기 위해 rate를 10000으로 곱해 정수로 처리 후 마지막에 나누세요."
+    ],
     "approach": "누진 구간별 수수료 계산. BigDecimal 또는 정수 스케일링으로 소수점 오차 방지. 각 구간의 초과분에 해당 rate 적용.",
     "code": "import java.math.BigDecimal;\nimport java.math.RoundingMode;\n\npublic class FeeCalculation {\n    public long[] solution(long[] transactions, double[][] feeRates) {\n        long[] result = new long[transactions.length];\n        for (int i = 0; i < transactions.length; i++) {\n            long amount = transactions[i];\n            BigDecimal fee = BigDecimal.ZERO;\n            for (int j = 0; j < feeRates.length; j++) {\n                long lower = (long) feeRates[j][0];\n                long upper = j + 1 < feeRates.length ? (long) feeRates[j+1][0] : Long.MAX_VALUE;\n                BigDecimal rate = BigDecimal.valueOf(feeRates[j][1]).divide(BigDecimal.valueOf(100));\n                if (amount > lower) {\n                    long taxable = Math.min(amount, upper) - lower;\n                    fee = fee.add(BigDecimal.valueOf(taxable).multiply(rate));\n                }\n            }\n            result[i] = fee.setScale(0, RoundingMode.FLOOR).longValue();\n        }\n        return result;\n    }\n}",
-    "complexity": {"time": "O(T*R)", "space": "O(1)"},
+    "complexity": {
+      "time": "O(T*R)",
+      "space": "O(1)"
+    },
     "walkthrough": "각 거래 금액에 대해 누진 구간별로 초과분을 계산하고 해당 구간 수수료율을 적용합니다. BigDecimal을 사용하여 부동소수점 오차를 방지하고, 마지막에 FLOOR로 원 미만 절사합니다.",
     "secret": "double로 수수료를 계산하면 누적 오차로 금액이 1원씩 차이나는 버그 발생 — BigDecimal 필수. 마지막 구간의 upper를 Long.MAX_VALUE로 처리해야 함. RoundingMode.FLOOR vs HALF_UP 혼동 주의.",
-    "similar": ["cdr-018", "cdr-020"]
+    "similar": [
+      "cdr-018",
+      "cdr-020"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-020",
     "title": "Fraud Detection Pattern Matching",
     "titleKo": "사기 탐지 (패턴 매칭)",
     "difficulty": "hard",
-    "patterns": ["sliding-window", "hash-map", "implementation"],
-    "companies": ["토스"],
+    "patterns": [
+      "sliding-window",
+      "hash-map",
+      "implementation"
+    ],
+    "companies": [
+      "토스"
+    ],
     "year": "2023",
     "description": "거래 로그 배열 logs와 의심 패턴 rules이 주어집니다. 각 로그는 [userId, amount, timestamp, merchantId] 형식입니다. 규칙: 1) 1분 내 동일 userId의 거래 횟수 > threshold면 의심 2) 동일 userId가 timeWindow 내에 다른 merchantId에서 거래하면 의심. 의심 userId 목록을 반환하세요.",
     "examples": [
-      {"input": "logs=[[U1,1000,0,'M1'],[U1,2000,30,'M2'],[U1,3000,50,'M1'],[U2,5000,0,'M1']], rules={maxTxCount:2, timeWindow:60}", "output": "[U1]", "explanation": "U1: 60초 내 3건(>2), 60초 내 M1,M2 다른 가맹점 → 의심. U2: 1건만 → 정상"}
+      {
+        "input": "logs=[[U1,1000,0,'M1'],[U1,2000,30,'M2'],[U1,3000,50,'M1'],[U2,5000,0,'M1']], rules={maxTxCount:2, timeWindow:60}",
+        "output": "[U1]",
+        "explanation": "U1: 60초 내 3건(>2), 60초 내 M1,M2 다른 가맹점 → 의심. U2: 1건만 → 정상"
+      }
     ],
-    "constraints": ["1 <= logs.length <= 100,000", "1 <= timeWindow <= 3600", "1 <= maxTxCount <= 100"],
-    "hints": ["userId별로 로그를 그루핑하고 슬라이딩 윈도우로 timeWindow 내 거래를 분석합니다.", "timeWindow 내 merchantId Set의 크기가 1보다 크면 다중 가맹점 조건을 충족합니다."],
+    "constraints": [
+      "1 <= logs.length <= 100,000",
+      "1 <= timeWindow <= 3600",
+      "1 <= maxTxCount <= 100"
+    ],
+    "hints": [
+      "userId별로 로그를 그루핑하고 슬라이딩 윈도우로 timeWindow 내 거래를 분석합니다.",
+      "timeWindow 내 merchantId Set의 크기가 1보다 크면 다중 가맹점 조건을 충족합니다."
+    ],
     "approach": "userId별 그루핑 후 timestamp 정렬. 슬라이딩 윈도우로 timeWindow 내 거래 수 및 가맹점 수 체크. 조건 만족 시 의심 목록 추가.",
     "code": "import java.util.*;\n\npublic class FraudDetection {\n    public List<String> solution(long[][] logs, int maxTxCount, int timeWindow) {\n        // logs: [userId, amount, timestamp, merchantId] (모두 long/int로 인코딩)\n        Map<Long, List<long[]>> userLogs = new HashMap<>();\n        for (long[] log : logs)\n            userLogs.computeIfAbsent(log[0], k -> new ArrayList<>()).add(log);\n\n        Set<String> suspects = new HashSet<>();\n        for (Map.Entry<Long, List<long[]>> entry : userLogs.entrySet()) {\n            List<long[]> txs = entry.getValue();\n            txs.sort(Comparator.comparingLong(a -> a[2]));\n\n            int left = 0;\n            Set<Long> merchants = new LinkedHashSet<>();\n            for (int right = 0; right < txs.size(); right++) {\n                merchants.add(txs.get(right)[3]);\n                while (txs.get(right)[2] - txs.get(left)[2] >= timeWindow) {\n                    merchants.remove(txs.get(left)[3]); // 이탈 merchant 제거 시 주의!\n                    left++;\n                }\n                int windowSize = right - left + 1;\n                if (windowSize > maxTxCount || merchants.size() > 1)\n                    suspects.add(String.valueOf(entry.getKey()));\n            }\n        }\n        List<String> result = new ArrayList<>(suspects);\n        Collections.sort(result);\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "userId별로 그루핑하고 timestamp 기준 정렬합니다. 슬라이딩 윈도우에서 timeWindow 내 거래 수와 가맹점 수를 추적합니다. 거래 수 > maxTxCount이거나 가맹점 수 > 1이면 의심 유저로 분류합니다.",
     "secret": "left 이탈 시 merchants에서 해당 merchantId를 무조건 제거하면 오류 — 같은 merchantId가 윈도우에 남아있을 수 있음. Set 제거 전 윈도우 내 해당 merchant의 다른 거래가 있는지 확인 필요. 또는 카운트 Map으로 관리.",
-    "similar": ["cdr-013", "cdr-019"]
+    "similar": [
+      "cdr-013",
+      "cdr-019"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-021",
     "title": "Delivery Route Optimization",
     "titleKo": "배달 경로 최적화 (TSP 근사)",
     "difficulty": "hard",
-    "patterns": ["greedy", "graph", "simulation"],
-    "companies": ["배민"],
+    "patterns": [
+      "greedy",
+      "graph",
+      "simulation"
+    ],
+    "companies": [
+      "배민"
+    ],
     "year": "2023",
     "description": "배달 기사의 현재 위치와 배달지 목록이 주어집니다. 각 배달지는 [x, y, orderId]입니다. 현재 위치에서 출발하여 모든 배달지를 방문하는 최단 경로의 총 이동 거리를 구하세요. 이동 거리는 유클리드 거리입니다. 배달지 수 N <= 10이므로 완전 탐색(순열)이 가능합니다.",
     "examples": [
-      {"input": "start=[0,0], locations=[[1,0,O1],[0,1,O2],[1,1,O3]]", "output": "3.414", "explanation": "(0,0)→(1,0)→(1,1)→(0,1): sqrt(1)+sqrt(1)+sqrt(2) ≈ 3.414가 최단"}
+      {
+        "input": "start=[0,0], locations=[[1,0,O1],[0,1,O2],[1,1,O3]]",
+        "output": "3.414",
+        "explanation": "(0,0)→(1,0)→(1,1)→(0,1): sqrt(1)+sqrt(1)+sqrt(2) ≈ 3.414가 최단"
+      }
     ],
-    "constraints": ["1 <= N <= 10 (배달지 수)", "좌표 범위: -1000 ~ 1000", "소수점 3자리까지 반환"],
-    "hints": ["N <= 10이므로 N! = 3,628,800 이하. 모든 순열을 시도하는 완전 탐색이 가능합니다.", "순열 생성 + 각 순열의 총 이동 거리 계산 후 최솟값을 반환합니다."],
+    "constraints": [
+      "1 <= N <= 10 (배달지 수)",
+      "좌표 범위: -1000 ~ 1000",
+      "소수점 3자리까지 반환"
+    ],
+    "hints": [
+      "N <= 10이므로 N! = 3,628,800 이하. 모든 순열을 시도하는 완전 탐색이 가능합니다.",
+      "순열 생성 + 각 순열의 총 이동 거리 계산 후 최솟값을 반환합니다."
+    ],
     "approach": "완전 탐색(순열) + 각 경로 거리 계산. N<=10이면 N!<= 3.6M으로 가능. 최솟값 반환.",
     "code": "import java.util.*;\n\npublic class DeliveryRoute {\n    private int[] startPos;\n    private int[][] locations;\n    private double minDist = Double.MAX_VALUE;\n\n    public double solution(int[] start, int[][] locations) {\n        this.startPos = start;\n        this.locations = locations;\n        int n = locations.length;\n        int[] indices = new int[n];\n        for (int i = 0; i < n; i++) indices[i] = i;\n        permute(indices, 0);\n        return Math.round(minDist * 1000.0) / 1000.0;\n    }\n\n    private void permute(int[] arr, int start) {\n        if (start == arr.length) {\n            double dist = distance(startPos[0], startPos[1], locations[arr[0]][0], locations[arr[0]][1]);\n            for (int i = 0; i < arr.length - 1; i++)\n                dist += distance(locations[arr[i]][0], locations[arr[i]][1],\n                                  locations[arr[i+1]][0], locations[arr[i+1]][1]);\n            minDist = Math.min(minDist, dist);\n            return;\n        }\n        for (int i = start; i < arr.length; i++) {\n            int tmp = arr[start]; arr[start] = arr[i]; arr[i] = tmp;\n            permute(arr, start + 1);\n            tmp = arr[start]; arr[start] = arr[i]; arr[i] = tmp;\n        }\n    }\n\n    private double distance(int x1, int y1, int x2, int y2) {\n        return Math.sqrt((double)(x2-x1)*(x2-x1) + (double)(y2-y1)*(y2-y1));\n    }\n}",
-    "complexity": {"time": "O(N! * N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N! * N)",
+      "space": "O(N)"
+    },
     "walkthrough": "모든 배달지 방문 순열을 생성하고 각 순열에 대해 시작점→배달지1→...→배달지N의 총 유클리드 거리를 계산합니다. 최솟값을 반환합니다. N > 10이면 DP(Held-Karp) O(2^N * N^2)로 전환 필요.",
     "secret": "N > 12이면 N!이 수억을 초과하여 TLE. 문제에서 N <= 10 조건 확인 필수. 유클리드 거리 계산 시 정수 오버플로우 방지를 위해 (double) 캐스팅 필요.",
-    "similar": ["cdr-022", "cdr-008"]
+    "similar": [
+      "cdr-022",
+      "cdr-008"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-022",
     "title": "Used Market Matching",
     "titleKo": "중고거래 매칭 (지리 + 시간)",
     "difficulty": "medium",
-    "patterns": ["sorting", "hash-map", "implementation"],
-    "companies": ["당근"],
+    "patterns": [
+      "sorting",
+      "hash-map",
+      "implementation"
+    ],
+    "companies": [
+      "당근"
+    ],
     "year": "2023",
     "description": "중고거래 게시글 배열 posts와 검색 조건 query가 주어집니다. posts[i] = [postId, category, price, lat, lng, createdAt]. query = [category, maxPrice, lat, lng, radiusKm, withinDays]. 반경 내, 가격 이하, 날짜 내, 카테고리 일치 게시글을 가격 오름차순으로 반환하세요. 거리 계산은 Haversine 공식(또는 유클리드 근사) 사용.",
     "examples": [
-      {"input": "posts=[[1,'전자',50000,37.5,127.0,0],[2,'전자',30000,37.6,127.1,1],[3,'의류',20000,37.5,127.0,0]], query=['전자',60000,37.5,127.0,20,7]", "output": "[[2,'전자',30000,...],[1,'전자',50000,...]]", "explanation": "카테고리=전자, 가격<=60000, 반경 20km, 7일 내. 두 게시글 모두 조건 만족. 가격 오름차순."}
+      {
+        "input": "posts=[[1,'전자',50000,37.5,127.0,0],[2,'전자',30000,37.6,127.1,1],[3,'의류',20000,37.5,127.0,0]], query=['전자',60000,37.5,127.0,20,7]",
+        "output": "[[2,'전자',30000,...],[1,'전자',50000,...]]",
+        "explanation": "카테고리=전자, 가격<=60000, 반경 20km, 7일 내. 두 게시글 모두 조건 만족. 가격 오름차순."
+      }
     ],
-    "constraints": ["1 <= posts.length <= 100,000", "0 <= radiusKm <= 50", "1 <= withinDays <= 30"],
-    "hints": ["Haversine 공식 대신 위/경도 차이의 유클리드 거리로 근사(1도 ≈ 111km)하면 구현이 간단합니다.", "조건 필터링 후 가격 오름차순 정렬합니다."],
+    "constraints": [
+      "1 <= posts.length <= 100,000",
+      "0 <= radiusKm <= 50",
+      "1 <= withinDays <= 30"
+    ],
+    "hints": [
+      "Haversine 공식 대신 위/경도 차이의 유클리드 거리로 근사(1도 ≈ 111km)하면 구현이 간단합니다.",
+      "조건 필터링 후 가격 오름차순 정렬합니다."
+    ],
     "approach": "각 게시글에 대해 카테고리/가격/날짜/거리 조건을 순서대로 필터링. 통과한 게시글을 가격 오름차순 정렬.",
     "code": "import java.util.*;\n\npublic class UsedMarketMatch {\n    public List<long[]> solution(long[][] posts, Object[] query) {\n        String targetCategory = (String) query[0];\n        long maxPrice = (long) query[1];\n        double qLat = (double) query[2], qLng = (double) query[3];\n        double radiusKm = (double) query[4];\n        int withinDays = (int) query[5];\n        long now = System.currentTimeMillis() / 86400000L; // 현재 일수 (예시)\n\n        List<long[]> result = new ArrayList<>();\n        for (long[] post : posts) {\n            // post: [postId, category(hash), price, lat*1e6, lng*1e6, createdDayAgo]\n            if (!categoryMatch(post[1], targetCategory)) continue;\n            if (post[2] > maxPrice) continue;\n            if (post[5] > withinDays) continue;\n            double distKm = haversineApprox(qLat, qLng, post[3] / 1e6, post[4] / 1e6);\n            if (distKm > radiusKm) continue;\n            result.add(post);\n        }\n        result.sort(Comparator.comparingLong(a -> a[2]));\n        return result;\n    }\n\n    private double haversineApprox(double lat1, double lng1, double lat2, double lng2) {\n        double dlat = (lat2 - lat1) * 111.0;\n        double dlng = (lng2 - lng1) * 111.0 * Math.cos(Math.toRadians((lat1+lat2)/2));\n        return Math.sqrt(dlat*dlat + dlng*dlng);\n    }\n\n    private boolean categoryMatch(long encoded, String category) {\n        return String.valueOf(encoded).equals(category); // 실제로는 적절히 구현\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "각 게시글을 카테고리→가격→날짜→거리 순으로 빠른 조건부터 필터링합니다. 거리 계산은 Haversine 근사(위도 차이 * 111km)로 단순화합니다. 조건 통과 게시글을 가격 오름차순 정렬합니다.",
     "secret": "거리 계산에서 경도는 위도에 따라 실제 km가 달라짐 — cos(lat) 보정 필수. 필터 순서를 카테고리→가격→거리 순(빠른 조건 먼저)으로 하면 성능 개선. 날짜를 epoch 차이로 계산하면 타임존 오류 주의.",
-    "similar": ["cdr-021", "cdr-023"]
+    "similar": [
+      "cdr-021",
+      "cdr-023"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-023",
     "title": "Real-time Order State Machine",
     "titleKo": "실시간 주문 상태 (State Machine)",
     "difficulty": "medium",
-    "patterns": ["implementation", "simulation", "state-machine"],
-    "companies": ["배민", "쿠팡"],
+    "patterns": [
+      "implementation",
+      "simulation",
+      "state-machine"
+    ],
+    "companies": [
+      "배민",
+      "쿠팡"
+    ],
     "year": "2022",
     "description": "주문 상태 전환 이벤트 배열 events가 주어집니다. 유효한 상태 전환: PENDING→CONFIRMED, CONFIRMED→COOKING, COOKING→READY, READY→DELIVERING, DELIVERING→DELIVERED, 모든 상태→CANCELLED. 잘못된 전환은 무시합니다. 각 주문의 최종 상태를 반환하세요.",
     "examples": [
-      {"input": "events=[[O1,PENDING],[O1,CONFIRMED],[O1,COOKING],[O2,PENDING],[O2,CANCELLED],[O1,READY],[O1,DELIVERING],[O1,DELIVERED]]", "output": "{O1:DELIVERED, O2:CANCELLED}", "explanation": "O1: 정상 흐름으로 DELIVERED. O2: PENDING에서 CANCELLED."}
+      {
+        "input": "events=[[O1,PENDING],[O1,CONFIRMED],[O1,COOKING],[O2,PENDING],[O2,CANCELLED],[O1,READY],[O1,DELIVERING],[O1,DELIVERED]]",
+        "output": "{O1:DELIVERED, O2:CANCELLED}",
+        "explanation": "O1: 정상 흐름으로 DELIVERED. O2: PENDING에서 CANCELLED."
+      }
     ],
-    "constraints": ["1 <= events.length <= 100,000", "주문 ID는 문자열", "초기 상태 없이 첫 이벤트가 PENDING이어야 함"],
-    "hints": ["Map<String, Set<String>>으로 유효 전환을 정의합니다.", "현재 상태에서 목표 상태로의 전환이 유효하면 상태를 업데이트하고, 아니면 무시합니다."],
+    "constraints": [
+      "1 <= events.length <= 100,000",
+      "주문 ID는 문자열",
+      "초기 상태 없이 첫 이벤트가 PENDING이어야 함"
+    ],
+    "hints": [
+      "Map<String, Set<String>>으로 유효 전환을 정의합니다.",
+      "현재 상태에서 목표 상태로의 전환이 유효하면 상태를 업데이트하고, 아니면 무시합니다."
+    ],
     "approach": "State transition map 정의. 각 이벤트에서 현재 상태→목표 상태 전환 유효성 체크. 유효하면 상태 업데이트, 아니면 무시.",
     "code": "import java.util.*;\n\npublic class OrderStateMachine {\n    private static final Map<String, Set<String>> TRANSITIONS = new HashMap<>();\n    static {\n        TRANSITIONS.put(\"PENDING\", Set.of(\"CONFIRMED\", \"CANCELLED\"));\n        TRANSITIONS.put(\"CONFIRMED\", Set.of(\"COOKING\", \"CANCELLED\"));\n        TRANSITIONS.put(\"COOKING\", Set.of(\"READY\", \"CANCELLED\"));\n        TRANSITIONS.put(\"READY\", Set.of(\"DELIVERING\", \"CANCELLED\"));\n        TRANSITIONS.put(\"DELIVERING\", Set.of(\"DELIVERED\", \"CANCELLED\"));\n        TRANSITIONS.put(\"DELIVERED\", Set.of());\n        TRANSITIONS.put(\"CANCELLED\", Set.of());\n    }\n\n    public Map<String, String> solution(String[][] events) {\n        Map<String, String> orderStates = new HashMap<>();\n\n        for (String[] event : events) {\n            String orderId = event[0], newState = event[1];\n            String currentState = orderStates.get(orderId);\n\n            if (currentState == null) {\n                // 최초 이벤트는 PENDING만 허용\n                if (newState.equals(\"PENDING\")) orderStates.put(orderId, \"PENDING\");\n            } else {\n                Set<String> validNext = TRANSITIONS.getOrDefault(currentState, Set.of());\n                if (validNext.contains(newState)) orderStates.put(orderId, newState);\n                // 유효하지 않은 전환은 무시\n            }\n        }\n        return orderStates;\n    }\n}",
-    "complexity": {"time": "O(N)", "space": "O(orders)"},
+    "complexity": {
+      "time": "O(N)",
+      "space": "O(orders)"
+    },
     "walkthrough": "static 블록에서 유효 전환 맵을 초기화합니다. 각 이벤트에서 현재 상태를 조회하고, 유효 전환 맵에서 목표 상태가 허용되면 업데이트합니다. 최초 이벤트가 PENDING이 아니면 무시합니다.",
     "secret": "DELIVERED/CANCELLED 상태에서의 이벤트는 모두 무시해야 함 — terminal state 처리 누락 시 DELIVERED 후 CONFIRMED 처리 가능해짐. 최초 이벤트가 PENDING이 아닌 경우(데이터 오류)도 무시 처리 필수.",
-    "similar": ["cdr-022", "cdr-024"]
+    "similar": [
+      "cdr-022",
+      "cdr-024"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-024",
     "title": "Weighted Random Ad Distribution",
     "titleKo": "광고 노출 분배 (가중치 랜덤)",
     "difficulty": "medium",
-    "patterns": ["implementation", "binary-search", "math"],
-    "companies": ["당근", "카카오"],
+    "patterns": [
+      "implementation",
+      "binary-search",
+      "math"
+    ],
+    "companies": [
+      "당근",
+      "카카오"
+    ],
     "year": "2022",
     "description": "광고 배열 ads가 주어집니다. ads[i] = [adId, weight]. 총 N번의 노출 요청이 들어올 때, 각 광고를 weight 비율에 따라 분배하세요. 누적 가중치 배열과 이분탐색으로 O(log N)으로 각 요청을 처리하세요. 결과: 각 adId별 실제 노출 횟수를 반환합니다. 랜덤 시드 seed가 고정으로 주어집니다.",
     "examples": [
-      {"input": "ads=[[A,3],[B,2],[C,5]], N=1000, seed=42", "output": "{A:약300, B:약200, C:약500}", "explanation": "총 weight=10. A=30%, B=20%, C=50% 비율로 1000회 분배"}
+      {
+        "input": "ads=[[A,3],[B,2],[C,5]], N=1000, seed=42",
+        "output": "{A:약300, B:약200, C:약500}",
+        "explanation": "총 weight=10. A=30%, B=20%, C=50% 비율로 1000회 분배"
+      }
     ],
-    "constraints": ["1 <= ads.length <= 100", "1 <= weight <= 1000", "1 <= N <= 1,000,000"],
-    "hints": ["누적 합 배열을 구성하고, random 값 [0, totalWeight) 에 대해 이분탐색으로 담당 광고를 찾습니다.", "Arrays.binarySearch 또는 직접 구현한 upperBound를 사용하세요."],
+    "constraints": [
+      "1 <= ads.length <= 100",
+      "1 <= weight <= 1000",
+      "1 <= N <= 1,000,000"
+    ],
+    "hints": [
+      "누적 합 배열을 구성하고, random 값 [0, totalWeight) 에 대해 이분탐색으로 담당 광고를 찾습니다.",
+      "Arrays.binarySearch 또는 직접 구현한 upperBound를 사용하세요."
+    ],
     "approach": "누적 가중치 배열 구성. 각 요청마다 [0, totalWeight) 랜덤 값 생성 후 upper bound 이분탐색으로 광고 선택. O(N log K).",
     "code": "import java.util.*;\n\npublic class WeightedAdDistribution {\n    public Map<String, Integer> solution(int[][] ads, String[] adIds, int n, long seed) {\n        int k = ads.length;\n        int[] cumWeights = new int[k];\n        cumWeights[0] = ads[0][0];\n        for (int i = 1; i < k; i++) cumWeights[i] = cumWeights[i-1] + ads[i][0];\n        int totalWeight = cumWeights[k-1];\n\n        Map<String, Integer> result = new HashMap<>();\n        for (String id : adIds) result.put(id, 0);\n\n        Random rnd = new Random(seed);\n        for (int i = 0; i < n; i++) {\n            int r = rnd.nextInt(totalWeight); // [0, totalWeight)\n            // upper bound: r < cumWeights[idx] 인 첫 번째 idx\n            int lo = 0, hi = k - 1;\n            while (lo < hi) {\n                int mid = (lo + hi) / 2;\n                if (cumWeights[mid] <= r) lo = mid + 1;\n                else hi = mid;\n            }\n            result.merge(adIds[lo], 1, Integer::sum);\n        }\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N log K)", "space": "O(K)"},
+    "complexity": {
+      "time": "O(N log K)",
+      "space": "O(K)"
+    },
     "walkthrough": "누적 가중치 배열을 구성합니다. 각 요청마다 [0, totalWeight) 범위의 랜덤 값을 생성하고, upper bound 이분탐색으로 해당 광고를 찾습니다. cumWeights[i] <= r이면 다음 광고, 초과면 현재 광고입니다.",
     "secret": "이분탐색 조건이 cumWeights[mid] <= r이어야 함(upper bound) — < r로 쓰면 lower bound가 되어 분배 비율이 틀림. rnd.nextInt(totalWeight)는 [0, totalWeight-1] 반환 — 범위 주의.",
-    "similar": ["cdr-023", "cdr-025"]
+    "similar": [
+      "cdr-023",
+      "cdr-025"
+    ],
+    "type": "short-answer"
   },
   {
     "id": "cdr-025",
     "title": "Chat Notification Batch Rate Limiting",
     "titleKo": "채팅 알림 배치 (Rate Limiting 구현)",
     "difficulty": "hard",
-    "patterns": ["sliding-window", "queue", "implementation"],
-    "companies": ["라인", "카카오"],
+    "patterns": [
+      "sliding-window",
+      "queue",
+      "implementation"
+    ],
+    "companies": [
+      "라인",
+      "카카오"
+    ],
     "year": "2023",
     "description": "채팅 메시지 이벤트 배열 messages와 Rate Limit 조건이 주어집니다. 조건: 각 userId당 windowSec 초 내에 최대 maxCount개의 알림만 발송. 초과 시 해당 알림을 지연시켜 다음 가능한 시점에 배치 발송합니다. 각 알림의 실제 발송 시각을 반환하세요. messages[i] = [userId, messageId, timestamp].",
     "examples": [
-      {"input": "messages=[[U1,M1,0],[U1,M2,1],[U1,M3,2]], windowSec=5, maxCount=2", "output": "[[M1,0],[M2,1],[M3,5]]", "explanation": "U1: M1(t=0) OK, M2(t=1) OK, M3(t=2)는 5초 내 2개 초과 → t=5(M1 만료 후)로 지연"}
+      {
+        "input": "messages=[[U1,M1,0],[U1,M2,1],[U1,M3,2]], windowSec=5, maxCount=2",
+        "output": "[[M1,0],[M2,1],[M3,5]]",
+        "explanation": "U1: M1(t=0) OK, M2(t=1) OK, M3(t=2)는 5초 내 2개 초과 → t=5(M1 만료 후)로 지연"
+      }
     ],
-    "constraints": ["1 <= messages.length <= 100,000", "1 <= windowSec <= 3600", "1 <= maxCount <= 100"],
-    "hints": ["userId별 최근 발송 시각을 Queue(Deque)로 관리합니다.", "새 알림 요청 시 Queue에서 windowSec 이전 타임스탬프를 제거하고, Queue 크기가 maxCount 미만이면 즉시 발송, 아니면 Queue.peek() + windowSec 시점으로 지연합니다."],
+    "constraints": [
+      "1 <= messages.length <= 100,000",
+      "1 <= windowSec <= 3600",
+      "1 <= maxCount <= 100"
+    ],
+    "hints": [
+      "userId별 최근 발송 시각을 Queue(Deque)로 관리합니다.",
+      "새 알림 요청 시 Queue에서 windowSec 이전 타임스탬프를 제거하고, Queue 크기가 maxCount 미만이면 즉시 발송, 아니면 Queue.peek() + windowSec 시점으로 지연합니다."
+    ],
     "approach": "userId별 발송 시각 Queue 관리. 슬라이딩 윈도우로 windowSec 내 발송 수 체크. 초과 시 다음 가능한 시점(queue.peek()+windowSec)으로 지연 후 Queue에 추가.",
     "code": "import java.util.*;\n\npublic class RateLimitedNotification {\n    public List<long[]> solution(long[][] messages, int windowSec, int maxCount) {\n        // messages: [userId, messageId, timestamp]\n        Map<Long, Deque<Long>> userQueues = new HashMap<>(); // userId -> 발송 시각 deque\n        List<long[]> result = new ArrayList<>();\n\n        for (long[] msg : messages) {\n            long userId = msg[0], msgId = msg[1], requestTime = msg[2];\n            Deque<Long> queue = userQueues.computeIfAbsent(userId, k -> new ArrayDeque<>());\n\n            // windowSec 이전 발송 시각 제거\n            long sendTime = requestTime;\n            // 만약 queue가 가득 차 있으면 지연\n            while (!queue.isEmpty() && queue.peekFirst() + windowSec <= sendTime) {\n                queue.pollFirst();\n            }\n\n            if (queue.size() >= maxCount) {\n                // 다음 가능한 시점: 가장 오래된 발송 시각 + windowSec\n                sendTime = queue.peekFirst() + windowSec;\n                // 지연된 sendTime 기준으로 다시 만료된 항목 제거\n                while (queue.size() >= maxCount && queue.peekFirst() + windowSec <= sendTime) {\n                    queue.pollFirst();\n                }\n            }\n\n            queue.addLast(sendTime);\n            result.add(new long[]{msgId, sendTime});\n        }\n\n        result.sort(Comparator.comparingLong(a -> a[1]));\n        return result;\n    }\n}",
-    "complexity": {"time": "O(N log N)", "space": "O(N)"},
+    "complexity": {
+      "time": "O(N log N)",
+      "space": "O(N)"
+    },
     "walkthrough": "userId별로 발송 시각 deque를 유지합니다. 새 메시지 요청 시 windowSec 이전 항목을 제거하고, deque 크기가 maxCount 미만이면 요청 시각에 즉시 발송합니다. 초과 시 가장 오래된 발송 시각 + windowSec으로 지연하고 deque에 추가합니다.",
     "secret": "지연 후 새 sendTime 기준으로 만료된 항목을 다시 제거해야 함 — 지연 시점에서 윈도우가 앞으로 이동했으므로 추가 만료가 발생할 수 있음. 결과를 발송 시각 기준으로 정렬해야 최종 순서가 올바름.",
-    "similar": ["cdr-024", "cdr-013"]
+    "similar": [
+      "cdr-024",
+      "cdr-013"
+    ],
+    "type": "short-answer"
   }
 ]
